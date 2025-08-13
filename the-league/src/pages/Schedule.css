@@ -1,0 +1,610 @@
+.schedule-container {
+  min-height: 100vh;
+  background: var(--gradient-dark);
+  padding: 40px 20px;
+  position: relative;
+}
+
+.schedule-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(212, 175, 55, 0.04) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.schedule-header {
+  text-align: center;
+  margin-bottom: 40px;
+  z-index: 1;
+  position: relative;
+}
+
+.schedule-header h1 {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-weight: 700;
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+}
+
+.schedule-header p {
+  font-size: 1.2rem;
+  color: var(--text-gray);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+}
+
+.schedule-loading,
+.schedule-error {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  color: var(--text-gray);
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.schedule-error {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+/* League Selector */
+.league-selector {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+  z-index: 1;
+  position: relative;
+}
+
+.league-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  padding: 8px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.league-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border: none;
+  background: transparent;
+  color: var(--accent-platinum);
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+.league-tab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.15), transparent);
+  transition: left 0.6s ease;
+  z-index: -1;
+}
+
+.league-tab:hover {
+  color: var(--text-white);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.1);
+}
+
+.league-tab:hover::before {
+  left: 100%;
+}
+
+.league-tab.active {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.2);
+}
+
+.league-tab.active:hover {
+  color: var(--primary-navy);
+  transform: translateY(-2px);
+}
+
+.league-icon {
+  font-size: 1.2rem;
+}
+
+/* Week Selector */
+.week-selector {
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 40px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+  position: relative;
+}
+
+.week-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.week-nav-btn {
+  background: linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-navy) 100%);
+  color: var(--text-cream);
+  border: 2px solid var(--border-light);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.week-nav-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(218, 165, 32, 0.2);
+  border-color: var(--accent-gold);
+}
+
+.week-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.week-info {
+  text-align: center;
+}
+
+.week-number {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-white);
+  font-family: 'Poppins', sans-serif;
+  margin-bottom: 4px;
+}
+
+.week-dates {
+  font-size: 1rem;
+  color: var(--accent-platinum);
+  font-weight: 500;
+}
+
+.week-quick-selector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.week-quick-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-platinum);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.week-quick-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.week-quick-btn.active {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+.week-more {
+  color: var(--accent-platinum);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+/* Schedule Content */
+.schedule-content {
+  z-index: 1;
+  position: relative;
+  margin-bottom: 40px;
+}
+
+.week-schedule {
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 30px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.week-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.week-header h2 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-white);
+  margin-bottom: 8px;
+}
+
+.week-subtitle {
+  font-size: 1.1rem;
+  color: var(--accent-platinum);
+  font-weight: 500;
+}
+
+.matchups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.matchup-card {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.7) 0%, 
+    rgba(42, 74, 107, 0.6) 100%
+  );
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--border-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.matchup-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.1), transparent);
+  transition: left 0.6s ease;
+  z-index: -1;
+}
+
+.matchup-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(218, 165, 32, 0.15);
+  border-color: rgba(218, 165, 32, 0.3);
+}
+
+.matchup-card:hover::before {
+  left: 100%;
+}
+
+.matchup-card.user-involved {
+  border-color: var(--accent-gold);
+  background: linear-gradient(135deg, 
+    rgba(212, 175, 55, 0.15) 0%, 
+    rgba(30, 58, 95, 0.7) 50%,
+    rgba(42, 74, 107, 0.6) 100%
+  );
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+}
+
+.matchup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.matchup-date {
+  font-weight: 600;
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.matchup-time {
+  font-weight: 500;
+  color: var(--accent-platinum);
+  font-size: 0.9rem;
+}
+
+.matchup-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.team-name {
+  font-weight: 700;
+  color: var(--text-white);
+  font-size: 1rem;
+  text-align: center;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.team-label {
+  font-size: 0.75rem;
+  color: var(--accent-platinum);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.away-team .team-label {
+  color: var(--text-gray);
+}
+
+.home-team .team-label {
+  color: var(--accent-gold);
+}
+
+.vs-separator {
+  font-weight: 700;
+  color: var(--accent-platinum);
+  font-size: 1.1rem;
+  margin: 0 16px;
+  opacity: 0.7;
+}
+
+.matchup-score {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.matchup-status {
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.matchup-status.upcoming {
+  background: rgba(108, 117, 125, 0.2);
+  color: #adb5bd;
+  border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.matchup-status.in_progress {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.matchup-status.completed {
+  background: rgba(40, 167, 69, 0.2);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.no-games,
+.no-schedule {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-gray);
+  font-size: 1.1rem;
+}
+
+/* Season Overview */
+.season-overview {
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 30px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+  position: relative;
+}
+
+.season-overview h3 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-white);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.season-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-gold);
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--accent-platinum);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .schedule-container {
+    padding: 20px 15px;
+  }
+  
+  .schedule-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .league-tabs {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .league-tab {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+  
+  .week-selector {
+    padding: 20px;
+  }
+  
+  .week-navigation {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .week-nav-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+  }
+  
+  .week-number {
+    font-size: 1.5rem;
+  }
+  
+  .matchups-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .matchup-card {
+    padding: 20px;
+  }
+  
+  .season-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-container {
+    padding: 15px 10px;
+  }
+  
+  .league-tab {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+  
+  .league-icon {
+    font-size: 1rem;
+  }
+  
+  .week-selector {
+    padding: 16px;
+  }
+  
+  .week-schedule {
+    padding: 20px;
+  }
+  
+  .matchup-card {
+    padding: 16px;
+  }
+  
+  .team-name {
+    font-size: 0.9rem;
+  }
+  
+  .season-stats {
+    grid-template-columns: 1fr;
+  }
+}

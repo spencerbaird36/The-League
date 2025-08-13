@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Draft from './pages/Draft';
 import MyTeam from './pages/MyTeam';
 import Standings from './pages/Standings';
+import Schedule from './pages/Schedule';
 import TeamPage from './pages/TeamPage';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
@@ -592,7 +593,7 @@ const AppContent: React.FC = () => {
             path="/schedule" 
             element={
               isAuthenticated && user?.league ? (
-                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Schedule - Coming Soon!</div>
+                <Schedule user={user} />
               ) : !isAuthenticated ? (
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to view schedule.</div>
               ) : (
