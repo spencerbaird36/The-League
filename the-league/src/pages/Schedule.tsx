@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SeasonSchedule, LeagueTeam, ScheduleMatchup, WeekSchedule } from '../types/Schedule';
 import { generateNFLSchedule, generateNBASchedule, generateMLBSchedule } from '../utils/scheduleGenerator';
+import { draftService } from '../services/draftService';
 import './Schedule.css';
 
 interface League {
@@ -76,47 +77,69 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       }
 
       try {
-        // Fetch league members to create teams
-        const response = await fetch(`/api/leagues/${user.league.id}/members`);
-        if (response.ok) {
-          const members = await response.json();
-          const teams: LeagueTeam[] = members.map((member: any) => ({
-            id: member.id,
-            name: `${member.firstName} ${member.lastName}`,
-            firstName: member.firstName,
-            lastName: member.lastName,
-            username: member.username
-          }));
-          
-          setLeagueTeams(teams);
-          
-          // Generate schedules for all leagues
-          const nflSchedule = generateNFLSchedule(teams);
-          const nbaSchedule = generateNBASchedule(teams);
-          const mlbSchedule = generateMLBSchedule(teams);
-          
-          setSchedules({
-            NFL: nflSchedule,
-            NBA: nbaSchedule,
-            MLB: mlbSchedule
-          });
-          
-          // Set current week based on selected league
-          setSelectedWeek(getCurrentWeek(selectedLeague));
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || 'Failed to load league members');
+        // Use draftService to fetch league members
+        const members = await draftService.fetchLeagueMembers(user.league.id);
+        
+        // Convert members to teams format
+        let teams: LeagueTeam[] = members.map((member: any) => ({
+          id: member.id,
+          name: `${member.firstName} ${member.lastName}`,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          username: member.username
+        }));
+        
+        // Ensure current user is included in the teams list
+        const currentUserInTeams = teams.find(team => team.id === user.id);
+        if (!currentUserInTeams && user) {
+          const currentUserTeam: LeagueTeam = {
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username
+          };
+          teams.push(currentUserTeam);
+          console.log('Added current user to teams list:', currentUserTeam);
         }
+        
+        // Ensure we have at least 2 teams for scheduling to work
+        if (teams.length < 2) {
+          console.warn('Not enough teams for scheduling. Need at least 2 teams.');
+          setError('Need at least 2 teams in the league to generate a schedule.');
+          setLoading(false);
+          return;
+        }
+        
+        // Sort teams by name for consistent ordering
+        teams.sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log('League teams loaded:', teams);
+        setLeagueTeams(teams);
+        
+        // Generate schedules for all leagues
+        const nflSchedule = generateNFLSchedule(teams);
+        const nbaSchedule = generateNBASchedule(teams);
+        const mlbSchedule = generateMLBSchedule(teams);
+        
+        setSchedules({
+          NFL: nflSchedule,
+          NBA: nbaSchedule,
+          MLB: mlbSchedule
+        });
+        
+        // Set current week based on selected league
+        setSelectedWeek(getCurrentWeek(selectedLeague));
       } catch (error) {
         console.error('Error fetching league teams:', error);
-        setError('Network error. Please try again later.');
+        setError('Failed to load league members. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchLeagueTeams();
-  }, [user?.league?.id]);
+  }, [user?.league?.id, user?.id, user?.firstName, user?.lastName, user?.username]);
 
   // Update selected week when league changes
   useEffect(() => {
