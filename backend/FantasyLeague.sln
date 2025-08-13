@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FantasyLeague.Api", "FantasyLeague.Api\FantasyLeague.Api.csproj", "{D24309A5-0998-40ED-BDC8-D6FF39FC680B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FantasyLeague.Tests", "FantasyLeague.Tests\FantasyLeague.Tests.csproj", "{68514752-BE96-46CB-89AD-A97EF4A68721}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D24309A5-0998-40ED-BDC8-D6FF39FC680B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D24309A5-0998-40ED-BDC8-D6FF39FC680B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D24309A5-0998-40ED-BDC8-D6FF39FC680B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D24309A5-0998-40ED-BDC8-D6FF39FC680B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68514752-BE96-46CB-89AD-A97EF4A68721}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68514752-BE96-46CB-89AD-A97EF4A68721}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68514752-BE96-46CB-89AD-A97EF4A68721}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68514752-BE96-46CB-89AD-A97EF4A68721}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
