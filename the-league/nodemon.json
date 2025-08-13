@@ -1,0 +1,10 @@
+{
+  "watch": ["src"],
+  "ext": "js,jsx,ts,tsx,css,scss,json",
+  "ignore": ["src/**/*.test.*", "src/**/*.spec.*", "node_modules"],
+  "exec": "react-scripts start",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000
+}

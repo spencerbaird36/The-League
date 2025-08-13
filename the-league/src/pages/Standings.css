@@ -1,0 +1,248 @@
+.standings-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  color: var(--text-white);
+}
+
+.standings-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.standings-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.standings-header p {
+  color: var(--accent-platinum);
+  font-size: 1.1rem;
+}
+
+.standings-loading,
+.standings-error {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--accent-platinum);
+  font-size: 1.2rem;
+}
+
+.standings-error {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 8px;
+}
+
+.standings-table-container {
+  background: var(--surface-glass);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.standings-table thead {
+  background: var(--primary-navy);
+}
+
+.standings-table th {
+  padding: 20px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--accent-gold);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+.standings-table th:first-child {
+  text-align: center;
+  width: 80px;
+}
+
+.standings-table th:nth-child(3),
+.standings-table th:nth-child(4),
+.standings-table th:nth-child(5),
+.standings-table th:nth-child(6),
+.standings-table th:nth-child(7) {
+  text-align: center;
+}
+
+.standings-table tbody tr {
+  transition: all 0.3s ease;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.standings-table tbody tr:hover {
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.standings-table tbody tr.current-user {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.standings-table tbody tr.current-user:hover {
+  background: rgba(212, 175, 55, 0.15);
+}
+
+.standings-table td {
+  padding: 16px;
+  color: var(--text-white);
+}
+
+.rank-cell {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--accent-gold);
+}
+
+.team-cell {
+  padding-left: 20px;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.team-info.clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.team-info.clickable:hover {
+  background: rgba(212, 175, 55, 0.1);
+  transform: translateX(4px);
+}
+
+.team-info.clickable:hover .team-name {
+  color: var(--accent-gold);
+}
+
+.team-info.clickable:hover .username {
+  opacity: 1;
+  color: var(--accent-gold);
+}
+
+.team-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--text-white);
+}
+
+.username {
+  font-size: 0.85rem;
+  color: var(--accent-platinum);
+  opacity: 0.8;
+}
+
+.record-cell {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--accent-platinum);
+}
+
+.percentage-cell {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.points-cell {
+  text-align: center;
+  font-weight: 500;
+  color: var(--accent-platinum);
+}
+
+.gb-cell {
+  text-align: center;
+  font-weight: 500;
+  color: var(--accent-platinum);
+}
+
+.no-standings {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--accent-platinum);
+  font-size: 1.1rem;
+}
+
+/* Ranking colors */
+.standings-table tbody tr:nth-child(1) .rank-cell {
+  color: #ffd700; /* Gold for 1st place */
+}
+
+.standings-table tbody tr:nth-child(2) .rank-cell {
+  color: #c0c0c0; /* Silver for 2nd place */
+}
+
+.standings-table tbody tr:nth-child(3) .rank-cell {
+  color: #cd7f32; /* Bronze for 3rd place */
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .standings-container {
+    padding: 20px 10px;
+  }
+  
+  .standings-header h1 {
+    font-size: 2rem;
+  }
+  
+  .standings-table-container {
+    overflow-x: auto;
+  }
+  
+  .standings-table {
+    min-width: 700px;
+  }
+  
+  .standings-table th,
+  .standings-table td {
+    padding: 12px 8px;
+    font-size: 0.9rem;
+  }
+  
+  .team-info {
+    gap: 2px;
+  }
+  
+  .team-name {
+    font-size: 0.95rem;
+  }
+  
+  .username {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .standings-table th,
+  .standings-table td {
+    padding: 10px 6px;
+    font-size: 0.85rem;
+  }
+  
+  .standings-header h1 {
+    font-size: 1.8rem;
+  }
+}

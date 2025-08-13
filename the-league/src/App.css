@@ -1,0 +1,531 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* Logo-inspired color palette */
+  --primary-navy: #1E3A5F;        /* Deep navy from logo shield */
+  --secondary-navy: #2A4A6B;      /* Lighter navy */
+  --accent-gold: #DAA520;         /* Rich gold from crown */
+  --accent-cream: #F5F2E8;        /* Cream background tone */
+  --accent-burgundy: #8B1538;     /* Burgundy accents */
+  --text-white: #FFFFFF;
+  --text-cream: #F5F2E8;          /* Cream text */
+  --text-gray: #A0B1C2;           /* Sophisticated gray */
+  --text-dark: #2D3748;
+  --surface-glass: rgba(30, 58, 95, 0.15);    /* Navy glass */
+  --surface-dark: rgba(30, 58, 95, 0.95);     /* Dark navy surface */
+  --surface-cream: rgba(245, 242, 232, 0.05); /* Subtle cream overlay */
+  --border-light: rgba(218, 165, 32, 0.2);    /* Gold border */
+  --border-cream: rgba(245, 242, 232, 0.1);   /* Cream border */
+  --shadow-xl: 0 25px 50px -12px rgba(30, 58, 95, 0.4);
+  --shadow-premium: 0 10px 25px rgba(218, 165, 32, 0.15);
+  --shadow-deep: 0 20px 40px rgba(30, 58, 95, 0.6);
+  --gradient-gold: linear-gradient(135deg, #DAA520 0%, #F4D03F 50%, #DAA520 100%);
+  --gradient-navy: linear-gradient(135deg, #1E3A5F 0%, #2A4A6B 50%, #1E3A5F 100%);
+  --gradient-shield: linear-gradient(135deg, #1E3A5F 0%, #2A4A6B 40%, #1E3A5F 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(245, 242, 232, 0.1) 0%, rgba(245, 242, 232, 0.05) 100%);
+  --gradient-cream: linear-gradient(135deg, #F5F2E8 0%, #E8E5DB 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--gradient-navy);
+  min-height: 100vh;
+  color: var(--text-cream);
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.App::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(218, 165, 32, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(245, 242, 232, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(218, 165, 32, 0.04) 0%, transparent 50%),
+    linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-navy) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Premium Hero Section */
+.hero-section {
+  position: relative;
+  padding: 80px 40px 60px;
+  text-align: center;
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.98) 0%, 
+    rgba(42, 74, 107, 0.95) 50%, 
+    rgba(30, 58, 95, 0.98) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-bottom: 2px solid var(--border-light);
+  overflow: hidden;
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(45deg, transparent 49%, rgba(212, 175, 55, 0.02) 50%, transparent 51%),
+    linear-gradient(-45deg, transparent 49%, rgba(212, 175, 55, 0.02) 50%, transparent 51%);
+  background-size: 60px 60px;
+  animation: shimmer 20s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100px); }
+  100% { transform: translateX(100px); }
+}
+
+.sports-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 60px;
+  margin-bottom: 50px;
+  z-index: 2;
+  position: relative;
+}
+
+.league-logo {
+  height: 100px;
+  width: auto;
+  max-width: 120px;
+  filter: drop-shadow(0 8px 32px rgba(218, 165, 32, 0.3));
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: var(--gradient-glass);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 20px;
+  border: 2px solid var(--border-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.league-logo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(218, 165, 32, 0.2), 
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.league-logo:hover {
+  transform: translateY(-10px) scale(1.08);
+  filter: drop-shadow(0 16px 48px rgba(218, 165, 32, 0.4));
+  border-color: rgba(218, 165, 32, 0.4);
+}
+
+.league-logo:hover::before {
+  left: 100%;
+}
+
+.league-logo:nth-child(1) { 
+  animation: floatGold 6s ease-in-out infinite;
+  animation-delay: 0s; 
+}
+.league-logo:nth-child(2) { 
+  animation: floatGold 6s ease-in-out infinite;
+  animation-delay: 2s; 
+}
+.league-logo:nth-child(3) { 
+  animation: floatGold 6s ease-in-out infinite;
+  animation-delay: 4s; 
+}
+
+@keyframes floatGold {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+}
+
+.title {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(3.5rem, 8vw, 6.5rem);
+  font-weight: 800;
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  margin-bottom: 20px;
+  letter-spacing: -2px;
+  line-height: 1;
+  position: relative;
+  z-index: 2;
+}
+
+.title::after {
+  content: 'THE LEAGUE';
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: blur(20px);
+  opacity: 0.3;
+  z-index: -1;
+}
+
+.main-logo {
+  max-width: 400px;
+  width: 90%;
+  height: auto;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 8px 32px rgba(212, 175, 55, 0.3));
+  transition: all 0.3s ease;
+}
+
+.main-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 12px 40px rgba(212, 175, 55, 0.4));
+}
+
+@media (max-width: 768px) {
+  .main-logo {
+    max-width: 300px;
+  }
+}
+
+.subtitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: var(--accent-cream);
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 2;
+  position: relative;
+  letter-spacing: 0.3px;
+  font-style: italic;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.6);
+}
+
+/* Premium Signup Container */
+.signup-container {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 60px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 80px 40px;
+}
+
+.signup-form {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 50px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  position: relative;
+  overflow: hidden;
+}
+
+.signup-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-gold);
+}
+
+.signup-form h2 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  margin-bottom: 40px;
+  font-size: 2.2rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
+}
+
+.form-group {
+  margin-bottom: 32px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--accent-cream);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 18px 24px;
+  background: rgba(245, 242, 232, 0.08);
+  border: 2px solid var(--border-cream);
+  border-radius: 16px;
+  color: var(--text-cream);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.form-group input::placeholder {
+  color: var(--text-gray);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+  background: rgba(245, 242, 232, 0.12);
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.2);
+  transform: translateY(-2px);
+}
+
+.signup-btn {
+  width: 100%;
+  padding: 20px;
+  background: var(--gradient-gold);
+  border: none;
+  border-radius: 16px;
+  color: var(--primary-navy);
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--shadow-premium);
+  position: relative;
+  overflow: hidden;
+}
+
+.signup-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.2), 
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.signup-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px rgba(218, 165, 32, 0.3);
+}
+
+.signup-btn:hover::before {
+  left: 100%;
+}
+
+.signup-btn:active {
+  transform: translateY(-1px);
+}
+
+/* Premium Features Section */
+.features {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 50px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  height: fit-content;
+  position: relative;
+  overflow: hidden;
+}
+
+.features::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-gold);
+}
+
+.features h3 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  margin-bottom: 30px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
+}
+
+.features ul {
+  list-style: none;
+}
+
+.features li {
+  padding: 20px 0;
+  font-size: 1.1rem;
+  color: var(--text-cream);
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  padding-left: 50px;
+}
+
+.features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--accent-gold);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.features li:hover {
+  color: var(--accent-gold);
+  transform: translateX(8px);
+  padding-left: 60px;
+}
+
+.features li:hover::before {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 20px rgba(218, 165, 32, 0.5);
+}
+
+.features li:last-child {
+  border-bottom: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .signup-container {
+    max-width: 1000px;
+    gap: 40px;
+  }
+  
+  .sports-icons {
+    gap: 40px;
+  }
+  
+  .league-logo {
+    height: 80px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: 80px 20px 60px;
+  }
+  
+  .sports-icons {
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  
+  .league-logo {
+    height: 70px;
+  }
+  
+  .signup-container {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 60px 20px;
+  }
+  
+  .signup-form,
+  .features {
+    padding: 40px 30px;
+  }
+  
+  .title {
+    font-size: 3.5rem;
+  }
+  
+  .subtitle {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-section {
+    padding: 60px 15px 40px;
+  }
+  
+  .signup-form,
+  .features {
+    padding: 30px 20px;
+  }
+  
+  .form-group input,
+  .form-group select {
+    padding: 16px 20px;
+  }
+  
+  .signup-btn {
+    padding: 18px;
+    font-size: 1rem;
+  }
+  
+  .league-logo {
+    height: 60px;
+    padding: 15px;
+  }
+}

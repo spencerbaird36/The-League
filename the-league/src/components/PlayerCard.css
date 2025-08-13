@@ -1,0 +1,207 @@
+.player-card {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 30px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
+  position: relative;
+  overflow: hidden;
+  min-width: 400px;
+  max-width: 500px;
+}
+
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-gold);
+}
+
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+}
+
+.player-info {
+  flex: 1;
+}
+
+.player-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+
+.player-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-team {
+  color: var(--accent-platinum);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.player-position {
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.league-badge {
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.league-badge.nfl {
+  background: linear-gradient(135deg, #013369, #1a4a7a);
+  color: #ffffff;
+  border-color: #2d5aa0;
+  box-shadow: 0 4px 12px rgba(1, 51, 105, 0.3);
+}
+
+.league-badge.mlb {
+  background: linear-gradient(135deg, #041e42, #0a2d5c);
+  color: #ffffff;
+  border-color: #1a4a7a;
+  box-shadow: 0 4px 12px rgba(4, 30, 66, 0.3);
+}
+
+.league-badge.nba {
+  background: linear-gradient(135deg, #c8102e, #e03450);
+  color: #ffffff;
+  border-color: #ff4565;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.3);
+}
+
+.player-stats {
+  margin-top: 25px;
+}
+
+.player-stats h3 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--accent-platinum);
+  margin-bottom: 20px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.3);
+  transform: translateY(-2px);
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-gray);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-white);
+  font-family: 'Poppins', sans-serif;
+}
+
+.no-stats {
+  text-align: center;
+  color: var(--text-gray);
+  font-style: italic;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px dashed var(--border-light);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .player-card {
+    min-width: 320px;
+    max-width: 100%;
+    padding: 25px 20px;
+  }
+  
+  .player-name {
+    font-size: 1.5rem;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .stat-item {
+    padding: 12px;
+  }
+  
+  .stat-value {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-card {
+    min-width: 280px;
+    padding: 20px 15px;
+  }
+  
+  .player-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .player-details {
+    justify-content: center;
+  }
+}
