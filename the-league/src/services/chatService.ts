@@ -1,7 +1,7 @@
 import { ChatMessage, CreateChatMessage, ChatReadStatus } from '../types/Chat';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://fantasy-league-api-f6b13b993ec0.herokuapp.com' 
+  ? 'https://the-league-api-1ff2960f0715.herokuapp.com' 
   : 'http://localhost:5000';
 
 class ChatService {
