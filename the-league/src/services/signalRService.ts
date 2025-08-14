@@ -11,6 +11,14 @@ class SignalRService {
   private userOnlineCallbacks: ((user: any) => void)[] = [];
   private userOfflineCallbacks: ((user: any) => void)[] = [];
   private onlineUsersCallbacks: ((users: any[]) => void)[] = [];
+  
+  // Draft event callbacks
+  private draftStartedCallbacks: ((data: any) => void)[] = [];
+  private turnChangedCallbacks: ((data: any) => void)[] = [];
+  private playerDraftedCallbacks: ((data: any) => void)[] = [];
+  private draftPausedCallbacks: ((data: any) => void)[] = [];
+  private draftResumedCallbacks: ((data: any) => void)[] = [];
+  private draftCompletedCallbacks: ((data: any) => void)[] = [];
 
   async connect(): Promise<void> {
     if (this.connection?.state === signalR.HubConnectionState.Connected) {
@@ -54,6 +62,37 @@ class SignalRService {
     this.connection.on('OnlineUsers', (users: any[]) => {
       console.log('Online users updated:', users);
       this.onlineUsersCallbacks.forEach(callback => callback(users));
+    });
+
+    // Draft event listeners
+    this.connection.on('DraftStarted', (data: any) => {
+      console.log('Draft started:', data);
+      this.draftStartedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('TurnChanged', (data: any) => {
+      console.log('Turn changed:', data);
+      this.turnChangedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('PlayerDrafted', (data: any) => {
+      console.log('Player drafted:', data);
+      this.playerDraftedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('DraftPaused', (data: any) => {
+      console.log('Draft paused:', data);
+      this.draftPausedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('DraftResumed', (data: any) => {
+      console.log('Draft resumed:', data);
+      this.draftResumedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('DraftCompleted', (data: any) => {
+      console.log('Draft completed:', data);
+      this.draftCompletedCallbacks.forEach(callback => callback(data));
     });
 
     this.connection.onreconnecting((error) => {
@@ -172,6 +211,130 @@ class SignalRService {
 
   isConnected(): boolean {
     return this.connection?.state === signalR.HubConnectionState.Connected;
+  }
+
+  // Draft methods
+  async startDraft(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('StartDraft', leagueId.toString());
+      console.log('Draft started successfully');
+    } catch (err) {
+      console.error('Error starting draft:', err);
+      throw err;
+    }
+  }
+
+  async makeDraftPick(leagueId: number, playerId: string, playerName: string, position: string, team: string, league: string): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('MakeDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
+      console.log('Draft pick made successfully');
+    } catch (err) {
+      console.error('Error making draft pick:', err);
+      throw err;
+    }
+  }
+
+  async pauseDraft(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('PauseDraft', leagueId.toString());
+      console.log('Draft paused successfully');
+    } catch (err) {
+      console.error('Error pausing draft:', err);
+      throw err;
+    }
+  }
+
+  async resumeDraft(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('ResumeDraft', leagueId.toString());
+      console.log('Draft resumed successfully');
+    } catch (err) {
+      console.error('Error resuming draft:', err);
+      throw err;
+    }
+  }
+
+  // Draft event callback registration
+  onDraftStarted(callback: (data: any) => void): void {
+    this.draftStartedCallbacks.push(callback);
+  }
+
+  offDraftStarted(callback: (data: any) => void): void {
+    const index = this.draftStartedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftStartedCallbacks.splice(index, 1);
+    }
+  }
+
+  onTurnChanged(callback: (data: any) => void): void {
+    this.turnChangedCallbacks.push(callback);
+  }
+
+  offTurnChanged(callback: (data: any) => void): void {
+    const index = this.turnChangedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.turnChangedCallbacks.splice(index, 1);
+    }
+  }
+
+  onPlayerDrafted(callback: (data: any) => void): void {
+    this.playerDraftedCallbacks.push(callback);
+  }
+
+  offPlayerDrafted(callback: (data: any) => void): void {
+    const index = this.playerDraftedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.playerDraftedCallbacks.splice(index, 1);
+    }
+  }
+
+  onDraftPaused(callback: (data: any) => void): void {
+    this.draftPausedCallbacks.push(callback);
+  }
+
+  offDraftPaused(callback: (data: any) => void): void {
+    const index = this.draftPausedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftPausedCallbacks.splice(index, 1);
+    }
+  }
+
+  onDraftResumed(callback: (data: any) => void): void {
+    this.draftResumedCallbacks.push(callback);
+  }
+
+  offDraftResumed(callback: (data: any) => void): void {
+    const index = this.draftResumedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftResumedCallbacks.splice(index, 1);
+    }
+  }
+
+  onDraftCompleted(callback: (data: any) => void): void {
+    this.draftCompletedCallbacks.push(callback);
+  }
+
+  offDraftCompleted(callback: (data: any) => void): void {
+    const index = this.draftCompletedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftCompletedCallbacks.splice(index, 1);
+    }
   }
 }
 

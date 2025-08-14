@@ -11,6 +11,7 @@ import SlackStyleChat from './components/Chat/SlackStyleChat';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
 import { players } from './data/players';
+import signalRService from './services/signalRService';
 import './App.css';
 import { apiRequest } from './config/api';
 
@@ -257,6 +258,62 @@ const AppContent: React.FC = () => {
 
     return neededPositions;
   };
+
+  // WebSocket-aware auto-draft handler
+  const handleWebSocketAutoDraft = async (userId: number, leagueId: number): Promise<void> => {
+    console.log('=== WEBSOCKET AUTO-DRAFT TRIGGERED ===');
+    console.log('User ID:', userId, 'League ID:', leagueId);
+    
+    try {
+      const neededPositions = getNeededPositions();
+      let playerToSelect;
+
+      if (neededPositions.length > 0) {
+        const playersForNeededPositions = availablePlayers.filter(player =>
+          neededPositions.includes(player.position)
+        );
+        
+        if (playersForNeededPositions.length > 0) {
+          const nonRBWRPlayers = playersForNeededPositions.filter(player => 
+            !['RB', 'WR'].includes(player.position)
+          );
+          
+          if (nonRBWRPlayers.length > 0) {
+            playerToSelect = nonRBWRPlayers[Math.floor(Math.random() * nonRBWRPlayers.length)];
+          } else {
+            playerToSelect = playersForNeededPositions[Math.floor(Math.random() * playersForNeededPositions.length)];
+          }
+        }
+      }
+
+      if (!playerToSelect && availablePlayers.length > 0) {
+        playerToSelect = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
+      }
+
+      if (playerToSelect && signalRService.isConnected()) {
+        console.log('Auto-drafting via WebSocket:', playerToSelect.name);
+        await signalRService.makeDraftPick(
+          leagueId,
+          playerToSelect.id,
+          playerToSelect.name,
+          playerToSelect.position,
+          playerToSelect.team,
+          playerToSelect.league
+        );
+        console.log('WebSocket auto-draft successful');
+      }
+    } catch (error) {
+      console.error('WebSocket auto-draft failed:', error);
+    }
+  };
+
+  // Expose WebSocket auto-draft handler globally for the Draft component
+  useEffect(() => {
+    (window as any).webSocketAutoDraftHandler = handleWebSocketAutoDraft;
+    return () => {
+      delete (window as any).webSocketAutoDraftHandler;
+    };
+  }, [handleWebSocketAutoDraft]);
 
   // Handle time expired with smart auto-drafting
   const handleTimeExpired = () => {

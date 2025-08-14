@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Data;
 using FantasyLeague.Api.DTOs;
 using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace FantasyLeague.Api.Hubs
 {
@@ -117,6 +118,176 @@ namespace FantasyLeague.Api.Hubs
                 })
                 .Cast<object>()
                 .ToList();
+        }
+
+        public async Task StartDraft(string leagueId)
+        {
+            // Verify user is in the league and start the draft
+            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
+                connection.LeagueId == int.Parse(leagueId))
+            {
+                var draft = await _context.Drafts
+                    .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId));
+
+                if (draft != null && !draft.IsActive)
+                {
+                    draft.IsActive = true;
+                    draft.StartedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+
+                    // Get current turn user
+                    var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+
+                    await Clients.Group($"League_{leagueId}").SendAsync("DraftStarted", new
+                    {
+                        DraftId = draft.Id,
+                        CurrentTurn = draft.CurrentTurn,
+                        CurrentRound = draft.CurrentRound,
+                        CurrentUserId = currentUserId,
+                        DraftOrder = draftOrder
+                    });
+
+                    await Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
+                    {
+                        CurrentUserId = currentUserId,
+                        CurrentTurn = draft.CurrentTurn,
+                        CurrentRound = draft.CurrentRound,
+                        TimeLimit = 15 // seconds
+                    });
+                }
+            }
+        }
+
+        public async Task MakeDraftPick(string leagueId, string playerId, string playerName, string position, string team, string league)
+        {
+            // Verify user is in the league and it's their turn
+            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
+                connection.LeagueId == int.Parse(leagueId))
+            {
+                var draft = await _context.Drafts
+                    .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId) && d.IsActive);
+
+                if (draft != null)
+                {
+                    var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+
+                    // Verify it's this user's turn
+                    if (currentUserId == connection.UserId)
+                    {
+                        // Create the draft pick
+                        var draftPick = new FantasyLeague.Api.Models.DraftPick
+                        {
+                            DraftId = draft.Id,
+                            UserId = connection.UserId,
+                            PlayerId = playerId,
+                            PlayerName = playerName,
+                            Position = position,
+                            Team = team,
+                            League = league,
+                            Round = draft.CurrentRound,
+                            Pick = draft.CurrentTurn + 1,
+                            PickedAt = DateTime.UtcNow
+                        };
+
+                        _context.DraftPicks.Add(draftPick);
+
+                        // Advance to next turn
+                        draft.CurrentTurn++;
+                        
+                        // Check if round is complete
+                        if (draft.CurrentTurn >= draftOrder.Count)
+                        {
+                            draft.CurrentRound++;
+                            draft.CurrentTurn = 0;
+                        }
+
+                        // Check if draft is complete (adjust max rounds as needed)
+                        const int maxRounds = 15; // Adjust based on roster requirements
+                        if (draft.CurrentRound > maxRounds)
+                        {
+                            draft.IsActive = false;
+                            draft.IsCompleted = true;
+                            draft.CompletedAt = DateTime.UtcNow;
+                        }
+
+                        await _context.SaveChangesAsync();
+
+                        // Notify all users of the pick
+                        await Clients.Group($"League_{leagueId}").SendAsync("PlayerDrafted", new
+                        {
+                            UserId = connection.UserId,
+                            Username = connection.Username,
+                            PlayerId = playerId,
+                            PlayerName = playerName,
+                            Position = position,
+                            Team = team,
+                            League = league,
+                            Round = draftPick.Round,
+                            Pick = draftPick.Pick
+                        });
+
+                        if (draft.IsCompleted)
+                        {
+                            await Clients.Group($"League_{leagueId}").SendAsync("DraftCompleted", new
+                            {
+                                DraftId = draft.Id
+                            });
+                        }
+                        else
+                        {
+                            // Notify next user it's their turn
+                            var nextUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                            
+                            await Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
+                            {
+                                CurrentUserId = nextUserId,
+                                CurrentTurn = draft.CurrentTurn,
+                                CurrentRound = draft.CurrentRound,
+                                TimeLimit = 15 // seconds
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        public async Task PauseDraft(string leagueId)
+        {
+            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
+                connection.LeagueId == int.Parse(leagueId))
+            {
+                await Clients.Group($"League_{leagueId}").SendAsync("DraftPaused", new
+                {
+                    PausedBy = connection.Username
+                });
+            }
+        }
+
+        public async Task ResumeDraft(string leagueId)
+        {
+            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
+                connection.LeagueId == int.Parse(leagueId))
+            {
+                var draft = await _context.Drafts
+                    .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId) && d.IsActive);
+
+                if (draft != null)
+                {
+                    var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+
+                    await Clients.Group($"League_{leagueId}").SendAsync("DraftResumed", new
+                    {
+                        ResumedBy = connection.Username,
+                        CurrentUserId = currentUserId,
+                        CurrentTurn = draft.CurrentTurn,
+                        CurrentRound = draft.CurrentRound,
+                        TimeLimit = 15
+                    });
+                }
+            }
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)

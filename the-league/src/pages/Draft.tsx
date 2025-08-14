@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Player } from '../types/Player';
 import { players } from '../data/players';
@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import PlayerCard from '../components/PlayerCard';
 import { useDraft } from '../context/DraftContext';
 import { useDraftOperations } from '../hooks/useDraftOperations';
+import signalRService from '../services/signalRService';
 import './Draft.css';
 
 
@@ -62,6 +63,13 @@ const Draft: React.FC<DraftProps> = ({
   const draftOperations = useDraftOperations(user);
   const navigate = useNavigate();
   
+  // WebSocket draft state
+  const [webSocketDraftState, setWebSocketDraftState] = useState<any>(null);
+  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [draftTimer, setDraftTimer] = useState(15);
+  const [draftTimerActive, setDraftTimerActive] = useState(false);
+  const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Functions to update filters
   const setSelectedLeague = (league: 'ALL' | 'NFL' | 'MLB' | 'NBA') => {
     dispatch({ type: 'SET_SELECTED_LEAGUE', payload: league });
@@ -115,7 +123,14 @@ const Draft: React.FC<DraftProps> = ({
   // Start draft (timer starts automatically)
   const startDraftSession = async () => {
     try {
-      await draftOperations.startDraft();
+      if (signalRService.isConnected() && user?.league?.id) {
+        // Use WebSocket to start draft
+        console.log('Starting draft via WebSocket...');
+        await signalRService.startDraft(user.league.id);
+      } else {
+        // Fallback to REST API
+        await draftOperations.startDraft();
+      }
       console.log('✅ Draft started successfully');
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
@@ -128,18 +143,37 @@ const Draft: React.FC<DraftProps> = ({
     console.log('🎯 Making draft pick for player:', player.name);
     
     try {
-      await draftOperations.makeDraftPick(player);
+      if (signalRService.isConnected() && user?.league?.id) {
+        // Use WebSocket to make draft pick
+        console.log('Making draft pick via WebSocket...');
+        await signalRService.makeDraftPick(
+          user.league.id,
+          player.id,
+          player.name,
+          player.position,
+          player.team,
+          player.league
+        );
+      } else {
+        // Fallback to REST API
+        await draftOperations.makeDraftPick(player);
+        // Update legacy roster state for backward compatibility
+        draftPlayer(player);
+      }
       console.log('✅ Draft pick successful');
-      
-      // Update legacy roster state for backward compatibility
-      draftPlayer(player);
     } catch (error) {
       console.error('❌ Draft pick failed:', error);
       alert(`Failed to draft ${player.name}: ${error}`);
     }
-  }, [draftOperations, draftPlayer]);
+  }, [draftOperations, draftPlayer, user?.league?.id]);
 
   const handlePlayerClick = (player: Player) => {
+    // Only allow player selection if it's the user's turn (in WebSocket mode) or if not using WebSocket
+    if (signalRService.isConnected() && !isMyTurn) {
+      alert("It's not your turn to draft!");
+      return;
+    }
+    
     setSelectedPlayer(player);
     setIsModalOpen(true);
   };
@@ -181,6 +215,175 @@ const Draft: React.FC<DraftProps> = ({
     navigate(`/team/${userId}`);
   };
 
+  // WebSocket draft timer
+  const startDraftTimer = useCallback((timeLimit: number = 15) => {
+    console.log('Starting draft timer:', timeLimit);
+    setDraftTimer(timeLimit);
+    setDraftTimerActive(true);
+    
+    if (draftTimerRef.current) {
+      clearInterval(draftTimerRef.current);
+    }
+    
+    draftTimerRef.current = setInterval(() => {
+      setDraftTimer(prev => {
+        const newTime = prev - 1;
+        if (newTime <= 0) {
+          setDraftTimerActive(false);
+          clearInterval(draftTimerRef.current!);
+          // Auto-draft if it's the user's turn
+          if (isMyTurn && user?.league?.id) {
+            console.log('Time expired, triggering auto-draft');
+            handleAutoDraft();
+          }
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+  }, [isMyTurn, user?.league?.id]);
+
+  const stopDraftTimer = useCallback(() => {
+    setDraftTimerActive(false);
+    if (draftTimerRef.current) {
+      clearInterval(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
+  }, []);
+
+  // Auto-draft logic for timeouts
+  const handleAutoDraft = useCallback(async () => {
+    if (!user?.league?.id || !isMyTurn) return;
+    
+    console.log('Executing auto-draft for timeout...');
+    
+    try {
+      // Use the global WebSocket auto-draft handler from App.tsx if available
+      const webSocketAutoDraftHandler = (window as any).webSocketAutoDraftHandler;
+      if (webSocketAutoDraftHandler && typeof webSocketAutoDraftHandler === 'function') {
+        console.log('Using WebSocket auto-draft handler from App.tsx');
+        await webSocketAutoDraftHandler(user.id, user.league.id);
+        return;
+      }
+      
+      // Fallback to local auto-draft logic
+      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'PG', 'SG', 'SF', 'PF', 'C'];
+      const availablePlayersForAutoDraft = availablePlayers.filter(player =>
+        neededPositions.includes(player.position)
+      );
+      
+      if (availablePlayersForAutoDraft.length > 0) {
+        const randomPlayer = availablePlayersForAutoDraft[Math.floor(Math.random() * availablePlayersForAutoDraft.length)];
+        console.log('Auto-drafting player:', randomPlayer.name);
+        
+        if (signalRService.isConnected()) {
+          await signalRService.makeDraftPick(
+            user.league.id,
+            randomPlayer.id,
+            randomPlayer.name,
+            randomPlayer.position,
+            randomPlayer.team,
+            randomPlayer.league
+          );
+        } else {
+          // Fallback to legacy draft method
+          await makeDraftPick(randomPlayer);
+        }
+      }
+    } catch (error) {
+      console.error('Auto-draft failed:', error);
+    }
+  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, makeDraftPick]);
+
+  // WebSocket event handlers
+  useEffect(() => {
+    if (!user?.league?.id) return;
+
+    const handleDraftStarted = (data: any) => {
+      console.log('Draft started via WebSocket:', data);
+      setWebSocketDraftState(data);
+      setIsMyTurn(data.CurrentUserId === user.id);
+      if (data.CurrentUserId === user.id) {
+        startDraftTimer(data.TimeLimit || 15);
+      }
+    };
+
+    const handleTurnChanged = (data: any) => {
+      console.log('Turn changed via WebSocket:', data);
+      const myTurn = data.CurrentUserId === user.id;
+      setIsMyTurn(myTurn);
+      
+      if (myTurn) {
+        console.log('It\'s my turn!');
+        startDraftTimer(data.TimeLimit || 15);
+        // Play notification sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsF');
+          audio.play().catch(e => console.log('Could not play notification sound'));
+        } catch (e) {
+          console.log('Could not create notification sound');
+        }
+      } else {
+        stopDraftTimer();
+      }
+    };
+
+    const handlePlayerDrafted = (data: any) => {
+      console.log('Player drafted via WebSocket:', data);
+      // Update local state to remove the drafted player
+      const draftedPlayer: Player = {
+        id: data.PlayerId,
+        name: data.PlayerName,
+        position: data.Position,
+        team: data.Team,
+        league: data.League
+      };
+      draftPlayer(draftedPlayer);
+      
+      // Stop timer since a pick was made
+      stopDraftTimer();
+    };
+
+    const handleDraftPaused = (data: any) => {
+      console.log('Draft paused via WebSocket:', data);
+      stopDraftTimer();
+    };
+
+    const handleDraftResumed = (data: any) => {
+      console.log('Draft resumed via WebSocket:', data);
+      const myTurn = data.CurrentUserId === user.id;
+      setIsMyTurn(myTurn);
+      if (myTurn) {
+        startDraftTimer(data.TimeLimit || 15);
+      }
+    };
+
+    const handleDraftCompleted = (data: any) => {
+      console.log('Draft completed via WebSocket:', data);
+      stopDraftTimer();
+      setIsMyTurn(false);
+    };
+
+    // Register WebSocket event listeners
+    signalRService.onDraftStarted(handleDraftStarted);
+    signalRService.onTurnChanged(handleTurnChanged);
+    signalRService.onPlayerDrafted(handlePlayerDrafted);
+    signalRService.onDraftPaused(handleDraftPaused);
+    signalRService.onDraftResumed(handleDraftResumed);
+    signalRService.onDraftCompleted(handleDraftCompleted);
+
+    return () => {
+      // Cleanup event listeners
+      signalRService.offDraftStarted(handleDraftStarted);
+      signalRService.offTurnChanged(handleTurnChanged);
+      signalRService.offPlayerDrafted(handlePlayerDrafted);
+      signalRService.offDraftPaused(handleDraftPaused);
+      signalRService.offDraftResumed(handleDraftResumed);
+      signalRService.offDraftCompleted(handleDraftCompleted);
+      stopDraftTimer();
+    };
+  }, [user?.league?.id, user?.id, draftPlayer, startDraftTimer, stopDraftTimer, handleAutoDraft]);
+
   return (
     <div className="draft-container">
       <header className="draft-header">
@@ -188,30 +391,39 @@ const Draft: React.FC<DraftProps> = ({
         <p>Select players to build your ultimate fantasy team</p>
         
         {/* Draft Timer Section */}
-        {draftState?.isActive && (
+        {(draftState?.isActive || draftTimerActive) && (
           <div className="draft-timer-section">
             <div className="timer-container">
               <div className="timer-display">
                 <span className="timer-label">Time Remaining:</span>
-                <span className={`timer-value ${state.timer.timeRemaining <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}>
-                  {state.timer.timeRemaining}s
+                <span className={`timer-value ${(draftTimerActive ? draftTimer : state.timer.timeRemaining) <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}>
+                  {draftTimerActive ? draftTimer : state.timer.timeRemaining}s
                 </span>
               </div>
               
               <div className="timer-bar-container">
                 <div 
-                  className={`timer-bar ${state.timer.timeRemaining <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}
-                  style={{ width: `${(state.timer.timeRemaining / 15) * 100}%` }}
+                  className={`timer-bar ${(draftTimerActive ? draftTimer : state.timer.timeRemaining) <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}
+                  style={{ width: `${((draftTimerActive ? draftTimer : state.timer.timeRemaining) / 15) * 100}%` }}
                 />
               </div>
               
               <button 
-                onClick={draftOperations.pauseTimer}
+                onClick={draftTimerActive && user?.league?.id ? 
+                  () => signalRService.pauseDraft(user.league.id) : 
+                  draftOperations.pauseTimer
+                }
                 className="pause-btn"
               >
                 {state.timer.isPaused ? 'Resume' : 'Pause'}
               </button>
             </div>
+            
+            {isMyTurn && draftTimerActive && (
+              <div className="your-turn-message">
+                🎯 It's your turn to pick! Time remaining: {draftTimer}s
+              </div>
+            )}
             
             {state.timer.timeoutMessage && (
               <div className="timeout-message">
@@ -240,18 +452,25 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState?.isActive && (
+          {isDraftCreated && !draftState?.isActive && !webSocketDraftState && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
+              <button onClick={startDraftSession} className="start-draft-btn">
+                Start Draft
+              </button>
             </div>
           )}
           
-          {draftState?.isActive && (
+          {(draftState?.isActive || webSocketDraftState) && (
             <div className="draft-active">
               <p>
-                Draft in progress - Round {draftState.currentRound}, Pick {draftState.currentTurn + 1}
+                Draft in progress - Round {webSocketDraftState?.CurrentRound || draftState?.currentRound || 1}, 
+                Pick {(webSocketDraftState?.CurrentTurn || draftState?.currentTurn || 0) + 1}
               </p>
-              {isCurrentUserTurn && (
+              <p>
+                {signalRService.isConnected() ? '🟢 Live WebSocket Draft' : '🟡 REST API Draft'}
+              </p>
+              {(isMyTurn || isCurrentUserTurn) && (
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
             </div>
