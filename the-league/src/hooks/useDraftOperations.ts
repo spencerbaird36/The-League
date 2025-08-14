@@ -105,9 +105,21 @@ export function useDraftOperations(user: User | null) {
     // Check MLB needs (max 14: 9 starters + 5 bench)
     const mlbCount = Object.values(mlbPositionsCount).reduce((sum, count) => sum + count, 0);
     if (mlbCount < 14) {
-      const mlbRosterPositions = ['SP', 'CL', '1B', '2B', '3B', 'SS', 'RF', 'CF', 'LF'];
-      mlbRosterPositions.forEach(pos => {
-        if (!mlbPositionsCount[pos]) {
+      const mlbRosterNeeds = {
+        'SP': 1,
+        'CL': 1,
+        '1B': 1,
+        '2B': 1,
+        '3B': 1,
+        'SS': 1,
+        'OF': 3
+      };
+      
+      Object.entries(mlbRosterNeeds).forEach(([pos, needed]) => {
+        const currentCount = mlbPositionsCount[pos] || 0;
+        const stillNeeded = needed - currentCount;
+        
+        for (let i = 0; i < stillNeeded; i++) {
           if (pos === 'CL') {
             neededPositions.push('CP');
           } else {
@@ -327,6 +339,34 @@ export function useDraftOperations(user: User | null) {
     }
   }, [performAutoDraft, dispatch]);
 
+  // Create a new draft
+  const createDraft = useCallback(async (leagueId: number): Promise<void> => {
+    try {
+      // First fetch league members to create draft order
+      const members = await draftService.fetchLeagueMembers(leagueId);
+      
+      // Create randomized draft order
+      const shuffledMembers = [...members].sort(() => Math.random() - 0.5);
+      const draftOrder = shuffledMembers.map(member => member.id);
+      
+      // Create the draft
+      const createRequest = {
+        leagueId: leagueId,
+        draftOrder: draftOrder
+      };
+      
+      const newDraft = await draftService.createDraft(createRequest);
+      dispatch({ type: 'SET_DRAFT_STATE', payload: newDraft });
+      dispatch({ type: 'SET_LEAGUE_MEMBERS', payload: members });
+      dispatch({ type: 'SET_DRAFT_CREATED', payload: true });
+      
+      console.log('✅ Draft created successfully with randomized order');
+    } catch (error) {
+      console.error('❌ Error creating draft:', error);
+      throw error;
+    }
+  }, [dispatch]);
+
   // Start draft and automatically start timer
   const startDraft = useCallback(async (): Promise<void> => {
     if (!state.draftState) {
@@ -455,6 +495,7 @@ export function useDraftOperations(user: User | null) {
     allDraftedPlayers: getAllDraftedPlayers(),
     
     // Actions
+    createDraft,
     fetchDraftState,
     makeDraftPick,
     performAutoDraft,

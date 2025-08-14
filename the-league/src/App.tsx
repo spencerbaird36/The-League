@@ -199,7 +199,7 @@ const AppContent: React.FC = () => {
     
     // MLB roster positions (only if under limit)
     if (draftedMLB.length < maxMLB) {
-      const mlbRosterPositions = ['SP', 'CL', '1B', '2B', '3B', 'SS', 'RF', 'CF', 'LF'];
+      const mlbRosterPositions = ['SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF'];
       const mlbPositionsCount: {[key: string]: number} = {};
       
       // Count current MLB players by position

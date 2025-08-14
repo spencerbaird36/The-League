@@ -635,7 +635,7 @@ export const players: Player[] = [
   {
     id: 'aaron-judge',
     name: 'Aaron Judge',
-    position: 'RF',
+    position: 'OF',
     team: 'New York Yankees',
     league: 'MLB',
     stats: { avg: '.322', hr: 58, rbi: 144, ops: '1.159' }
@@ -643,7 +643,7 @@ export const players: Player[] = [
   {
     id: 'juan-soto',
     name: 'Juan Soto',
-    position: 'LF',
+    position: 'OF',
     team: 'New York Yankees',
     league: 'MLB',
     stats: { avg: '.288', hr: 41, rbi: 109, ops: '.989' }
@@ -717,7 +717,7 @@ export const players: Player[] = [
   {
     id: 'mookie-betts',
     name: 'Mookie Betts',
-    position: 'RF',
+    position: 'OF',
     team: 'Los Angeles Dodgers',
     league: 'MLB',
     stats: { avg: '.289', hr: 19, rbi: 75, sb: 16 }
@@ -733,7 +733,7 @@ export const players: Player[] = [
   {
     id: 'ronald-acuna-jr',
     name: 'Ronald Acuña Jr.',
-    position: 'RF',
+    position: 'OF',
     team: 'Atlanta Braves',
     league: 'MLB',
     stats: { avg: '.250', hr: 18, rbi: 44, sb: 16 }
@@ -765,7 +765,7 @@ export const players: Player[] = [
   {
     id: 'christian-yelich',
     name: 'Christian Yelich',
-    position: 'LF',
+    position: 'OF',
     team: 'Milwaukee Brewers',
     league: 'MLB',
     stats: { avg: '.315', hr: 11, rbi: 42, sb: 21 }

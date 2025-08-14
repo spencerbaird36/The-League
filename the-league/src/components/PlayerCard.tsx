@@ -38,7 +38,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ player, onClick, disabled }) =>
       case 'C': return '#FF5722';
       case 'SP': case 'CP': return '#8BC34A';
       case '1B': case '2B': case '3B': case 'SS': return '#FFC107';
-      case 'RF': case 'CF': case 'LF': return '#00BCD4';
+      case 'OF': return '#00BCD4';
       case 'DH': return '#795548';
       default: return '#9E9E9E';
     }

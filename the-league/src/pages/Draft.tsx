@@ -105,10 +105,10 @@ const Draft: React.FC<DraftProps> = ({
     if (!user?.league?.id) return;
     
     try {
-      await draftOperations.fetchDraftState();
-      console.log('Draft creation initiated');
+      await draftOperations.createDraft(user.league.id);
     } catch (error) {
-      console.error('Error creating draft:', error);
+      console.error('❌ Error creating draft:', error);
+      alert(`Failed to create draft: ${error}`);
     }
   };
 
@@ -384,9 +384,7 @@ const Draft: React.FC<DraftProps> = ({
                 <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
                 <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
                 <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                <button className={selectedPosition === 'RF' ? 'active' : ''} onClick={() => setSelectedPosition('RF')}>RF</button>
-                <button className={selectedPosition === 'CF' ? 'active' : ''} onClick={() => setSelectedPosition('CF')}>CF</button>
-                <button className={selectedPosition === 'LF' ? 'active' : ''} onClick={() => setSelectedPosition('LF')}>LF</button>
+                <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
                 <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
                 <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
                 <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
@@ -410,9 +408,7 @@ const Draft: React.FC<DraftProps> = ({
                 <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
                 <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
                 <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                <button className={selectedPosition === 'RF' ? 'active' : ''} onClick={() => setSelectedPosition('RF')}>RF</button>
-                <button className={selectedPosition === 'CF' ? 'active' : ''} onClick={() => setSelectedPosition('CF')}>CF</button>
-                <button className={selectedPosition === 'LF' ? 'active' : ''} onClick={() => setSelectedPosition('LF')}>LF</button>
+                <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
               </>
             )}
             {selectedLeague === 'NBA' && (

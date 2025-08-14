@@ -124,7 +124,7 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const allDraftedPlayers = [...draftedNFL, ...draftedMLB, ...draftedNBA];
 
   // Define roster structures
-  const mlbRosterPositions = ['SP', 'CL', '1B', '2B', '3B', 'SS', 'RF', 'CF', 'LF'];
+  const mlbRosterPositions = ['SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF'];
   const nflRosterPositions = ['QB', 'RB', 'RB', 'WR', 'WR', 'WR', 'TE'];
   const nbaRosterPositions = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -140,23 +140,14 @@ const MyTeam: React.FC<MyTeamProps> = ({
     players.forEach(player => {
       // Handle position mapping for MLB outfielders
       let playerPosition = player.position;
-      if (['RF', 'CF', 'LF'].includes(player.position) && player.league === 'MLB') {
-        // For outfielders, try to match exact position first, then any OF position
-        const exactSlot = roster.find(slot => 
-          slot.position === playerPosition && slot.player === null
+      if (player.position === 'OF' && player.league === 'MLB') {
+        // Try to fill any available outfield position
+        const anyOFSlot = roster.find(slot => 
+          slot.position === 'OF' && slot.player === null
         );
-        if (exactSlot) {
-          exactSlot.player = player;
+        if (anyOFSlot) {
+          anyOFSlot.player = player;
           return;
-        } else {
-          // Try to fill any available outfield position
-          const anyOFSlot = roster.find(slot => 
-            ['RF', 'CF', 'LF'].includes(slot.position) && slot.player === null
-          );
-          if (anyOFSlot) {
-            anyOFSlot.player = player;
-            return;
-          }
         }
       }
 
