@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Data;
+using FantasyLeague.Api.Services;
+
+// Configure legacy timestamp behavior for PostgreSQL
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +13,9 @@ builder.Services.AddControllers();
 // Add Entity Framework
 builder.Services.AddDbContext<FantasyLeagueContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add services
+builder.Services.AddScoped<ScheduleService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

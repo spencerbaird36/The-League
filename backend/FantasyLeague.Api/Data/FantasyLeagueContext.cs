@@ -16,6 +16,9 @@ namespace FantasyLeague.Api.Data
         public DbSet<Draft> Drafts { get; set; }
         public DbSet<DraftPick> DraftPicks { get; set; }
         public DbSet<UserRoster> UserRosters { get; set; }
+        public DbSet<Season> Seasons { get; set; }
+        public DbSet<Week> Weeks { get; set; }
+        public DbSet<Matchup> Matchups { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -259,6 +262,97 @@ namespace FantasyLeague.Api.Data
                     
                 // Create unique index to prevent duplicate players for same user in same draft
                 entity.HasIndex(e => new { e.UserId, e.DraftId, e.PlayerName })
+                    .IsUnique();
+            });
+
+            // Configure Season entity
+            modelBuilder.Entity<Season>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Sport)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Year)
+                    .IsRequired();
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Create unique index for league-sport-year combination
+                entity.HasIndex(e => new { e.LeagueId, e.Sport, e.Year })
+                    .IsUnique();
+            });
+
+            // Configure Week entity
+            modelBuilder.Entity<Week>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.WeekNumber)
+                    .IsRequired();
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with Season
+                entity.HasOne(e => e.Season)
+                    .WithMany(s => s.Weeks)
+                    .HasForeignKey(e => e.SeasonId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Create unique index for season-week combination
+                entity.HasIndex(e => new { e.SeasonId, e.WeekNumber })
+                    .IsUnique();
+            });
+
+            // Configure Matchup entity
+            modelBuilder.Entity<Matchup>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Status)
+                    .HasMaxLength(20)
+                    .HasDefaultValue("upcoming");
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with Week
+                entity.HasOne(e => e.Week)
+                    .WithMany(w => w.Matchups)
+                    .HasForeignKey(e => e.WeekId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with Home Team
+                entity.HasOne(e => e.HomeTeam)
+                    .WithMany()
+                    .HasForeignKey(e => e.HomeTeamId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Configure relationship with Away Team
+                entity.HasOne(e => e.AwayTeam)
+                    .WithMany()
+                    .HasForeignKey(e => e.AwayTeamId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create unique index to prevent duplicate matchups in same week
+                entity.HasIndex(e => new { e.WeekId, e.HomeTeamId, e.AwayTeamId })
                     .IsUnique();
             });
         }
