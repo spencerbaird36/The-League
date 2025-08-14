@@ -19,6 +19,8 @@ namespace FantasyLeague.Api.Data
         public DbSet<Season> Seasons { get; set; }
         public DbSet<Week> Weeks { get; set; }
         public DbSet<Matchup> Matchups { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<ChatReadStatus> ChatReadStatuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -353,6 +355,76 @@ namespace FantasyLeague.Api.Data
                     
                 // Create unique index to prevent duplicate matchups in same week
                 entity.HasIndex(e => new { e.WeekId, e.HomeTeamId, e.AwayTeamId })
+                    .IsUnique();
+            });
+
+            // Configure ChatMessage entity
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(1000);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.IsDeleted)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create index for efficient querying
+                entity.HasIndex(e => new { e.LeagueId, e.CreatedAt });
+            });
+
+            // Configure ChatReadStatus entity
+            modelBuilder.Entity<ChatReadStatus>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.LastReadAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with LastReadMessage
+                entity.HasOne(e => e.LastReadMessage)
+                    .WithMany()
+                    .HasForeignKey(e => e.LastReadMessageId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create unique index for user-league combination
+                entity.HasIndex(e => new { e.UserId, e.LeagueId })
                     .IsUnique();
             });
         }

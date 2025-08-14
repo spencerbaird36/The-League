@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Data;
 using FantasyLeague.Api.Services;
+using FantasyLeague.Api.Hubs;
 
 // Configure legacy timestamp behavior for PostgreSQL
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -9,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add SignalR
+builder.Services.AddSignalR();
 
 // Add Entity Framework
 string connectionString;
@@ -46,7 +50,9 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:3001", "https://the-league-f8fa1bccd03a.herokuapp.com")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .SetIsOriginAllowed(_ => true) // Allow any origin for SignalR
+              .AllowCredentials(); // Required for SignalR
     });
 });
 
@@ -67,6 +73,9 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReactApp");
 
 app.MapControllers();
+
+// Map SignalR hub
+app.MapHub<ChatHub>("/chathub");
 
 // Add health check endpoint
 app.MapGet("/", () => "Fantasy League API is running!");

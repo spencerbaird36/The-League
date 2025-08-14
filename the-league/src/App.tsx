@@ -7,6 +7,7 @@ import MyTeam from './pages/MyTeam';
 import Standings from './pages/Standings';
 import Schedule from './pages/Schedule';
 import TeamPage from './pages/TeamPage';
+import SlackStyleChat from './components/Chat/SlackStyleChat';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
 import { players } from './data/players';
@@ -623,6 +624,16 @@ const AppContent: React.FC = () => {
             } 
           />
       </Routes>
+      
+      {/* Slack-style chat - only show for authenticated users in a league */}
+      {isAuthenticated && user?.league && (
+        <SlackStyleChat 
+          leagueId={user.league.id}
+          userId={user.id}
+          username={user.username}
+          leagueName={user.league.name}
+        />
+      )}
     </div>
   );
 };

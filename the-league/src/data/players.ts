@@ -1,6 +1,23 @@
 import { Player } from '../types/Player';
 
-export const players: Player[] = [
+function validateNoDuplicateIds(players: Player[]): void {
+  const seenIds = new Set<string>();
+  const duplicates: string[] = [];
+  
+  for (const player of players) {
+    if (seenIds.has(player.id)) {
+      duplicates.push(player.id);
+    } else {
+      seenIds.add(player.id);
+    }
+  }
+  
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate player IDs found: ${duplicates.join(', ')}`);
+  }
+}
+
+const playersData: Player[] = [
   // NFL Players (2025-26 Season)
   // Starting Quarterbacks
   {
@@ -348,14 +365,6 @@ export const players: Player[] = [
   
   // Additional 2025-26 Season Players
   {
-    id: 'patrick-mahomes',
-    name: 'Patrick Mahomes',
-    position: 'QB',
-    team: 'Kansas City Chiefs',
-    league: 'NFL',
-    stats: { passingYards: 3928, passingTDs: 26, rushingYards: 331, rushingTDs: 6 }
-  },
-  {
     id: 'kyler-murray',
     name: 'Kyler Murray',
     position: 'QB',
@@ -364,52 +373,12 @@ export const players: Player[] = [
     stats: { passingYards: 3836, passingTDs: 23, rushingYards: 568, rushingTDs: 12 }
   },
   {
-    id: 'brock-purdy',
-    name: 'Brock Purdy',
-    position: 'QB',
-    team: 'San Francisco 49ers',
-    league: 'NFL',
-    stats: { passingYards: 3864, passingTDs: 20, rushingYards: 144, rushingTDs: 4 }
-  },
-  {
-    id: 'justin-herbert',
-    name: 'Justin Herbert',
-    position: 'QB',
-    team: 'Los Angeles Chargers',
-    league: 'NFL',
-    stats: { passingYards: 3870, passingTDs: 23, rushingYards: 190, rushingTDs: 1 }
-  },
-  {
-    id: 'christian-mccaffrey',
-    name: 'Christian McCaffrey',
-    position: 'RB',
-    team: 'San Francisco 49ers',
-    league: 'NFL',
-    stats: { rushingYards: 1459, rushingTDs: 8, receptions: 30, receivingYards: 231 }
-  },
-  {
     id: 'james-cook',
     name: 'James Cook',
     position: 'RB',
     team: 'Buffalo Bills',
     league: 'NFL',
     stats: { rushingYards: 1009, rushingTDs: 16, receptions: 27, receivingYards: 145 }
-  },
-  {
-    id: 'aaron-jones',
-    name: 'Aaron Jones',
-    position: 'RB',
-    team: 'Minnesota Vikings',
-    league: 'NFL',
-    stats: { rushingYards: 1138, rushingTDs: 5, receptions: 51, receivingYards: 408 }
-  },
-  {
-    id: 'kenneth-walker',
-    name: 'Kenneth Walker III',
-    position: 'RB',
-    team: 'Seattle Seahawks',
-    league: 'NFL',
-    stats: { rushingYards: 1196, rushingTDs: 12, receptions: 23, receivingYards: 174 }
   },
   {
     id: 'deebo-samuel',
@@ -845,3 +814,7 @@ export const players: Player[] = [
     stats: { wins: 0, era: '0.00', so: 0, whip: '0.00' }
   }
 ];
+
+validateNoDuplicateIds(playersData);
+
+export const players = playersData;
