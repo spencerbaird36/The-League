@@ -181,13 +181,13 @@ namespace FantasyLeague.Api.Hubs
                         {
                             DraftId = draft.Id,
                             UserId = connection.UserId,
-                            PlayerId = playerId,
                             PlayerName = playerName,
-                            Position = position,
-                            Team = team,
-                            League = league,
+                            PlayerPosition = position,
+                            PlayerTeam = team,
+                            PlayerLeague = league,
                             Round = draft.CurrentRound,
-                            Pick = draft.CurrentTurn + 1,
+                            RoundPick = draft.CurrentTurn + 1,
+                            PickNumber = (draft.CurrentRound - 1) * draftOrder.Count + draft.CurrentTurn + 1,
                             PickedAt = DateTime.UtcNow
                         };
 
@@ -225,7 +225,8 @@ namespace FantasyLeague.Api.Hubs
                             Team = team,
                             League = league,
                             Round = draftPick.Round,
-                            Pick = draftPick.Pick
+                            Pick = draftPick.RoundPick,
+                            PickNumber = draftPick.PickNumber
                         });
 
                         if (draft.IsCompleted)
