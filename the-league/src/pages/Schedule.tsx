@@ -76,10 +76,13 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       try {
         // Fetch schedules for all sports from backend
         const currentYear = new Date().getFullYear();
+        const apiBaseUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://the-league-api-1ff2960f0715.herokuapp.com' 
+          : '';
         const [nflResponse, nbaResponse, mlbResponse] = await Promise.all([
-          fetch(`/api/schedule/league/${user.league.id}/sport/NFL/year/${currentYear}`),
-          fetch(`/api/schedule/league/${user.league.id}/sport/NBA/year/${currentYear}`),
-          fetch(`/api/schedule/league/${user.league.id}/sport/MLB/year/${currentYear}`)
+          fetch(`${apiBaseUrl}/api/schedule/league/${user.league.id}/sport/NFL/year/${currentYear}`),
+          fetch(`${apiBaseUrl}/api/schedule/league/${user.league.id}/sport/NBA/year/${currentYear}`),
+          fetch(`${apiBaseUrl}/api/schedule/league/${user.league.id}/sport/MLB/year/${currentYear}`)
         ]);
 
         if (!nflResponse.ok || !nbaResponse.ok || !mlbResponse.ok) {
