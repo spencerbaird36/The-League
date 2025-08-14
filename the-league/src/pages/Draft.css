@@ -107,6 +107,45 @@
   left: 100%;
 }
 
+.start-draft-btn {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border: none;
+  padding: 16px 40px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+  position: relative;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.start-draft-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.start-draft-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.3);
+}
+
+.start-draft-btn:hover::before {
+  left: 100%;
+}
+
 .timer-container {
   display: flex;
   flex-direction: column;
@@ -684,6 +723,43 @@
 @keyframes shimmerMove {
   0% { left: -100%; }
   100% { left: 100%; }
+}
+
+.draft-timer-status {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.your-turn-message {
+  color: var(--accent-gold);
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 12px 20px;
+  background: rgba(218, 165, 32, 0.15);
+  border-radius: 12px;
+  border: 2px solid rgba(218, 165, 32, 0.4);
+  animation: pulse-glow 2s infinite;
+}
+
+.waiting-turn-message {
+  color: var(--text-gray);
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 12px 20px;
+  background: rgba(108, 122, 137, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(108, 122, 137, 0.3);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 16px rgba(218, 165, 32, 0.5);
+    transform: scale(1.02);
+  }
 }
 
 /* Premium Filter Section */

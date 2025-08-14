@@ -419,9 +419,17 @@ const Draft: React.FC<DraftProps> = ({
               </button>
             </div>
             
-            {isMyTurn && draftTimerActive && (
-              <div className="your-turn-message">
-                🎯 It's your turn to pick! Time remaining: {draftTimer}s
+            {draftTimerActive && (
+              <div className="draft-timer-status">
+                {isMyTurn ? (
+                  <div className="your-turn-message">
+                    🎯 It's your turn to pick! Time remaining: {draftTimer}s
+                  </div>
+                ) : (
+                  <div className="waiting-turn-message">
+                    ⏳ Waiting for pick... Time remaining: {draftTimer}s
+                  </div>
+                )}
               </div>
             )}
             
