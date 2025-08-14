@@ -748,7 +748,7 @@
 }
 
 .sidebar-header h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   font-size: 1.8rem;
   font-weight: 700;
   color: var(--text-cream);
@@ -812,7 +812,7 @@
 }
 
 .draft-main .available-players h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Poppins', sans-serif;
   color: var(--text-cream);
   margin-bottom: 24px;
   font-size: 2rem;

@@ -140,43 +140,41 @@ export function generateNBASchedule(teams: LeagueTeam[]): SeasonSchedule {
     
     const matchups: ScheduleMatchup[] = [];
     
-    // Generate 2-3 matchups per week for NBA
-    const gamesThisWeek = Math.min(2 + (weekNumber % 2), Math.floor(teams.length / 2));
-    
-    for (let gameNum = 0; gameNum < gamesThisWeek; gameNum++) {
-      if (matchIndex < roundRobinMatches.length) {
-        const roundMatches = roundRobinMatches[matchIndex];
+    // Get matches for this week (cycle through round-robin if needed)
+    if (matchIndex < roundRobinMatches.length) {
+      const roundMatches = roundRobinMatches[matchIndex];
+      
+      for (let i = 0; i < roundMatches.length; i += 2) {
+        const homeTeamIndex = roundMatches[i];
+        const awayTeamIndex = roundMatches[i + 1];
         
-        for (let i = 0; i < roundMatches.length && i < 2; i += 2) {
-          const homeTeamIndex = roundMatches[i];
-          const awayTeamIndex = roundMatches[i + 1];
+        if (homeTeamIndex < teams.length && awayTeamIndex < teams.length) {
+          const homeTeam = teams[homeTeamIndex];
+          const awayTeam = teams[awayTeamIndex];
           
-          if (homeTeamIndex < teams.length && awayTeamIndex < teams.length) {
-            const homeTeam = teams[homeTeamIndex];
-            const awayTeam = teams[awayTeamIndex];
-            
-            // Spread games throughout the week
-            const gameDate = new Date(weekStart);
-            gameDate.setDate(gameDate.getDate() + (gameNum * 2 + 1)); // Tuesday, Thursday, Saturday
-            
-            matchups.push({
-              id: `nba-${weekNumber}-${gameNum}-${homeTeam.id}-${awayTeam.id}`,
-              week: weekNumber,
-              homeTeamId: homeTeam.id,
-              awayTeamId: awayTeam.id,
-              homeTeamName: `${homeTeam.firstName} ${homeTeam.lastName}`,
-              awayTeamName: `${awayTeam.firstName} ${awayTeam.lastName}`,
-              date: gameDate.toISOString(),
-              league: 'NBA',
-              status: 'upcoming'
-            });
-          }
+          // Schedule games for different days of the week
+          const gameDate = new Date(weekStart);
+          gameDate.setDate(gameDate.getDate() + 2); // Wednesday
+          
+          matchups.push({
+            id: `nba-${weekNumber}-${homeTeam.id}-${awayTeam.id}`,
+            week: weekNumber,
+            homeTeamId: homeTeam.id,
+            awayTeamId: awayTeam.id,
+            homeTeamName: `${homeTeam.firstName} ${homeTeam.lastName}`,
+            awayTeamName: `${awayTeam.firstName} ${awayTeam.lastName}`,
+            date: gameDate.toISOString(),
+            league: 'NBA',
+            status: 'upcoming'
+          });
         }
-        
-        matchIndex++;
-        if (matchIndex >= roundRobinMatches.length) {
-          matchIndex = 0;
-        }
+      }
+      
+      matchIndex++;
+      
+      // Reset to beginning if we've used all round-robin rounds
+      if (matchIndex >= roundRobinMatches.length) {
+        matchIndex = 0;
       }
     }
     
@@ -218,44 +216,41 @@ export function generateMLBSchedule(teams: LeagueTeam[]): SeasonSchedule {
     
     const matchups: ScheduleMatchup[] = [];
     
-    // Generate 4-6 matchups per week for MLB
-    const gamesThisWeek = Math.min(4 + (weekNumber % 3), Math.floor(teams.length / 2) * 2);
-    
-    for (let gameNum = 0; gameNum < gamesThisWeek; gameNum++) {
-      if (matchIndex < roundRobinMatches.length) {
-        const roundMatches = roundRobinMatches[matchIndex];
+    // Get matches for this week (cycle through round-robin if needed)
+    if (matchIndex < roundRobinMatches.length) {
+      const roundMatches = roundRobinMatches[matchIndex];
+      
+      for (let i = 0; i < roundMatches.length; i += 2) {
+        const homeTeamIndex = roundMatches[i];
+        const awayTeamIndex = roundMatches[i + 1];
         
-        for (let i = 0; i < roundMatches.length && i < 2; i += 2) {
-          const homeTeamIndex = roundMatches[i];
-          const awayTeamIndex = roundMatches[i + 1];
+        if (homeTeamIndex < teams.length && awayTeamIndex < teams.length) {
+          const homeTeam = teams[homeTeamIndex];
+          const awayTeam = teams[awayTeamIndex];
           
-          if (homeTeamIndex < teams.length && awayTeamIndex < teams.length) {
-            const homeTeam = teams[homeTeamIndex];
-            const awayTeam = teams[awayTeamIndex];
-            
-            // Spread games throughout the week (Monday, Tuesday, Wednesday, Friday, Saturday, Sunday)
-            const gameDate = new Date(weekStart);
-            const daysOffset = [0, 1, 2, 4, 5, 6][gameNum % 6]; // Skip Thursday
-            gameDate.setDate(gameDate.getDate() + daysOffset);
-            
-            matchups.push({
-              id: `mlb-${weekNumber}-${gameNum}-${homeTeam.id}-${awayTeam.id}`,
-              week: weekNumber,
-              homeTeamId: homeTeam.id,
-              awayTeamId: awayTeam.id,
-              homeTeamName: `${homeTeam.firstName} ${homeTeam.lastName}`,
-              awayTeamName: `${awayTeam.firstName} ${awayTeam.lastName}`,
-              date: gameDate.toISOString(),
-              league: 'MLB',
-              status: 'upcoming'
-            });
-          }
+          // Schedule games for different days of the week
+          const gameDate = new Date(weekStart);
+          gameDate.setDate(gameDate.getDate() + 1); // Tuesday
+          
+          matchups.push({
+            id: `mlb-${weekNumber}-${homeTeam.id}-${awayTeam.id}`,
+            week: weekNumber,
+            homeTeamId: homeTeam.id,
+            awayTeamId: awayTeam.id,
+            homeTeamName: `${homeTeam.firstName} ${homeTeam.lastName}`,
+            awayTeamName: `${awayTeam.firstName} ${awayTeam.lastName}`,
+            date: gameDate.toISOString(),
+            league: 'MLB',
+            status: 'upcoming'
+          });
         }
-        
-        matchIndex++;
-        if (matchIndex >= roundRobinMatches.length) {
-          matchIndex = 0;
-        }
+      }
+      
+      matchIndex++;
+      
+      // Reset to beginning if we've used all round-robin rounds
+      if (matchIndex >= roundRobinMatches.length) {
+        matchIndex = 0;
       }
     }
     

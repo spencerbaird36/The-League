@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SeasonSchedule, LeagueTeam, ScheduleMatchup, WeekSchedule } from '../types/Schedule';
-import { generateNFLSchedule, generateNBASchedule, generateMLBSchedule } from '../utils/scheduleGenerator';
-import { draftService } from '../services/draftService';
+import { SeasonSchedule, ScheduleMatchup, WeekSchedule } from '../types/Schedule';
 import './Schedule.css';
 
 interface League {
@@ -37,7 +35,6 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
     NBA: null,
     MLB: null
   });
-  const [leagueTeams, setLeagueTeams] = useState<LeagueTeam[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
@@ -69,7 +66,7 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   };
 
   useEffect(() => {
-    const fetchLeagueTeams = async () => {
+    const fetchSchedules = async () => {
       if (!user?.league?.id) {
         setError('No league found');
         setLoading(false);
@@ -77,51 +74,24 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       }
 
       try {
-        // Use draftService to fetch league members
-        const members = await draftService.fetchLeagueMembers(user.league.id);
-        
-        // Convert members to teams format
-        let teams: LeagueTeam[] = members.map((member: any) => ({
-          id: member.id,
-          name: `${member.firstName} ${member.lastName}`,
-          firstName: member.firstName,
-          lastName: member.lastName,
-          username: member.username
-        }));
-        
-        // Ensure current user is included in the teams list
-        const currentUserInTeams = teams.find(team => team.id === user.id);
-        if (!currentUserInTeams && user) {
-          const currentUserTeam: LeagueTeam = {
-            id: user.id,
-            name: `${user.firstName} ${user.lastName}`,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            username: user.username
-          };
-          teams.push(currentUserTeam);
-          console.log('Added current user to teams list:', currentUserTeam);
+        // Fetch schedules for all sports from backend
+        const currentYear = new Date().getFullYear();
+        const [nflResponse, nbaResponse, mlbResponse] = await Promise.all([
+          fetch(`/api/schedule/league/${user.league.id}/sport/NFL/year/${currentYear}`),
+          fetch(`/api/schedule/league/${user.league.id}/sport/NBA/year/${currentYear}`),
+          fetch(`/api/schedule/league/${user.league.id}/sport/MLB/year/${currentYear}`)
+        ]);
+
+        if (!nflResponse.ok || !nbaResponse.ok || !mlbResponse.ok) {
+          throw new Error('Failed to fetch schedules');
         }
-        
-        // Ensure we have at least 2 teams for scheduling to work
-        if (teams.length < 2) {
-          console.warn('Not enough teams for scheduling. Need at least 2 teams.');
-          setError('Need at least 2 teams in the league to generate a schedule.');
-          setLoading(false);
-          return;
-        }
-        
-        // Sort teams by name for consistent ordering
-        teams.sort((a, b) => a.name.localeCompare(b.name));
-        
-        console.log('League teams loaded:', teams);
-        setLeagueTeams(teams);
-        
-        // Generate schedules for all leagues
-        const nflSchedule = generateNFLSchedule(teams);
-        const nbaSchedule = generateNBASchedule(teams);
-        const mlbSchedule = generateMLBSchedule(teams);
-        
+
+        const [nflSchedule, nbaSchedule, mlbSchedule] = await Promise.all([
+          nflResponse.json(),
+          nbaResponse.json(),
+          mlbResponse.json()
+        ]);
+
         setSchedules({
           NFL: nflSchedule,
           NBA: nbaSchedule,
@@ -131,15 +101,15 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
         // Set current week based on selected league
         setSelectedWeek(getCurrentWeek(selectedLeague));
       } catch (error) {
-        console.error('Error fetching league teams:', error);
-        setError('Failed to load league members. Please try again later.');
+        console.error('Error fetching schedules:', error);
+        setError('Failed to load schedules. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLeagueTeams();
-  }, [user?.league?.id, user?.id, user?.firstName, user?.lastName, user?.username]);
+    fetchSchedules();
+  }, [user?.league?.id]);
 
   // Update selected week when league changes
   useEffect(() => {
@@ -232,6 +202,13 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
 
   const currentSchedule = schedules[selectedLeague];
   const currentWeekSchedule = currentSchedule?.weeks.find(week => week.week === selectedWeek);
+
+  // Calculate number of teams from the schedule
+  const getTeamCount = () => {
+    if (!currentSchedule?.weeks[0]?.matchups) return 0;
+    const teamIds = new Set(currentSchedule.weeks[0].matchups.flatMap(m => [m.homeTeamId, m.awayTeamId]));
+    return teamIds.size;
+  };
 
   return (
     <div className="schedule-container">
@@ -351,7 +328,7 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
             </div>
             <div className="stat-item">
               <span className="stat-label">Teams</span>
-              <span className="stat-value">{leagueTeams.length}</span>
+              <span className="stat-value">{getTeamCount()}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Current Week</span>
