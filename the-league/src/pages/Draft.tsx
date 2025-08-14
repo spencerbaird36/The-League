@@ -123,18 +123,46 @@ const Draft: React.FC<DraftProps> = ({
   // Start draft (timer starts automatically)
   const startDraftSession = async () => {
     try {
+      console.log('=== START DRAFT SESSION CALLED ===');
+      console.log('User:', user);
+      console.log('League ID:', user?.league?.id);
+      console.log('SignalR Connected:', signalRService.isConnected());
+      console.log('WebSocket Draft State:', webSocketDraftState);
+      console.log('Backend Draft State:', draftState);
+      
       if (signalRService.isConnected() && user?.league?.id) {
         // Use WebSocket to start draft
-        console.log('Starting draft via WebSocket...');
+        console.log('🚀 Starting draft via WebSocket...');
+        console.log('Calling signalRService.startDraft with league ID:', user.league.id);
+        
         await signalRService.startDraft(user.league.id);
+        console.log('✅ WebSocket startDraft call completed');
+        
+        // Wait a moment for the WebSocket events to be processed
+        setTimeout(() => {
+          console.log('WebSocket Draft State after start:', webSocketDraftState);
+          console.log('Is my turn after start:', isMyTurn);
+          console.log('Draft timer active:', draftTimerActive);
+        }, 1000);
+        
       } else {
+        console.log('⚠️ SignalR not connected or no league ID, using REST API fallback');
+        console.log('SignalR connected:', signalRService.isConnected());
+        console.log('User league ID:', user?.league?.id);
+        
         // Fallback to REST API
         await draftOperations.startDraft();
+        console.log('✅ REST API startDraft completed');
       }
+      
       console.log('✅ Draft started successfully');
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
-      alert(`Failed to start draft: ${error}`);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      alert(`Failed to start draft: ${error instanceof Error ? error.message : error}`);
     }
   };
 
@@ -217,31 +245,43 @@ const Draft: React.FC<DraftProps> = ({
 
   // WebSocket draft timer
   const startDraftTimer = useCallback((timeLimit: number = 15) => {
-    console.log('Starting draft timer:', timeLimit);
+    console.log('⏰ Starting draft timer with limit:', timeLimit);
+    console.log('Is my turn when starting timer:', isMyTurn);
+    
     setDraftTimer(timeLimit);
     setDraftTimerActive(true);
     
     if (draftTimerRef.current) {
+      console.log('Clearing existing timer');
       clearInterval(draftTimerRef.current);
     }
     
+    console.log('Setting up new timer interval');
     draftTimerRef.current = setInterval(() => {
       setDraftTimer(prev => {
         const newTime = prev - 1;
+        console.log('Timer tick:', newTime);
+        
         if (newTime <= 0) {
+          console.log('⏰ Timer expired!');
           setDraftTimerActive(false);
           clearInterval(draftTimerRef.current!);
+          
           // Auto-draft if it's the user's turn
           if (isMyTurn && user?.league?.id) {
-            console.log('Time expired, triggering auto-draft');
+            console.log('🤖 Time expired, triggering auto-draft for user:', user.id);
             handleAutoDraft();
+          } else {
+            console.log('⏳ Time expired but not my turn, waiting for auto-draft');
           }
           return 0;
         }
         return newTime;
       });
     }, 1000);
-  }, [isMyTurn, user?.league?.id]);
+    
+    console.log('Timer setup completed, interval ID:', draftTimerRef.current);
+  }, [isMyTurn, user?.league?.id, handleAutoDraft]);
 
   const stopDraftTimer = useCallback(() => {
     setDraftTimerActive(false);
@@ -300,10 +340,21 @@ const Draft: React.FC<DraftProps> = ({
     if (!user?.league?.id) return;
 
     const handleDraftStarted = (data: any) => {
-      console.log('Draft started via WebSocket:', data);
+      console.log('🎯 Draft started via WebSocket event:', data);
+      console.log('Current user ID:', user.id);
+      console.log('Current turn user ID:', data.CurrentUserId);
+      console.log('Is my turn:', data.CurrentUserId === user.id);
+      
       setWebSocketDraftState(data);
-      setIsMyTurn(data.CurrentUserId === user.id);
-      if (data.CurrentUserId === user.id) {
+      const myTurn = data.CurrentUserId === user.id;
+      setIsMyTurn(myTurn);
+      
+      if (myTurn) {
+        console.log('🔥 Starting timer - it\'s my turn!');
+        startDraftTimer(data.TimeLimit || 15);
+      } else {
+        console.log('⏳ Not my turn, waiting...');
+        // Start timer for everyone to see the countdown, even if it's not their turn
         startDraftTimer(data.TimeLimit || 15);
       }
     };
@@ -460,7 +511,7 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState?.isActive && !webSocketDraftState && (
+          {isDraftCreated && !draftState?.isActive && !draftTimerActive && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <button onClick={startDraftSession} className="start-draft-btn">
@@ -536,11 +587,6 @@ const Draft: React.FC<DraftProps> = ({
           </div>
 
           <div className="draft-controls">
-            {!draftState.isActive && (
-              <button onClick={startDraftSession} className="draft-control-btn start">
-                Start Draft
-              </button>
-            )}
             <button onClick={handleResetDraft} className="draft-control-btn reset">
               Reset Draft
             </button>
