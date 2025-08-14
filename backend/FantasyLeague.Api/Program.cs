@@ -56,13 +56,6 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Auto-migrate database on startup (for Heroku)
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<FantasyLeagueContext>();
-    context.Database.Migrate();
-}
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -74,5 +67,29 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReactApp");
 
 app.MapControllers();
+
+// Add health check endpoint
+app.MapGet("/", () => "Fantasy League API is running!");
+
+// Configure port for Heroku
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+app.Urls.Add($"http://*:{port}");
+
+// Run migrations asynchronously after startup to avoid boot timeout
+_ = Task.Run(async () =>
+{
+    await Task.Delay(1000); // Wait for app to start
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<FantasyLeagueContext>();
+    try
+    {
+        await context.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error running migrations");
+    }
+});
 
 app.Run();
