@@ -1,5 +1,6 @@
 import { DraftState, DraftPick, LeagueMember } from '../context/DraftContext';
 import { Player } from '../types/Player';
+import { apiRequest } from '../config/api';
 
 export interface CreateDraftRequest {
   leagueId: number;
@@ -36,11 +37,11 @@ export interface DraftPickResponse {
 }
 
 class DraftService {
-  private baseURL = '/api';
+  // Using centralized API configuration
 
   async fetchDraftState(leagueId: number): Promise<DraftState | null> {
     try {
-      const response = await fetch(`${this.baseURL}/draft/league/${leagueId}`);
+      const response = await apiRequest(`/api/draft/league/${leagueId}`);
       if (response.ok) {
         const draft = await response.json();
         return draft;
@@ -57,7 +58,7 @@ class DraftService {
 
   async fetchLeagueMembers(leagueId: number): Promise<LeagueMember[]> {
     try {
-      const response = await fetch(`${this.baseURL}/leagues/${leagueId}/members`);
+      const response = await apiRequest(`/api/leagues/${leagueId}/members`);
       if (response.ok) {
         const members = await response.json();
         return members;
@@ -72,7 +73,7 @@ class DraftService {
 
   async createDraft(request: CreateDraftRequest): Promise<DraftState> {
     try {
-      const response = await fetch(`${this.baseURL}/draft/create`, {
+      const response = await apiRequest(`/api/draft/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,7 +96,7 @@ class DraftService {
 
   async startDraft(draftId: number): Promise<DraftState> {
     try {
-      const response = await fetch(`${this.baseURL}/draft/${draftId}/start`, {
+      const response = await apiRequest(`/api/draft/${draftId}/start`, {
         method: 'POST',
       });
 
@@ -114,7 +115,7 @@ class DraftService {
 
   async makeDraftPick(draftId: number, request: MakeDraftPickRequest): Promise<DraftPickResponse> {
     try {
-      const response = await fetch(`${this.baseURL}/draft/${draftId}/pick`, {
+      const response = await apiRequest(`/api/draft/${draftId}/pick`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ class DraftService {
 
   async resetDraft(draftId: number): Promise<DraftState> {
     try {
-      const response = await fetch(`${this.baseURL}/draft/${draftId}/reset`, {
+      const response = await apiRequest(`/api/draft/${draftId}/reset`, {
         method: 'POST',
       });
 

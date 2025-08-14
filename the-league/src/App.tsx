@@ -11,6 +11,7 @@ import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
 import { players } from './data/players';
 import './App.css';
+import { apiRequest } from './config/api';
 
 interface League {
   id: number;
@@ -446,7 +447,7 @@ const AppContent: React.FC = () => {
   // Authentication functions
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/users/login', {
+      const response = await apiRequest('/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

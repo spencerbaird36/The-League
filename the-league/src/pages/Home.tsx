@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import TimerDisplay from '../components/TimerDisplay';
 import theLeagueLogo from '../assets/the_league.png';
 import './MyTeam.css';
+import { apiRequest } from '../config/api';
 
 const leagueStyles = `
   .main-logo {
@@ -520,7 +521,7 @@ const Home: React.FC<HomeProps> = ({
     setLeagueError('');
     
     try {
-      const response = await fetch('/api/leagues/available');
+      const response = await apiRequest('/api/leagues/available');
       if (response.ok) {
         const leagues = await response.json();
         setAvailableLeagues(leagues);
@@ -539,7 +540,7 @@ const Home: React.FC<HomeProps> = ({
     setLeagueError('');
     
     try {
-      const response = await fetch(`/api/leagues/join-by-id?userId=${user?.id}`, {
+      const response = await apiRequest(`/api/leagues/join-by-id?userId=${user?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -580,7 +581,7 @@ const Home: React.FC<HomeProps> = ({
     setLeagueError('');
     
     try {
-      const response = await fetch(`/api/leagues/create?userId=${user?.id}`, {
+      const response = await apiRequest(`/api/leagues/create?userId=${user?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -623,7 +624,7 @@ const Home: React.FC<HomeProps> = ({
     setLeagueError('');
     
     try {
-      const response = await fetch(`/api/leagues/join?userId=${user?.id}`, {
+      const response = await apiRequest(`/api/leagues/join?userId=${user?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -663,7 +664,7 @@ const Home: React.FC<HomeProps> = ({
     e.preventDefault();
     
     try {
-      const response = await fetch('/api/users/register', {
+      const response = await apiRequest('/api/users/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

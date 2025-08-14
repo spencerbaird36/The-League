@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Standings.css';
+import { apiRequest } from '../config/api';
 
 interface League {
   id: number;
@@ -60,7 +61,7 @@ const Standings: React.FC<StandingsProps> = ({ user }) => {
       }
 
       try {
-        const response = await fetch(`/api/leagues/${user.league.id}/standings`);
+        const response = await apiRequest(`/api/leagues/${user.league.id}/standings`);
         if (response.ok) {
           const data = await response.json();
           setStandingsData(data);

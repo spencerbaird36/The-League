@@ -4,6 +4,7 @@ import { Player } from '../types/Player';
 import TimerDisplay from '../components/TimerDisplay';
 import { useDraft } from '../context/DraftContext';
 import './MyTeam.css';
+import { apiRequest } from '../config/api';
 
 interface League {
   id: number;
@@ -108,7 +109,7 @@ const TeamPage: React.FC<TeamPageProps> = ({
         // Fetch own roster
         if (currentUser.league?.id) {
           try {
-            const rosterResponse = await fetch(`/api/userroster/user/${userId}/league/${currentUser.league.id}`);
+            const rosterResponse = await apiRequest(`/api/userroster/user/${userId}/league/${currentUser.league.id}`);
             if (rosterResponse.ok) {
               const rosterData = await rosterResponse.json();
               setUserRoster(rosterData);
@@ -123,14 +124,14 @@ const TeamPage: React.FC<TeamPageProps> = ({
       }
 
       try {
-        const response = await fetch(`/api/users/${userId}`);
+        const response = await apiRequest(`/api/users/${userId}`);
         if (response.ok) {
           const userData = await response.json();
           setTeamUser(userData);
           
           // Fetch user's roster
           if (userData.league?.id) {
-            const rosterResponse = await fetch(`/api/userroster/user/${userId}/league/${userData.league.id}`);
+            const rosterResponse = await apiRequest(`/api/userroster/user/${userId}/league/${userData.league.id}`);
             if (rosterResponse.ok) {
               const rosterData = await rosterResponse.json();
               setUserRoster(rosterData);

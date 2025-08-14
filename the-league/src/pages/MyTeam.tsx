@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Player } from '../types/Player';
 import TimerDisplay from '../components/TimerDisplay';
 import './MyTeam.css';
+import { apiRequest } from '../config/api';
 
 interface User {
   id: number;
@@ -65,7 +66,7 @@ const MyTeam: React.FC<MyTeamProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const response = await fetch(`/api/userroster/user/${user.id}/league/${user.league.id}`);
+        const response = await apiRequest(`/api/userroster/user/${user.id}/league/${user.league.id}`);
         
         if (response.ok) {
           const rosterData = await response.json();
