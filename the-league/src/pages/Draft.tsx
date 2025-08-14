@@ -410,7 +410,7 @@ const Draft: React.FC<DraftProps> = ({
               
               <button 
                 onClick={draftTimerActive && user?.league?.id ? 
-                  () => signalRService.pauseDraft(user.league.id) : 
+                  () => signalRService.pauseDraft(user.league!.id) : 
                   draftOperations.pauseTimer
                 }
                 className="pause-btn"
