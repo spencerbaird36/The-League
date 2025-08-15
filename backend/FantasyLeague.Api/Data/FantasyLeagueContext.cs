@@ -21,6 +21,8 @@ namespace FantasyLeague.Api.Data
         public DbSet<Matchup> Matchups { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<ChatReadStatus> ChatReadStatuses { get; set; }
+        public DbSet<Player> Players { get; set; }
+        public DbSet<Transaction> Transactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -426,6 +428,95 @@ namespace FantasyLeague.Api.Data
                 // Create unique index for user-league combination
                 entity.HasIndex(e => new { e.UserId, e.LeagueId })
                     .IsUnique();
+            });
+
+            // Configure Player entity
+            modelBuilder.Entity<Player>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.Position)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Team)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.League)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create index for efficient searching
+                entity.HasIndex(e => new { e.Name, e.League });
+                entity.HasIndex(e => e.League);
+            });
+
+            // Configure Transaction entity
+            modelBuilder.Entity<Transaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+                    
+                entity.Property(e => e.Description)
+                    .IsRequired()
+                    .HasMaxLength(500);
+                    
+                entity.Property(e => e.PlayerName)
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.PlayerPosition)
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.PlayerTeam)
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.PlayerLeague)
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Configure relationship with RelatedTransaction (for trades)
+                entity.HasOne(e => e.RelatedTransaction)
+                    .WithMany()
+                    .HasForeignKey(e => e.RelatedTransactionId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create index for efficient querying
+                entity.HasIndex(e => new { e.LeagueId, e.CreatedAt });
+                entity.HasIndex(e => e.Type);
             });
         }
     }

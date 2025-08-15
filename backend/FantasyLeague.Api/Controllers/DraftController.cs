@@ -396,6 +396,12 @@ namespace FantasyLeague.Api.Controllers
                 .ToListAsync();
             _context.UserRosters.RemoveRange(userRosters);
 
+            // Remove all transactions for this league (free agent pickups and any future transaction types)
+            var transactions = await _context.Transactions
+                .Where(t => t.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.Transactions.RemoveRange(transactions);
+
             // Get current league members to update draft order with any new members
             var league = await _context.Leagues
                 .Include(l => l.Users)

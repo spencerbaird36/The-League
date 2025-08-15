@@ -48,7 +48,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3001", "https://the-league-f8fa1bccd03a.herokuapp.com")
+        policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "https://the-league-f8fa1bccd03a.herokuapp.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .SetIsOriginAllowed(_ => true) // Allow any origin for SignalR

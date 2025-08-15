@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250815133927_AddPlayerStatsTable")]
+    partial class AddPlayerStatsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -534,66 +537,6 @@ namespace FantasyLeague.Api.Migrations
                     b.ToTable("TeamStats");
                 });
 
-            modelBuilder.Entity("FantasyLeague.Api.Models.Transaction", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<int>("LeagueId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PlayerLeague")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("PlayerName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("PlayerPosition")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("PlayerTeam")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int?>("RelatedTransactionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RelatedTransactionId");
-
-                    b.HasIndex("Type");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("LeagueId", "CreatedAt");
-
-                    b.ToTable("Transactions");
-                });
-
             modelBuilder.Entity("FantasyLeague.Api.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -889,32 +832,6 @@ namespace FantasyLeague.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("League");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.Transaction", b =>
-                {
-                    b.HasOne("FantasyLeague.Api.Models.League", "League")
-                        .WithMany()
-                        .HasForeignKey("LeagueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("FantasyLeague.Api.Models.Transaction", "RelatedTransaction")
-                        .WithMany()
-                        .HasForeignKey("RelatedTransactionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("FantasyLeague.Api.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("League");
-
-                    b.Navigation("RelatedTransaction");
 
                     b.Navigation("User");
                 });
