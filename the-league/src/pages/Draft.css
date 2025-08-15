@@ -751,6 +751,289 @@
   border: 1px solid rgba(108, 122, 137, 0.3);
 }
 
+.draft-completed {
+  text-align: center;
+  padding: 20px;
+  background: rgba(40, 167, 69, 0.15);
+  border: 2px solid rgba(40, 167, 69, 0.3);
+  border-radius: 16px;
+  margin: 20px 0;
+}
+
+.draft-completed p:first-child {
+  color: #28a745;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.draft-completed p:last-child {
+  color: var(--accent-platinum);
+  font-weight: 500;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Recent Picks Section */
+.recent-picks-section {
+  background: var(--surface-glass);
+  backdrop-filter: blur(15px);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid var(--border-light);
+  margin-bottom: 30px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  z-index: 1;
+  position: relative;
+}
+
+.recent-picks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.recent-picks-header h4 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-white);
+  margin: 0;
+}
+
+.total-picks {
+  font-size: 0.8rem;
+  color: var(--accent-platinum);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.recent-picks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-gold) transparent;
+}
+
+.recent-picks-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.recent-picks-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.recent-picks-container::-webkit-scrollbar-thumb {
+  background: var(--accent-gold);
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.recent-picks-container::-webkit-scrollbar-thumb:hover {
+  opacity: 1;
+}
+
+.recent-pick-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.recent-pick-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.recent-pick-card .pick-number {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-width: 40px;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+}
+
+.pick-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-pick-card .player-name {
+  font-weight: 600;
+  color: var(--text-white);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.player-meta {
+  font-size: 0.75rem;
+  color: var(--accent-platinum);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.recent-pick-card .drafted-by {
+  font-size: 0.8rem;
+  color: var(--text-gray);
+  font-style: italic;
+}
+
+.recent-pick-card .league-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.recent-pick-card .league-badge.nfl {
+  background: rgba(1, 51, 105, 0.3);
+  color: #0133ff;
+  border: 1px solid rgba(1, 51, 255, 0.3);
+}
+
+.recent-pick-card .league-badge.nba {
+  background: rgba(255, 99, 71, 0.3);
+  color: #ff6347;
+  border: 1px solid rgba(255, 99, 71, 0.3);
+}
+
+.recent-pick-card .league-badge.mlb {
+  background: rgba(34, 139, 34, 0.3);
+  color: #228b22;
+  border: 1px solid rgba(34, 139, 34, 0.3);
+}
+
+/* Responsive Design for Recent Picks */
+@media (max-width: 768px) {
+  .recent-picks-section {
+    max-width: 100%;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .recent-picks-header h4 {
+    font-size: 1rem;
+  }
+  
+  .total-picks {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+  }
+  
+  .recent-picks-container {
+    max-height: 160px;
+  }
+  
+  .recent-pick-card {
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .recent-pick-card .pick-number {
+    font-size: 0.75rem;
+    padding: 5px 8px;
+    min-width: 35px;
+  }
+  
+  .recent-pick-card .player-name {
+    font-size: 0.85rem;
+  }
+  
+  .player-meta {
+    font-size: 0.7rem;
+  }
+  
+  .recent-pick-card .drafted-by {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .recent-picks-section {
+    padding: 12px;
+  }
+  
+  .recent-picks-container {
+    max-height: 140px;
+  }
+  
+  .recent-pick-card {
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  .recent-pick-card .player-name {
+    font-size: 0.8rem;
+  }
+  
+  .player-meta {
+    font-size: 0.65rem;
+    flex-wrap: wrap;
+  }
+  
+  .recent-pick-card .league-badge {
+    font-size: 0.65rem;
+    padding: 1px 4px;
+  }
+}
+
+/* Clickable Player Names */
+.clickable-player-name {
+  cursor: pointer;
+  color: var(--text-white);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.clickable-player-name:hover {
+  color: var(--accent-gold);
+  border-bottom-color: var(--accent-gold);
+  background: rgba(218, 165, 32, 0.1);
+  transform: translateY(-1px);
+}
+
+.clickable-player-name:active {
+  transform: translateY(0px);
+  background: rgba(218, 165, 32, 0.2);
+}
+
 @keyframes pulse-glow {
   0%, 100% { 
     box-shadow: 0 0 8px rgba(218, 165, 32, 0.3);
@@ -772,8 +1055,8 @@
 /* Main Content Layout */
 .draft-main-content {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 40px;
+  grid-template-columns: 320px 1fr 320px;
+  gap: 30px;
   margin-bottom: 40px;
   min-height: 80vh;
 }
@@ -1557,19 +1840,134 @@ tbody tr:hover td {
   }
 }
 
+/* Right Sidebar - Drafted Players */
+.drafted-players-sidebar {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 30px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
+  position: sticky;
+  top: 20px;
+  height: fit-content;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.drafted-players-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-gold) transparent;
+  padding-right: 5px;
+}
+
+.drafted-players-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drafted-players-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.drafted-players-container::-webkit-scrollbar-thumb {
+  background: var(--accent-gold);
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.drafted-players-container::-webkit-scrollbar-thumb:hover {
+  opacity: 1;
+}
+
+.drafted-player-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.drafted-player-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(212, 175, 55, 0.3);
+  transform: translateX(4px);
+}
+
+.drafted-player-card .pick-number {
+  background: var(--accent-gold);
+  color: var(--primary-navy);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  min-width: 45px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.drafted-player-card .pick-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.drafted-player-card .player-info {
+  margin-bottom: 4px;
+}
+
+.drafted-player-card .player-name {
+  font-weight: 600;
+  color: var(--text-white);
+  font-size: 0.9rem;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.drafted-player-card .player-meta {
+  font-size: 0.75rem;
+  color: var(--accent-platinum);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.drafted-player-card .drafted-by {
+  font-size: 0.7rem;
+  color: var(--text-gray);
+  font-style: italic;
+}
+
+.no-drafts-message {
+  text-align: center;
+  color: var(--text-gray);
+  font-style: italic;
+  padding: 40px 20px;
+  font-size: 0.9rem;
+}
+
 /* Responsive Design for New Layout */
 @media (max-width: 1200px) {
   .draft-main-content {
-    grid-template-columns: 280px 1fr;
-    gap: 30px;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 20px;
   }
   
-  .draft-sidebar {
-    padding: 24px;
-  }
-  
-  .draft-main {
-    padding: 24px;
+  .drafted-players-sidebar {
+    padding: 20px;
   }
 }
 
@@ -1581,28 +1979,19 @@ tbody tr:hover td {
   
   .draft-sidebar {
     position: static;
-    order: 2;
+    order: 1;
     margin-top: 20px;
   }
   
   .draft-main {
-    order: 1;
+    order: 2;
   }
   
-  .draft-sidebar .position-tabs {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-  
-  .league-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-  
-  .league-buttons button {
-    font-size: 0.8rem;
-    padding: 8px 6px;
+  .drafted-players-sidebar {
+    position: static;
+    order: 3;
+    margin-top: 20px;
+    max-height: 400px;
   }
 }
 
@@ -2024,5 +2413,123 @@ tbody tr:hover td {
   .player-team,
   .player-league {
     display: none;
+  }
+}
+
+/* Draft Completed Section */
+.draft-completed-section {
+  text-align: center;
+  padding: 60px 40px;
+  background: linear-gradient(135deg, 
+    rgba(40, 167, 69, 0.1) 0%, 
+    rgba(34, 139, 34, 0.15) 100%
+  );
+  border: 2px solid rgba(40, 167, 69, 0.3);
+  border-radius: 20px;
+  margin: 40px 0;
+  backdrop-filter: blur(10px);
+}
+
+.draft-completed-section h2 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #28a745;
+  margin-bottom: 16px;
+  text-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.draft-completed-section p {
+  color: var(--text-cream);
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+.free-agents-btn {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border: none;
+  padding: 16px 40px;
+  border-radius: 16px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Poppins', sans-serif;
+  box-shadow: 0 8px 25px rgba(218, 165, 32, 0.3);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.free-agents-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease;
+}
+
+.free-agents-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(218, 165, 32, 0.4);
+}
+
+.free-agents-btn:hover::before {
+  left: 100%;
+}
+
+.free-agents-btn:active {
+  transform: translateY(-1px) scale(1.01);
+}
+
+@media (max-width: 768px) {
+  .draft-completed-section {
+    padding: 40px 20px;
+    margin: 30px 0;
+  }
+  
+  .draft-completed-section h2 {
+    font-size: 1.8rem;
+    margin-bottom: 12px;
+  }
+  
+  .draft-completed-section p {
+    font-size: 1rem;
+    margin-bottom: 24px;
+  }
+  
+  .free-agents-btn {
+    padding: 14px 32px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .draft-completed-section {
+    padding: 30px 15px;
+  }
+  
+  .draft-completed-section h2 {
+    font-size: 1.5rem;
+  }
+  
+  .draft-completed-section p {
+    font-size: 0.9rem;
+  }
+  
+  .free-agents-btn {
+    padding: 12px 28px;
+    font-size: 0.9rem;
   }
 }

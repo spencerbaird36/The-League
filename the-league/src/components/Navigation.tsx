@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useDraft } from '../context/DraftContext';
 import './Navigation.css';
 
 interface League {
@@ -33,6 +34,7 @@ const Navigation: React.FC<NavigationProps> = ({
   logout 
 }) => {
   const location = useLocation();
+  const { state: draftState } = useDraft();
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [loginData, setLoginData] = useState({
     username: '',
@@ -72,6 +74,10 @@ const Navigation: React.FC<NavigationProps> = ({
     setShowLoginForm(false);
   };
 
+  // Determine draft navigation text based on draft completion status
+  const isDraftCompleted = draftState?.draftState?.isCompleted ?? false;
+  const draftNavText = isDraftCompleted ? 'Draft Recap' : 'Draft Now';
+
   return (
     <nav className="navigation">
       <div className="nav-container">
@@ -89,7 +95,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 to="/draft" 
                 className={`nav-link ${isActive('/draft') ? 'active' : ''}`}
               >
-                Draft Now
+                {draftNavText}
               </Link>
             </li>
             <li className="nav-item">
@@ -98,6 +104,14 @@ const Navigation: React.FC<NavigationProps> = ({
                 className={`nav-link ${isActive('/my-team') ? 'active' : ''}`}
               >
                 My Team
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link 
+                to="/free-agents" 
+                className={`nav-link ${isActive('/free-agents') ? 'active' : ''}`}
+              >
+                Free Agents
               </Link>
             </li>
             <li className="nav-item">
@@ -114,6 +128,14 @@ const Navigation: React.FC<NavigationProps> = ({
                 className={`nav-link ${isActive('/schedule') ? 'active' : ''}`}
               >
                 Schedule
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link 
+                to="/chat" 
+                className={`nav-link ${isActive('/chat') ? 'active' : ''}`}
+              >
+                Chat
               </Link>
             </li>
           </ul>

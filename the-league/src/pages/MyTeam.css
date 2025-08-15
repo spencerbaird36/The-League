@@ -191,6 +191,20 @@
   font-size: 1rem;
 }
 
+.clickable-player-name {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.clickable-player-name:hover {
+  color: var(--accent-gold);
+  background: rgba(212, 175, 55, 0.15);
+  transform: translateY(-1px);
+}
+
 .position {
   font-weight: 600;
   color: var(--accent-gold);

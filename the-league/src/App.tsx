@@ -4,10 +4,11 @@ import Navigation from './components/Navigation';
 import Home from './pages/Home';
 import Draft from './pages/Draft';
 import MyTeam from './pages/MyTeam';
+import FreeAgents from './pages/FreeAgents';
 import Standings from './pages/Standings';
 import Schedule from './pages/Schedule';
 import TeamPage from './pages/TeamPage';
-import SlackStyleChat from './components/Chat/SlackStyleChat';
+import Chat from './pages/Chat';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
 import { players } from './data/players';
@@ -519,10 +520,7 @@ const AppContent: React.FC = () => {
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(userData));
         
-        // Redirect based on league membership
-        if (userData.league) {
-          navigate('/my-team');
-        }
+        // User successfully logged in - they can navigate manually
         
         return true;
       } else {
@@ -546,10 +544,7 @@ const AppContent: React.FC = () => {
     setIsAuthenticated(true);
     localStorage.setItem('user', JSON.stringify(userData));
     
-    // Redirect based on league membership
-    if (userData.league) {
-      navigate('/my-team');
-    }
+    // User registered and logged in - they can navigate manually
   };
 
   // Check for stored user on app start
@@ -560,10 +555,7 @@ const AppContent: React.FC = () => {
       setUser(userData);
       setIsAuthenticated(true);
       
-      // Redirect users with leagues to My Team if they're on the home page
-      if (userData.league && window.location.pathname === '/') {
-        navigate('/my-team');
-      }
+      // Users with leagues can stay on homepage to see league dashboard
     }
   }, [navigate]);
 
@@ -637,6 +629,18 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route 
+            path="/free-agents" 
+            element={
+              isAuthenticated && user?.league ? (
+                <FreeAgents user={user} />
+              ) : !isAuthenticated ? (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to view free agents.</div>
+              ) : (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please join or create a league to view free agents.</div>
+              )
+            } 
+          />
+          <Route 
             path="/standings" 
             element={
               isAuthenticated && user?.league ? (
@@ -661,6 +665,18 @@ const AppContent: React.FC = () => {
             } 
           />
           <Route 
+            path="/chat" 
+            element={
+              isAuthenticated && user?.league ? (
+                <Chat user={user} />
+              ) : !isAuthenticated ? (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to view chat.</div>
+              ) : (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please join or create a league to view chat.</div>
+              )
+            } 
+          />
+          <Route 
             path="/team/:userId" 
             element={
               isAuthenticated && user?.league ? (
@@ -681,16 +697,6 @@ const AppContent: React.FC = () => {
             } 
           />
       </Routes>
-      
-      {/* Slack-style chat - only show for authenticated users in a league */}
-      {isAuthenticated && user?.league && (
-        <SlackStyleChat 
-          leagueId={user.league.id}
-          userId={user.id}
-          username={user.username}
-          leagueName={user.league.name}
-        />
-      )}
     </div>
   );
 };

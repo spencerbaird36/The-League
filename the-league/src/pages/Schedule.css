@@ -324,6 +324,11 @@
   border-color: rgba(218, 165, 32, 0.3);
 }
 
+.matchup-card:active {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(218, 165, 32, 0.2);
+}
+
 .matchup-card:hover::before {
   left: 100%;
 }

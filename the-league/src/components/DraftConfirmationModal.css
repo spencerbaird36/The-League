@@ -1,0 +1,195 @@
+.draft-confirmation-content {
+  text-align: center;
+  padding: 20px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.confirmation-player-summary {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.4) 0%, 
+    rgba(42, 74, 107, 0.3) 100%
+  );
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-light);
+}
+
+.player-summary-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.confirmation-player-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-white);
+  margin: 0;
+}
+
+.player-summary-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.confirmation-player-team {
+  font-size: 1rem;
+  color: var(--accent-platinum);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confirmation-player-position {
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confirmation-league-badge {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.confirmation-league-badge.nfl {
+  background: rgba(1, 51, 105, 0.3);
+  color: #0133ff;
+  border: 1px solid rgba(1, 51, 255, 0.3);
+}
+
+.confirmation-league-badge.nba {
+  background: rgba(255, 99, 71, 0.3);
+  color: #ff6347;
+  border: 1px solid rgba(255, 99, 71, 0.3);
+}
+
+.confirmation-league-badge.mlb {
+  background: rgba(34, 139, 34, 0.3);
+  color: #228b22;
+  border: 1px solid rgba(34, 139, 34, 0.3);
+}
+
+.confirmation-message {
+  margin-bottom: 32px;
+}
+
+.confirmation-message p {
+  font-size: 1.1rem;
+  color: var(--text-white);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.confirmation-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-gray);
+  font-style: italic;
+  margin: 0;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+.confirmation-btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid;
+  font-family: 'Poppins', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 120px;
+}
+
+.confirmation-btn.cancel {
+  background: transparent;
+  color: var(--text-gray);
+  border-color: var(--text-gray);
+}
+
+.confirmation-btn.cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  border-color: var(--text-white);
+  transform: translateY(-2px);
+}
+
+.confirmation-btn.confirm {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border-color: var(--accent-gold);
+}
+
+.confirmation-btn.confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(218, 165, 32, 0.3);
+}
+
+.confirmation-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .draft-confirmation-content {
+    padding: 16px;
+  }
+  
+  .confirmation-player-summary {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .confirmation-player-name {
+    font-size: 1.2rem;
+  }
+  
+  .player-summary-details {
+    gap: 8px;
+  }
+  
+  .confirmation-player-team {
+    font-size: 0.9rem;
+  }
+  
+  .confirmation-player-position,
+  .confirmation-league-badge {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .confirmation-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .confirmation-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    min-width: auto;
+    width: 100%;
+  }
+}

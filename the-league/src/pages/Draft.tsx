@@ -4,6 +4,8 @@ import { Player } from '../types/Player';
 import { players } from '../data/players';
 import Modal from '../components/Modal';
 import PlayerCard from '../components/PlayerCard';
+import PlayerInfoModal from '../components/PlayerInfoModal';
+import DraftConfirmationModal from '../components/DraftConfirmationModal';
 import { useDraft } from '../context/DraftContext';
 import { useDraftOperations } from '../hooks/useDraftOperations';
 import signalRService from '../services/signalRService';
@@ -84,8 +86,10 @@ const Draft: React.FC<DraftProps> = ({
   const selectedLeague = state.selectedLeague as 'ALL' | 'NFL' | 'MLB' | 'NBA';
   const selectedPosition = state.selectedPosition;
   
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
+  const [isDraftConfirmModalOpen, setIsDraftConfirmModalOpen] = useState<boolean>(false);
+  const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
+  const [selectedPlayerForDraft, setSelectedPlayerForDraft] = useState<Player | null>(null);
   
   // Get values from draft context
   const draftState = draftOperations.draftState;
@@ -254,8 +258,15 @@ const Draft: React.FC<DraftProps> = ({
     }
   }, [draftOperations, draftPlayer, user?.league?.id, draftTimerActive, draftTimer, isPickInProgress]);
 
-  const handlePlayerClick = (player: Player) => {
-    console.log('🎯 Player clicked:', player.name);
+  // Handle player name click to show player info
+  const handlePlayerNameClick = (player: Player) => {
+    setSelectedPlayerForInfo(player);
+    setIsPlayerInfoModalOpen(true);
+  };
+
+  // Handle draft button click to show confirmation
+  const handleDraftClick = (player: Player) => {
+    console.log('🎯 Draft button clicked:', player.name);
     console.log('=== TURN DETECTION DEBUG ===');
     console.log('User ID:', user?.id);
     console.log('SignalR Connected:', signalRService.isConnected());
@@ -278,21 +289,26 @@ const Draft: React.FC<DraftProps> = ({
       return;
     }
     
-    setSelectedPlayer(player);
-    setIsModalOpen(true);
+    setSelectedPlayerForDraft(player);
+    setIsDraftConfirmModalOpen(true);
   };
 
   const handleConfirmDraft = () => {
-    if (selectedPlayer) {
-      makeDraftPick(selectedPlayer);
-      setIsModalOpen(false);
-      setSelectedPlayer(null);
+    if (selectedPlayerForDraft) {
+      makeDraftPick(selectedPlayerForDraft);
+      setIsDraftConfirmModalOpen(false);
+      setSelectedPlayerForDraft(null);
     }
   };
 
   const handleCancelDraft = () => {
-    setIsModalOpen(false);
-    setSelectedPlayer(null);
+    setIsDraftConfirmModalOpen(false);
+    setSelectedPlayerForDraft(null);
+  };
+
+  const handleClosePlayerInfo = () => {
+    setIsPlayerInfoModalOpen(false);
+    setSelectedPlayerForInfo(null);
   };
 
   // Reset draft function
@@ -628,12 +644,19 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState?.isActive && !draftTimerActive && !webSocketDraftState && (
+          {isDraftCreated && !draftState?.isActive && !draftTimerActive && !webSocketDraftState && !draftState?.isCompleted && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <button onClick={startDraftSession} className="start-draft-btn">
                 Start Draft
               </button>
+            </div>
+          )}
+          
+          {isDraftCreated && draftState?.isCompleted && (
+            <div className="draft-completed">
+              <p>✅ Draft has been completed!</p>
+              <p>All teams have finished selecting their players.</p>
             </div>
           )}
           
@@ -704,254 +727,281 @@ const Draft: React.FC<DraftProps> = ({
             <button onClick={handleResetDraft} className="draft-control-btn reset">
               Reset Draft
             </button>
-            <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-              Auto Draft
-            </button>
+            {!draftState?.isCompleted && (
+              <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                Auto Draft
+              </button>
+            )}
           </div>
         </section>
       )}
 
-      {/* Drafted Players Section */}
-      {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 && (
-        <section className="drafted-players-section">
-          <div className="drafted-header">
-            <h3>Drafted Players</h3>
-          </div>
-          
-          <div className="drafted-players-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Pick #</th>
-                  <th>Player</th>
-                  <th>Position</th>
-                  <th>Team</th>
-                  <th>League</th>
-                  <th>Drafted By</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draftState.draftPicks
-                  .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
-                  .map((pick: any) => {
-                    const member = state.leagueMembers.find(m => m.id === pick.userId);
-                    const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
-                    
-                    return (
-                      <tr key={pick.id}>
-                        <td className="pick-number">#{pick.pickNumber}</td>
-                        <td className="player-name">{pick.playerName}</td>
-                        <td className="player-position">{pick.playerPosition}</td>
-                        <td className="player-team">{pick.playerTeam}</td>
-                        <td>
-                          <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
-                            {pick.playerLeague}
-                          </span>
-                        </td>
-                        <td className="drafted-by">{memberName}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
 
       {/* Draft Main Content Area */}
       <section className="draft-main-content">
         
-        {/* Left Sidebar - Filters */}
-        <aside className="draft-sidebar">
-          <div className="sidebar-header">
-            <h3>Filters</h3>
-          </div>
-          
-          <div className="league-filter">
-            <h4>League</h4>
-            <div className="league-buttons">
-              <button
-                className={selectedLeague === 'ALL' ? 'active' : ''}
-                onClick={() => setSelectedLeague('ALL')}
-              >
-                All Leagues
-              </button>
-              <button
-                className={selectedLeague === 'NFL' ? 'active' : ''}
-                onClick={() => setSelectedLeague('NFL')}
-              >
-                NFL
-              </button>
-              <button
-                className={selectedLeague === 'MLB' ? 'active' : ''}
-                onClick={() => setSelectedLeague('MLB')}
-              >
-                MLB
-              </button>
-              <button
-                className={selectedLeague === 'NBA' ? 'active' : ''}
-                onClick={() => setSelectedLeague('NBA')}
-              >
-                NBA
-              </button>
-            </div>
-          </div>
-
-          <div className="position-filter">
-          <h4>Filter by Position</h4>
-          <div className="position-tabs">
-            <button
-              className={selectedPosition === 'ALL' ? 'active' : ''}
-              onClick={() => setSelectedPosition('ALL')}
-            >
-              All
-            </button>
-            {selectedLeague === 'ALL' && (
-              <>
-                <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
-                <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
-                <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
-                <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
-                <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
-                <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
-                <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
-                <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
-                <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
-                <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-                <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
-                <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
-                <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
-                <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
-                <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
-              </>
-            )}
-            {selectedLeague === 'NFL' && (
-              <>
-                <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
-                <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
-                <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
-                <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
-              </>
-            )}
-            {selectedLeague === 'MLB' && (
-              <>
-                <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
-                <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
-                <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
-                <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
-                <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
-                <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-              </>
-            )}
-            {selectedLeague === 'NBA' && (
-              <>
-                <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
-                <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
-                <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
-                <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
-                <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
-              </>
-            )}
-          </div>
-        </div>
-        </aside>
-
-        {/* Right Main Content - Available Players */}
-        <main className="draft-main">
-          <section className="available-players">
-          <h2>
-            Available Players ({filteredPlayers.length})
-            {!state.timer.isDrafting ? (
-              <span className="draft-status"> - Draft Not Started</span>
-            ) : state.timer.isPaused ? (
-              <span className="draft-status paused"> - Draft Paused</span>
-            ) : null}
-          </h2>
-
-          <div className="table-container">
-            {filteredPlayers.length === 0 ? (
-              <div className="empty-state">
-                <p>No available players</p>
-                <p>Try adjusting your filters or wait for more players to become available.</p>
+        {/* Show Available Players and Filters only when draft is not completed */}
+        {!draftState?.isCompleted ? (
+          <>
+            {/* Left Sidebar - Filters */}
+            <aside className="draft-sidebar">
+              <div className="sidebar-header">
+                <h3>Filters</h3>
               </div>
-            ) : (
-              <table key={`${selectedLeague}-${selectedPosition}`}>
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>Position</th>
-                    <th>Team</th>
-                    <th>League</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPlayers.map((player: Player) => {
-                    return (
-                      <tr key={player.id}>
-                        <td>
-                          <span className="player-name">
-                            {player.name}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="position">{player.position}</span>
-                        </td>
-                        <td>
-                          <span className="team">{player.team}</span>
-                        </td>
-                        <td>
-                          <span className={`league-badge ${player.league.toLowerCase()}`}>
-                            {player.league}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
-                            onClick={() => handlePlayerClick(player)}
-                            disabled={!isCurrentUserTurn || !isDraftActive || isPickInProgress}
-                          >
-                            {isPickInProgress ? 'Drafting...' : 'Draft'}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-          </section>
-        </main>
-      </section>
+              
+              <div className="league-filter">
+                <h4>League</h4>
+                <div className="league-buttons">
+                  <button
+                    className={selectedLeague === 'ALL' ? 'active' : ''}
+                    onClick={() => setSelectedLeague('ALL')}
+                  >
+                    All Leagues
+                  </button>
+                  <button
+                    className={selectedLeague === 'NFL' ? 'active' : ''}
+                    onClick={() => setSelectedLeague('NFL')}
+                  >
+                    NFL
+                  </button>
+                  <button
+                    className={selectedLeague === 'MLB' ? 'active' : ''}
+                    onClick={() => setSelectedLeague('MLB')}
+                  >
+                    MLB
+                  </button>
+                  <button
+                    className={selectedLeague === 'NBA' ? 'active' : ''}
+                    onClick={() => setSelectedLeague('NBA')}
+                  >
+                    NBA
+                  </button>
+                </div>
+              </div>
 
-      {/* Draft Pick Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCancelDraft}
-        title="Confirm Draft Pick"
-      >
-        {selectedPlayer && (
-          <div className="modal-content">
-            <PlayerCard player={selectedPlayer} />
-            <p>Are you sure you want to draft {selectedPlayer.name}?</p>
-            <div className="modal-actions">
+              <div className="position-filter">
+              <h4>Filter by Position</h4>
+              <div className="position-tabs">
+                <button
+                  className={selectedPosition === 'ALL' ? 'active' : ''}
+                  onClick={() => setSelectedPosition('ALL')}
+                >
+                  All
+                </button>
+                {selectedLeague === 'ALL' && (
+                  <>
+                    <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
+                    <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
+                    <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
+                    <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                    <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
+                    <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
+                    <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
+                    <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
+                    <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
+                    <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                    <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
+                    <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
+                    <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
+                    <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
+                    <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
+                    <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                  </>
+                )}
+                {selectedLeague === 'NFL' && (
+                  <>
+                    <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
+                    <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
+                    <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
+                    <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                  </>
+                )}
+                {selectedLeague === 'MLB' && (
+                  <>
+                    <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
+                    <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
+                    <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
+                    <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
+                    <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
+                    <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                    <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
+                  </>
+                )}
+                {selectedLeague === 'NBA' && (
+                  <>
+                    <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
+                    <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
+                    <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
+                    <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
+                    <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                  </>
+                )}
+              </div>
+            </div>
+            </aside>
+
+            {/* Right Main Content - Available Players */}
+            <main className="draft-main">
+              <section className="available-players">
+              <h2>
+                Available Players ({filteredPlayers.length})
+                {!state.timer.isDrafting ? (
+                  <span className="draft-status"> - Draft Not Started</span>
+                ) : state.timer.isPaused ? (
+                  <span className="draft-status paused"> - Draft Paused</span>
+                ) : null}
+              </h2>
+
+              <div className="table-container">
+                {filteredPlayers.length === 0 ? (
+                  <div className="empty-state">
+                    <p>No available players</p>
+                    <p>Try adjusting your filters or wait for more players to become available.</p>
+                  </div>
+                ) : (
+                  <table key={`${selectedLeague}-${selectedPosition}`}>
+                    <thead>
+                      <tr>
+                        <th>Player</th>
+                        <th>Position</th>
+                        <th>Team</th>
+                        <th>League</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPlayers.map((player: Player) => {
+                        return (
+                          <tr key={player.id}>
+                            <td>
+                              <span 
+                                className="player-name clickable-player-name"
+                                onClick={() => handlePlayerNameClick(player)}
+                              >
+                                {player.name}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="position">{player.position}</span>
+                            </td>
+                            <td>
+                              <span className="team">{player.team}</span>
+                            </td>
+                            <td>
+                              <span className={`league-badge ${player.league.toLowerCase()}`}>
+                                {player.league}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
+                                onClick={() => handleDraftClick(player)}
+                                disabled={!isCurrentUserTurn || !isDraftActive || isPickInProgress}
+                              >
+                                {isPickInProgress ? 'Drafting...' : 'Draft'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              </section>
+            </main>
+          </>
+        ) : (
+          /* When draft is completed, show message to use Free Agents */
+          <div className="draft-completed-section">
+            <div className="draft-completed-content">
+              <h2>🎉 Draft Complete!</h2>
+              <p>All teams have finished selecting their players.</p>
+              <p>You can now pick up free agents to improve your team!</p>
               <button 
-                onClick={handleConfirmDraft} 
-                className="draft-control-btn start"
-                disabled={isPickInProgress}
+                className="free-agents-btn"
+                onClick={() => window.location.href = '/free-agents'}
               >
-                {isPickInProgress ? 'Drafting...' : 'Confirm Draft'}
-              </button>
-              <button onClick={handleCancelDraft} className="draft-control-btn reset">
-                Cancel
+                View Free Agents
               </button>
             </div>
           </div>
         )}
-      </Modal>
+
+        {/* Right Sidebar - Drafted Players */}
+        <aside className="drafted-players-sidebar">
+          <div className="sidebar-header">
+            <h3>Drafted Players</h3>
+            {isDraftCreated && draftState && draftState.draftPicks && (
+              <span className="total-picks">{draftState.draftPicks.length} total picks</span>
+            )}
+          </div>
+          
+          {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 ? (
+            <div className="drafted-players-container">
+              {draftState.draftPicks
+                .sort((a: any, b: any) => b.pickNumber - a.pickNumber) // Sort newest first (most recent at top)
+                .map((pick: any) => {
+                  const member = state.leagueMembers.find(m => m.id === pick.userId);
+                  const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
+                  
+                  return (
+                    <div key={pick.id} className="drafted-player-card">
+                      <div className="pick-number">#{pick.pickNumber}</div>
+                      <div className="pick-details">
+                        <div className="player-info">
+                          <span 
+                            className="player-name clickable-player-name"
+                            onClick={() => {
+                              const player: Player = {
+                                id: pick.playerId || 0,
+                                name: pick.playerName,
+                                position: pick.playerPosition,
+                                team: pick.playerTeam,
+                                league: pick.playerLeague as 'NFL' | 'NBA' | 'MLB',
+                                stats: {}
+                              };
+                              handlePlayerNameClick(player);
+                            }}
+                          >
+                            {pick.playerName}
+                          </span>
+                          <span className="player-meta">
+                            {pick.playerPosition} • {pick.playerTeam} • 
+                            <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
+                              {pick.playerLeague}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="drafted-by">{memberName}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="no-drafts-message">
+              No players drafted yet
+            </div>
+          )}
+        </aside>
+      </section>
+
+      {/* Player Info Modal */}
+      <PlayerInfoModal
+        isOpen={isPlayerInfoModalOpen}
+        onClose={handleClosePlayerInfo}
+        player={selectedPlayerForInfo}
+      />
+
+      {/* Draft Confirmation Modal */}
+      <DraftConfirmationModal
+        isOpen={isDraftConfirmModalOpen}
+        onClose={handleCancelDraft}
+        onConfirm={handleConfirmDraft}
+        player={selectedPlayerForDraft}
+        isProcessing={isPickInProgress}
+      />
     </div>
   );
 };

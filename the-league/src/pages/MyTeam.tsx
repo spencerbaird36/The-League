@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Player } from '../types/Player';
 import TimerDisplay from '../components/TimerDisplay';
+import PlayerInfoModal from '../components/PlayerInfoModal';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
 
@@ -54,6 +55,8 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const [userRoster, setUserRoster] = useState<UserRosterPlayer[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
+  const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
 
   // Fetch user's roster from backend
   useEffect(() => {
@@ -66,27 +69,25 @@ const MyTeam: React.FC<MyTeamProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        // Get user's drafted players from the draft picks API
-        const response = await apiRequest(`/api/draft/league/${user.league.id}`);
+        // Get user's complete roster from the UserRoster API (includes both draft picks and free agent pickups)
+        const response = await apiRequest(`/api/userroster/user/${user.id}/league/${user.league.id}`);
         
         if (response.ok) {
-          const draftData = await response.json();
+          const rosterData = await response.json();
           
-          // Filter draft picks for the current user and convert to UserRosterPlayer format
-          const userDraftPicks = draftData.draftPicks
-            ?.filter((pick: any) => pick.userId === user.id)
-            ?.map((pick: any) => ({
-              id: pick.id,
-              playerName: pick.playerName,
-              playerPosition: pick.playerPosition,
-              playerTeam: pick.playerTeam,
-              playerLeague: pick.playerLeague,
-              pickNumber: pick.pickNumber,
-              round: pick.round,
-              draftedAt: pick.pickedAt
-            })) || [];
+          // Convert to UserRosterPlayer format
+          const userRosterPlayers = rosterData?.map((player: any) => ({
+            id: player.id,
+            playerName: player.playerName,
+            playerPosition: player.playerPosition,
+            playerTeam: player.playerTeam,
+            playerLeague: player.playerLeague,
+            pickNumber: player.pickNumber,
+            round: player.round,
+            draftedAt: player.draftedAt
+          })) || [];
             
-          setUserRoster(userDraftPicks);
+          setUserRoster(userRosterPlayers);
         } else {
           console.error('Failed to fetch user roster:', response.status);
           setError('Failed to load your roster');
@@ -123,6 +124,17 @@ const MyTeam: React.FC<MyTeamProps> = ({
     league: rosterPlayer.playerLeague as 'NFL' | 'MLB' | 'NBA',
     stats: {} // Empty stats object to match Player interface
   });
+
+  // Handle player name click to show player info
+  const handlePlayerNameClick = (player: Player) => {
+    setSelectedPlayerForInfo(player);
+    setIsPlayerInfoModalOpen(true);
+  };
+
+  const handleClosePlayerInfo = () => {
+    setIsPlayerInfoModalOpen(false);
+    setSelectedPlayerForInfo(null);
+  };
 
   // Separate players by league
   const draftedNFL = userRoster
@@ -231,7 +243,14 @@ const MyTeam: React.FC<MyTeamProps> = ({
                   <td className="roster-position">{slot.position}</td>
                   {slot.player ? (
                     <>
-                      <td className="player-name">{slot.player.name}</td>
+                      <td className="player-name">
+                        <span 
+                          className="clickable-player-name"
+                          onClick={() => handlePlayerNameClick(slot.player!)}
+                        >
+                          {slot.player.name}
+                        </span>
+                      </td>
                       <td className="team">{slot.player.team}</td>
                       <td className="stats">{renderStats(slot.player)}</td>
                     </>
@@ -256,7 +275,14 @@ const MyTeam: React.FC<MyTeamProps> = ({
                   {bench.map((player, index) => (
                     <tr key={`${leagueName}-bench-${index}`} className="bench-row">
                       <td className="roster-position">BN</td>
-                      <td className="player-name">{player.name}</td>
+                      <td className="player-name">
+                        <span 
+                          className="clickable-player-name"
+                          onClick={() => handlePlayerNameClick(player)}
+                        >
+                          {player.name}
+                        </span>
+                      </td>
                       <td className="team">{player.team}</td>
                       <td className="stats">{renderStats(player)}</td>
                     </tr>
@@ -319,6 +345,13 @@ const MyTeam: React.FC<MyTeamProps> = ({
         {renderRosterTable(draftedMLB, "MLB", "⚾", mlbRosterPositions)}
         {renderRosterTable(draftedNBA, "NBA", "🏀", nbaRosterPositions)}
       </div>
+
+      {/* Player Info Modal */}
+      <PlayerInfoModal
+        isOpen={isPlayerInfoModalOpen}
+        onClose={handleClosePlayerInfo}
+        player={selectedPlayerForInfo}
+      />
     </div>
   );
 };

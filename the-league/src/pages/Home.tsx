@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import TimerDisplay from '../components/TimerDisplay';
+import LeagueHomepage from '../components/LeagueHomepage';
 import theLeagueLogo from '../assets/the_league.png';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
@@ -899,28 +899,8 @@ const Home: React.FC<HomeProps> = ({
       );
     }
     
-    // Authenticated user with league - show welcome message
-    return (
-      <div className="league-selection-container">
-        <div className="league-selection-header">
-          <h1>Welcome to {user.league.name}, {user?.firstName}!</h1>
-          <p>
-            You're successfully logged in and part of a league. 
-            Use the navigation above to access drafting, view your team, or check standings.
-          </p>
-          
-          <TimerDisplay
-            isDrafting={isDrafting}
-            isPaused={isPaused}
-            timeRemaining={timeRemaining}
-            timeoutMessage={timeoutMessage}
-            togglePause={togglePause}
-            showStartButton={false}
-            timerStartTime={timerStartTime}
-          />
-        </div>
-      </div>
-    );
+    // Authenticated user with league - show league homepage
+    return <LeagueHomepage user={user} />;
   }
 
   // Unauthenticated user - show registration form

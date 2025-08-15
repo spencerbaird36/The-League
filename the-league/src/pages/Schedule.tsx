@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SeasonSchedule, ScheduleMatchup, WeekSchedule } from '../types/Schedule';
 import './Schedule.css';
 import { apiRequest } from '../config/api';
+import MatchupModal from '../components/MatchupModal';
 
 interface League {
   id: number;
@@ -38,6 +39,8 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [selectedMatchup, setSelectedMatchup] = useState<ScheduleMatchup | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   // Get current week based on today's date and league
   const getCurrentWeek = (league: 'NFL' | 'NBA' | 'MLB'): number => {
@@ -142,6 +145,16 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
     return `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   };
 
+  const handleMatchupClick = (matchup: ScheduleMatchup) => {
+    setSelectedMatchup(matchup);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMatchup(null);
+  };
+
   const renderMatchup = (matchup: ScheduleMatchup) => {
     const isCurrentUserInvolved = 
       matchup.homeTeamId === user?.id || matchup.awayTeamId === user?.id;
@@ -150,6 +163,8 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       <div 
         key={matchup.id} 
         className={`matchup-card ${isCurrentUserInvolved ? 'user-involved' : ''}`}
+        onClick={() => handleMatchupClick(matchup)}
+        style={{ cursor: 'pointer' }}
       >
         <div className="matchup-header">
           <span className="matchup-date">{formatDate(matchup.date)}</span>
@@ -338,6 +353,15 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* Matchup Modal */}
+      <MatchupModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        matchup={selectedMatchup}
+        selectedLeague={selectedLeague}
+        leagueId={user?.league?.id || 0}
+      />
     </div>
   );
 };
