@@ -359,9 +359,23 @@ const Draft: React.FC<DraftProps> = ({
     }
   }, []);
 
-  // WebSocket event handlers
+  // WebSocket event handlers and league joining
   useEffect(() => {
-    if (!user?.league?.id) return;
+    if (!user?.league?.id || !user?.id) return;
+
+    // Join the league group for WebSocket events
+    const joinLeagueGroup = async () => {
+      try {
+        console.log('🔗 Joining league group for WebSocket events...');
+        await signalRService.connect();
+        await signalRService.joinLeague(user.league!.id, user.id);
+        console.log('✅ Successfully joined league group:', user.league!.id);
+      } catch (error) {
+        console.error('❌ Failed to join league group:', error);
+      }
+    };
+
+    joinLeagueGroup();
 
     const handleDraftStarted = (data: any) => {
       console.log('🎯🎯🎯 DRAFT STARTED EVENT RECEIVED 🎯🎯🎯');
