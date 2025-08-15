@@ -145,7 +145,8 @@ namespace FantasyLeague.Api.Hubs
                         CurrentTurn = draft.CurrentTurn,
                         CurrentRound = draft.CurrentRound,
                         CurrentUserId = currentUserId,
-                        DraftOrder = draftOrder
+                        DraftOrder = draftOrder,
+                        TimeLimit = 15 // seconds
                     });
 
                     await Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new

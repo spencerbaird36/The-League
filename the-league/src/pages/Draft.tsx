@@ -122,34 +122,30 @@ const Draft: React.FC<DraftProps> = ({
 
   // Start draft (timer starts automatically)
   const startDraftSession = async () => {
+    if (!user?.league?.id) {
+      alert('No league found. Please make sure you are in a league.');
+      return;
+    }
+
+    if (!draftState) {
+      alert('No draft found. Please create a draft first.');
+      return;
+    }
+
     try {
       console.log('=== START DRAFT SESSION CALLED ===');
       console.log('User:', user);
       console.log('League ID:', user?.league?.id);
       console.log('SignalR Connected:', signalRService.isConnected());
-      console.log('WebSocket Draft State:', webSocketDraftState);
-      console.log('Backend Draft State:', draftState);
+      console.log('Draft State:', draftState);
       
-      if (signalRService.isConnected() && user?.league?.id) {
+      if (signalRService.isConnected()) {
         // Use WebSocket to start draft
         console.log('🚀 Starting draft via WebSocket...');
-        console.log('Calling signalRService.startDraft with league ID:', user.league.id);
-        
         await signalRService.startDraft(user.league.id);
         console.log('✅ WebSocket startDraft call completed');
-        
-        // Wait a moment for the WebSocket events to be processed
-        setTimeout(() => {
-          console.log('WebSocket Draft State after start:', webSocketDraftState);
-          console.log('Is my turn after start:', isMyTurn);
-          console.log('Draft timer active:', draftTimerActive);
-        }, 1000);
-        
       } else {
-        console.log('⚠️ SignalR not connected or no league ID, using REST API fallback');
-        console.log('SignalR connected:', signalRService.isConnected());
-        console.log('User league ID:', user?.league?.id);
-        
+        console.log('⚠️ SignalR not connected, using REST API fallback');
         // Fallback to REST API
         await draftOperations.startDraft();
         console.log('✅ REST API startDraft completed');
@@ -158,10 +154,6 @@ const Draft: React.FC<DraftProps> = ({
       console.log('✅ Draft started successfully');
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      });
       alert(`Failed to start draft: ${error instanceof Error ? error.message : error}`);
     }
   };
@@ -243,6 +235,52 @@ const Draft: React.FC<DraftProps> = ({
     navigate(`/team/${userId}`);
   };
 
+  // Auto-draft logic for timeouts
+  const handleAutoDraft = useCallback(async () => {
+    if (!user?.league?.id || !isMyTurn) return;
+    
+    console.log('Executing auto-draft for timeout...');
+    
+    try {
+      // Use the global WebSocket auto-draft handler from App.tsx if available
+      const webSocketAutoDraftHandler = (window as any).webSocketAutoDraftHandler;
+      if (webSocketAutoDraftHandler && typeof webSocketAutoDraftHandler === 'function') {
+        console.log('Using WebSocket auto-draft handler from App.tsx');
+        await webSocketAutoDraftHandler(user.id, user.league.id);
+        return;
+      }
+      
+      // Fallback to local auto-draft logic
+      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'PG', 'SG', 'SF', 'PF', 'C'];
+      const availablePlayersForAutoDraft = availablePlayers.filter(player =>
+        neededPositions.includes(player.position)
+      );
+      
+      if (availablePlayersForAutoDraft.length > 0) {
+        const randomPlayer = availablePlayersForAutoDraft[Math.floor(Math.random() * availablePlayersForAutoDraft.length)];
+        console.log('Auto-drafting player:', randomPlayer.name);
+        
+        if (signalRService.isConnected()) {
+          await signalRService.makeDraftPick(
+            user.league.id,
+            randomPlayer.id,
+            randomPlayer.name,
+            randomPlayer.position,
+            randomPlayer.team,
+            randomPlayer.league
+          );
+        } else {
+          // Fallback to REST API
+          await draftOperations.makeDraftPick(randomPlayer);
+          // Update legacy roster state for backward compatibility
+          draftPlayer(randomPlayer);
+        }
+      }
+    } catch (error) {
+      console.error('Auto-draft failed:', error);
+    }
+  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, draftOperations, draftPlayer]);
+
   // WebSocket draft timer
   const startDraftTimer = useCallback((timeLimit: number = 15) => {
     console.log('⏰ Starting draft timer with limit:', timeLimit);
@@ -281,7 +319,7 @@ const Draft: React.FC<DraftProps> = ({
     }, 1000);
     
     console.log('Timer setup completed, interval ID:', draftTimerRef.current);
-  }, [isMyTurn, user?.league?.id, handleAutoDraft]);
+  }, [isMyTurn, user?.league?.id, user?.id, handleAutoDraft]);
 
   const stopDraftTimer = useCallback(() => {
     setDraftTimerActive(false);
@@ -290,50 +328,6 @@ const Draft: React.FC<DraftProps> = ({
       draftTimerRef.current = null;
     }
   }, []);
-
-  // Auto-draft logic for timeouts
-  const handleAutoDraft = useCallback(async () => {
-    if (!user?.league?.id || !isMyTurn) return;
-    
-    console.log('Executing auto-draft for timeout...');
-    
-    try {
-      // Use the global WebSocket auto-draft handler from App.tsx if available
-      const webSocketAutoDraftHandler = (window as any).webSocketAutoDraftHandler;
-      if (webSocketAutoDraftHandler && typeof webSocketAutoDraftHandler === 'function') {
-        console.log('Using WebSocket auto-draft handler from App.tsx');
-        await webSocketAutoDraftHandler(user.id, user.league.id);
-        return;
-      }
-      
-      // Fallback to local auto-draft logic
-      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'PG', 'SG', 'SF', 'PF', 'C'];
-      const availablePlayersForAutoDraft = availablePlayers.filter(player =>
-        neededPositions.includes(player.position)
-      );
-      
-      if (availablePlayersForAutoDraft.length > 0) {
-        const randomPlayer = availablePlayersForAutoDraft[Math.floor(Math.random() * availablePlayersForAutoDraft.length)];
-        console.log('Auto-drafting player:', randomPlayer.name);
-        
-        if (signalRService.isConnected()) {
-          await signalRService.makeDraftPick(
-            user.league.id,
-            randomPlayer.id,
-            randomPlayer.name,
-            randomPlayer.position,
-            randomPlayer.team,
-            randomPlayer.league
-          );
-        } else {
-          // Fallback to legacy draft method
-          await makeDraftPick(randomPlayer);
-        }
-      }
-    } catch (error) {
-      console.error('Auto-draft failed:', error);
-    }
-  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, makeDraftPick]);
 
   // WebSocket event handlers
   useEffect(() => {
@@ -492,22 +486,14 @@ const Draft: React.FC<DraftProps> = ({
           </div>
         )}
         
-        {/* Draft Management Buttons */}
-        {!isDraftCreated && (
-          <div className="auto-draft-section">
-            <div className="draft-management-buttons">
-              <button onClick={createDraft} className="begin-draft-btn">
-                Create Draft
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Draft Status */}
+        {/* Draft Management */}
         <div className="draft-status-info">
           {!isDraftCreated && (
             <div className="draft-setup">
               <p>No draft created yet for this league.</p>
+              <button onClick={createDraft} className="begin-draft-btn">
+                Create Draft
+              </button>
             </div>
           )}
           
@@ -525,9 +511,6 @@ const Draft: React.FC<DraftProps> = ({
               <p>
                 Draft in progress - Round {webSocketDraftState?.CurrentRound || draftState?.currentRound || 1}, 
                 Pick {(webSocketDraftState?.CurrentTurn || draftState?.currentTurn || 0) + 1}
-              </p>
-              <p>
-                {signalRService.isConnected() ? '🟢 Live WebSocket Draft' : '🟡 REST API Draft'}
               </p>
               {(isMyTurn || isCurrentUserTurn) && (
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
