@@ -122,31 +122,42 @@ const Draft: React.FC<DraftProps> = ({
 
   // Start draft (timer starts automatically)
   const startDraftSession = async () => {
+    console.log('=== START DRAFT SESSION CALLED ===');
+    console.log('User:', user);
+    console.log('League ID:', user?.league?.id);
+    console.log('SignalR Connected:', signalRService.isConnected());
+    console.log('Draft State:', draftState);
+    console.log('Draft State Active:', draftState?.isActive);
+    
     if (!user?.league?.id) {
+      console.error('❌ No league found');
       alert('No league found. Please make sure you are in a league.');
       return;
     }
 
     if (!draftState) {
+      console.error('❌ No draft found');
       alert('No draft found. Please create a draft first.');
       return;
     }
 
+    if (draftState.isActive) {
+      console.error('❌ Draft already active');
+      alert('Draft is already active.');
+      return;
+    }
+
     try {
-      console.log('=== START DRAFT SESSION CALLED ===');
-      console.log('User:', user);
-      console.log('League ID:', user?.league?.id);
-      console.log('SignalR Connected:', signalRService.isConnected());
-      console.log('Draft State:', draftState);
-      
       if (signalRService.isConnected()) {
         // Use WebSocket to start draft
         console.log('🚀 Starting draft via WebSocket...');
+        console.log('Calling signalRService.startDraft with league ID:', user.league.id);
         await signalRService.startDraft(user.league.id);
         console.log('✅ WebSocket startDraft call completed');
       } else {
         console.log('⚠️ SignalR not connected, using REST API fallback');
         // Fallback to REST API
+        console.log('Calling draftOperations.startDraft...');
         await draftOperations.startDraft();
         console.log('✅ REST API startDraft completed');
       }
@@ -154,6 +165,10 @@ const Draft: React.FC<DraftProps> = ({
       console.log('✅ Draft started successfully');
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       alert(`Failed to start draft: ${error instanceof Error ? error.message : error}`);
     }
   };
@@ -188,9 +203,20 @@ const Draft: React.FC<DraftProps> = ({
   }, [draftOperations, draftPlayer, user?.league?.id]);
 
   const handlePlayerClick = (player: Player) => {
-    // Only allow player selection if it's the user's turn (in WebSocket mode) or if not using WebSocket
-    if (signalRService.isConnected() && !isMyTurn) {
+    console.log('🎯 Player clicked:', player.name);
+    console.log('Is Current User Turn:', isCurrentUserTurn);
+    console.log('Is Draft Active:', isDraftActive);
+    console.log('Is My Turn (WebSocket):', isMyTurn);
+    console.log('SignalR Connected:', signalRService.isConnected());
+    
+    // Check if it's the user's turn and draft is active
+    if (!isCurrentUserTurn) {
       alert("It's not your turn to draft!");
+      return;
+    }
+    
+    if (!isDraftActive) {
+      alert("Draft is not active!");
       return;
     }
     
@@ -226,9 +252,13 @@ const Draft: React.FC<DraftProps> = ({
     }
   };
 
-  // Check if it's the current user's turn
+  // Check if it's the current user's turn (WebSocket mode takes precedence)
   const isCurrentUserTurn = draftState && user ? 
-    draftOperations.isUserTurn(user.id) : false;
+    (signalRService.isConnected() ? isMyTurn : draftOperations.isUserTurn(user.id)) : false;
+
+  // Check if draft is active (WebSocket mode takes precedence)
+  const isDraftActive = signalRService.isConnected() ? 
+    !!webSocketDraftState : draftState?.isActive;
 
   // Handle clicking on a manager's tile to view their team
   const handleManagerClick = (userId: number) => {
@@ -334,10 +364,12 @@ const Draft: React.FC<DraftProps> = ({
     if (!user?.league?.id) return;
 
     const handleDraftStarted = (data: any) => {
-      console.log('🎯 Draft started via WebSocket event:', data);
+      console.log('🎯🎯🎯 DRAFT STARTED EVENT RECEIVED 🎯🎯🎯');
+      console.log('Draft started via WebSocket event:', data);
       console.log('Current user ID:', user.id);
       console.log('Current turn user ID:', data.CurrentUserId);
       console.log('Is my turn:', data.CurrentUserId === user.id);
+      console.log('Event data:', JSON.stringify(data, null, 2));
       
       setWebSocketDraftState(data);
       const myTurn = data.CurrentUserId === user.id;
@@ -351,6 +383,8 @@ const Draft: React.FC<DraftProps> = ({
         // Start timer for everyone to see the countdown, even if it's not their turn
         startDraftTimer(data.TimeLimit || 15);
       }
+      
+      console.log('✅ Draft started event processing complete');
     };
 
     const handleTurnChanged = (data: any) => {
@@ -717,7 +751,7 @@ const Draft: React.FC<DraftProps> = ({
                           <button 
                             className="player-name-button"
                             onClick={() => handlePlayerClick(player)}
-                            disabled={!isCurrentUserTurn || !draftState?.isActive}
+                            disabled={!isCurrentUserTurn || !isDraftActive}
                           >
                             {player.name}
                           </button>
@@ -735,9 +769,9 @@ const Draft: React.FC<DraftProps> = ({
                         </td>
                         <td>
                           <button
-                            className={`draft-btn ${!isCurrentUserTurn || !draftState?.isActive ? 'disabled' : ''}`}
+                            className={`draft-btn ${!isCurrentUserTurn || !isDraftActive ? 'disabled' : ''}`}
                             onClick={() => handlePlayerClick(player)}
-                            disabled={!isCurrentUserTurn || !draftState?.isActive}
+                            disabled={!isCurrentUserTurn || !isDraftActive}
                           >
                             Draft
                           </button>

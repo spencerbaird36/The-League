@@ -66,8 +66,13 @@ class SignalRService {
 
     // Draft event listeners
     this.connection.on('DraftStarted', (data: any) => {
-      console.log('Draft started:', data);
-      this.draftStartedCallbacks.forEach(callback => callback(data));
+      console.log('🔥🔥🔥 SIGNALR: Draft started event received:', data);
+      console.log('Draft started callback count:', this.draftStartedCallbacks.length);
+      this.draftStartedCallbacks.forEach((callback, index) => {
+        console.log(`Calling draft started callback ${index}`);
+        callback(data);
+      });
+      console.log('🔥🔥🔥 SIGNALR: All draft started callbacks executed');
     });
 
     this.connection.on('TurnChanged', (data: any) => {
@@ -215,15 +220,21 @@ class SignalRService {
 
   // Draft methods
   async startDraft(leagueId: number): Promise<void> {
+    console.log('🚀🚀🚀 SIGNALR: Starting draft for league:', leagueId);
+    console.log('Connection state:', this.connection?.state);
+    console.log('Connection object:', this.connection);
+    
     if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+      console.error('❌ SignalR connection not ready');
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
 
     try {
+      console.log('📡 Invoking StartDraft on SignalR hub...');
       await this.connection.invoke('StartDraft', leagueId.toString());
-      console.log('Draft started successfully');
+      console.log('✅ Draft started successfully via SignalR');
     } catch (err) {
-      console.error('Error starting draft:', err);
+      console.error('❌ Error starting draft via SignalR:', err);
       throw err;
     }
   }
