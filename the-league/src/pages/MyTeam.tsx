@@ -66,11 +66,27 @@ const MyTeam: React.FC<MyTeamProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const response = await apiRequest(`/api/userroster/user/${user.id}/league/${user.league.id}`);
+        // Get user's drafted players from the draft picks API
+        const response = await apiRequest(`/api/draft/league/${user.league.id}`);
         
         if (response.ok) {
-          const rosterData = await response.json();
-          setUserRoster(rosterData);
+          const draftData = await response.json();
+          
+          // Filter draft picks for the current user and convert to UserRosterPlayer format
+          const userDraftPicks = draftData.draftPicks
+            ?.filter((pick: any) => pick.userId === user.id)
+            ?.map((pick: any) => ({
+              id: pick.id,
+              playerName: pick.playerName,
+              playerPosition: pick.playerPosition,
+              playerTeam: pick.playerTeam,
+              playerLeague: pick.playerLeague,
+              pickNumber: pick.pickNumber,
+              round: pick.round,
+              draftedAt: pick.pickedAt
+            })) || [];
+            
+          setUserRoster(userDraftPicks);
         } else {
           console.error('Failed to fetch user roster:', response.status);
           setError('Failed to load your roster');

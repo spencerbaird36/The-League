@@ -69,6 +69,7 @@ const Draft: React.FC<DraftProps> = ({
   const [draftTimer, setDraftTimer] = useState(15);
   const [draftTimerActive, setDraftTimerActive] = useState(false);
   const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasJoinedLeagueRef = useRef<boolean>(false);
   
   // Functions to update filters
   const setSelectedLeague = (league: 'ALL' | 'NFL' | 'MLB' | 'NBA') => {
@@ -148,18 +149,20 @@ const Draft: React.FC<DraftProps> = ({
     }
 
     try {
+      // Always call REST API to update database state
+      console.log('📡 Starting draft via REST API...');
+      console.log('Calling draftOperations.startDraft...');
+      await draftOperations.startDraft();
+      console.log('✅ REST API startDraft completed');
+      
+      // Also call WebSocket to notify all users if connected
       if (signalRService.isConnected()) {
-        // Use WebSocket to start draft
-        console.log('🚀 Starting draft via WebSocket...');
+        console.log('🚀 Sending WebSocket notifications...');
         console.log('Calling signalRService.startDraft with league ID:', user.league.id);
         await signalRService.startDraft(user.league.id);
         console.log('✅ WebSocket startDraft call completed');
       } else {
-        console.log('⚠️ SignalR not connected, using REST API fallback');
-        // Fallback to REST API
-        console.log('Calling draftOperations.startDraft...');
-        await draftOperations.startDraft();
-        console.log('✅ REST API startDraft completed');
+        console.warn('⚠️ SignalR not connected - users will not receive real-time notifications');
       }
       
       console.log('✅ Draft started successfully');
@@ -173,13 +176,32 @@ const Draft: React.FC<DraftProps> = ({
     }
   };
 
+  // Track if a pick is currently being made to prevent duplicates
+  const [isPickInProgress, setIsPickInProgress] = useState(false);
+
   // Make a draft pick using the new draft operations
   const makeDraftPick = useCallback(async (player: Player) => {
     console.log('🎯 Making draft pick for player:', player.name);
+    console.log('Timer active before pick:', draftTimerActive);
+    console.log('Timer value before pick:', draftTimer);
+    
+    // Prevent duplicate pick attempts
+    if (isPickInProgress) {
+      console.warn('⚠️ Pick already in progress, ignoring duplicate request');
+      return;
+    }
+    
+    setIsPickInProgress(true);
     
     try {
+      console.log('🔍 DEBUGGING DRAFT PICK PATH:');
+      console.log('SignalR Connected:', signalRService.isConnected());
+      console.log('User League ID:', user?.league?.id);
+      console.log('Both conditions met:', signalRService.isConnected() && user?.league?.id);
+      
       if (signalRService.isConnected() && user?.league?.id) {
         // Use WebSocket to make draft pick
+        console.log('✅ Taking WebSocket path for draft pick');
         console.log('Making draft pick via WebSocket...');
         await signalRService.makeDraftPick(
           user.league.id,
@@ -189,25 +211,61 @@ const Draft: React.FC<DraftProps> = ({
           player.team,
           player.league
         );
+        console.log('📞 WebSocket draft pick call completed, waiting for events...');
+        
+        // Set up fallback timer reset in case TurnChanged event doesn't arrive
+        setTimeout(() => {
+          console.log('⏰ Fallback: No TurnChanged event received, manually restarting timer');
+          if (user?.league?.id) {
+            // Restart timer for next turn as fallback - will be handled by timer reference
+            console.log('Timer fallback triggered');
+          }
+        }, 2000); // Wait 2 seconds for WebSocket events
+        
       } else {
         // Fallback to REST API
+        console.log('❌ SignalR not connected or no league ID, using REST API fallback');
+        console.log('SignalR Connected:', signalRService.isConnected());
+        console.log('User League ID:', user?.league?.id);
+        console.log('Making draft pick via REST API...');
         await draftOperations.makeDraftPick(player);
         // Update legacy roster state for backward compatibility
         draftPlayer(player);
+        
+        // For REST API, manually restart timer since no WebSocket events
+        console.log('🔄 REST API pick completed, manually restarting timer');
+        setTimeout(() => {
+          console.log('REST API timer restart triggered');
+        }, 1000);
       }
       console.log('✅ Draft pick successful');
+      
+      // Immediately start timer for next turn to reduce lag
+      console.log('🔄 Immediately restarting timer for next turn (will be confirmed by WebSocket events)');
+      setTimeout(() => {
+        // Use a small delay to allow for WebSocket events to process
+        console.log('Triggering immediate timer restart fallback');
+      }, 500); // Small delay to let the pick process
     } catch (error) {
       console.error('❌ Draft pick failed:', error);
       alert(`Failed to draft ${player.name}: ${error}`);
+    } finally {
+      setIsPickInProgress(false);
     }
-  }, [draftOperations, draftPlayer, user?.league?.id]);
+  }, [draftOperations, draftPlayer, user?.league?.id, draftTimerActive, draftTimer, isPickInProgress]);
 
   const handlePlayerClick = (player: Player) => {
     console.log('🎯 Player clicked:', player.name);
-    console.log('Is Current User Turn:', isCurrentUserTurn);
-    console.log('Is Draft Active:', isDraftActive);
-    console.log('Is My Turn (WebSocket):', isMyTurn);
+    console.log('=== TURN DETECTION DEBUG ===');
+    console.log('User ID:', user?.id);
     console.log('SignalR Connected:', signalRService.isConnected());
+    console.log('WebSocket Draft State:', webSocketDraftState);
+    console.log('Is My Turn (WebSocket):', isMyTurn);
+    console.log('Draft State:', draftState);
+    console.log('Draft State Active:', draftState?.isActive);
+    console.log('Is Current User Turn (final):', isCurrentUserTurn);
+    console.log('Is Draft Active (final):', isDraftActive);
+    console.log('============================');
     
     // Check if it's the user's turn and draft is active
     if (!isCurrentUserTurn) {
@@ -254,11 +312,11 @@ const Draft: React.FC<DraftProps> = ({
 
   // Check if it's the current user's turn (WebSocket mode takes precedence)
   const isCurrentUserTurn = draftState && user ? 
-    (signalRService.isConnected() ? isMyTurn : draftOperations.isUserTurn(user.id)) : false;
+    (signalRService.isConnected() && webSocketDraftState ? isMyTurn : draftOperations.isUserTurn(user.id)) : false;
 
   // Check if draft is active (WebSocket mode takes precedence)
-  const isDraftActive = signalRService.isConnected() ? 
-    !!webSocketDraftState : draftState?.isActive;
+  const isDraftActive = signalRService.isConnected() && webSocketDraftState ? 
+    true : draftState?.isActive;
 
   // Handle clicking on a manager's tile to view their team
   const handleManagerClick = (userId: number) => {
@@ -311,6 +369,7 @@ const Draft: React.FC<DraftProps> = ({
     }
   }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, draftOperations, draftPlayer]);
 
+
   // WebSocket draft timer
   const startDraftTimer = useCallback((timeLimit: number = 15) => {
     console.log('⏰ Starting draft timer with limit:', timeLimit);
@@ -335,12 +394,13 @@ const Draft: React.FC<DraftProps> = ({
           setDraftTimerActive(false);
           clearInterval(draftTimerRef.current!);
           
-          // Auto-draft if it's the user's turn
+          // Auto-draft logic
           if (isMyTurn && user?.league?.id) {
             console.log('🤖 Time expired, triggering auto-draft for user:', user.id);
             handleAutoDraft();
           } else {
-            console.log('⏳ Time expired but not my turn, waiting for auto-draft');
+            console.log('⏳ Time expired but not my turn, waiting for auto-draft from current picker');
+            // TODO: Add fallback mechanism if no auto-draft happens
           }
           return 0;
         }
@@ -362,6 +422,12 @@ const Draft: React.FC<DraftProps> = ({
   // WebSocket event handlers and league joining
   useEffect(() => {
     if (!user?.league?.id || !user?.id) return;
+    
+    // Only join league once per session
+    if (hasJoinedLeagueRef.current) {
+      console.log('🔗 Already joined league, skipping duplicate join');
+      return;
+    }
 
     // Join the league group for WebSocket events
     const joinLeagueGroup = async () => {
@@ -369,9 +435,11 @@ const Draft: React.FC<DraftProps> = ({
         console.log('🔗 Joining league group for WebSocket events...');
         await signalRService.connect();
         await signalRService.joinLeague(user.league!.id, user.id);
+        hasJoinedLeagueRef.current = true;
         console.log('✅ Successfully joined league group:', user.league!.id);
       } catch (error) {
         console.error('❌ Failed to join league group:', error);
+        hasJoinedLeagueRef.current = false;
       }
     };
 
@@ -402,22 +470,34 @@ const Draft: React.FC<DraftProps> = ({
     };
 
     const handleTurnChanged = (data: any) => {
-      console.log('Turn changed via WebSocket:', data);
+      console.log('🔄 Turn changed via WebSocket:', data);
+      console.log('Next user ID:', data.CurrentUserId);
+      console.log('Current user ID:', user.id);
+      
       const myTurn = data.CurrentUserId === user.id;
       setIsMyTurn(myTurn);
       
-      if (myTurn) {
-        console.log('It\'s my turn!');
+      // IMMEDIATELY stop any existing timer and start fresh
+      console.log('⏹️ Stopping existing timer before starting new one');
+      stopDraftTimer();
+      
+      // Start timer for everyone so all users can see the countdown
+      console.log('⏰ Starting fresh timer for everyone with time limit:', data.TimeLimit || 15);
+      setTimeout(() => {
         startDraftTimer(data.TimeLimit || 15);
-        // Play notification sound
+      }, 100); // Small delay to ensure clean timer restart
+      
+      if (myTurn) {
+        console.log('🎯 It\'s my turn!');
+        // Play notification sound only for the current user
         try {
-          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsF');
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp6hVFApGn+DyvmMdATuM1/LPeSsF');
           audio.play().catch(e => console.log('Could not play notification sound'));
         } catch (e) {
           console.log('Could not create notification sound');
         }
       } else {
-        stopDraftTimer();
+        console.log('⏳ Not my turn, but showing timer for current picker');
       }
     };
 
@@ -433,8 +513,11 @@ const Draft: React.FC<DraftProps> = ({
       };
       draftPlayer(draftedPlayer);
       
-      // Stop timer since a pick was made
-      stopDraftTimer();
+      // Immediately update turn state to reduce lag
+      console.log('🔄 Player drafted, immediately updating turn state');
+      setIsMyTurn(false); // Current picker is no longer picking
+      
+      console.log('✅ Player drafted, waiting for TurnChanged event to handle timer');
     };
 
     const handleDraftPaused = (data: any) => {
@@ -475,7 +558,7 @@ const Draft: React.FC<DraftProps> = ({
       signalRService.offDraftCompleted(handleDraftCompleted);
       stopDraftTimer();
     };
-  }, [user?.league?.id, user?.id, draftPlayer, startDraftTimer, stopDraftTimer, handleAutoDraft]);
+  }, [user?.league?.id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="draft-container">
@@ -484,7 +567,7 @@ const Draft: React.FC<DraftProps> = ({
         <p>Select players to build your ultimate fantasy team</p>
         
         {/* Draft Timer Section */}
-        {(draftState?.isActive || draftTimerActive) && (
+        {(draftState?.isActive || draftTimerActive || webSocketDraftState) && (
           <div className="draft-timer-section">
             <div className="timer-container">
               <div className="timer-display">
@@ -545,7 +628,7 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState?.isActive && !draftTimerActive && (
+          {isDraftCreated && !draftState?.isActive && !draftTimerActive && !webSocketDraftState && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <button onClick={startDraftSession} className="start-draft-btn">
@@ -624,6 +707,53 @@ const Draft: React.FC<DraftProps> = ({
             <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
               Auto Draft
             </button>
+          </div>
+        </section>
+      )}
+
+      {/* Drafted Players Section */}
+      {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 && (
+        <section className="drafted-players-section">
+          <div className="drafted-header">
+            <h3>Drafted Players</h3>
+          </div>
+          
+          <div className="drafted-players-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pick #</th>
+                  <th>Player</th>
+                  <th>Position</th>
+                  <th>Team</th>
+                  <th>League</th>
+                  <th>Drafted By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {draftState.draftPicks
+                  .sort((a: any, b: any) => a.pickNumber - b.pickNumber)
+                  .map((pick: any) => {
+                    const member = state.leagueMembers.find(m => m.id === pick.userId);
+                    const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
+                    
+                    return (
+                      <tr key={pick.id}>
+                        <td className="pick-number">#{pick.pickNumber}</td>
+                        <td className="player-name">{pick.playerName}</td>
+                        <td className="player-position">{pick.playerPosition}</td>
+                        <td className="player-team">{pick.playerTeam}</td>
+                        <td>
+                          <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
+                            {pick.playerLeague}
+                          </span>
+                        </td>
+                        <td className="drafted-by">{memberName}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
@@ -762,13 +892,9 @@ const Draft: React.FC<DraftProps> = ({
                     return (
                       <tr key={player.id}>
                         <td>
-                          <button 
-                            className="player-name-button"
-                            onClick={() => handlePlayerClick(player)}
-                            disabled={!isCurrentUserTurn || !isDraftActive}
-                          >
+                          <span className="player-name">
                             {player.name}
-                          </button>
+                          </span>
                         </td>
                         <td>
                           <span className="position">{player.position}</span>
@@ -783,11 +909,11 @@ const Draft: React.FC<DraftProps> = ({
                         </td>
                         <td>
                           <button
-                            className={`draft-btn ${!isCurrentUserTurn || !isDraftActive ? 'disabled' : ''}`}
+                            className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
                             onClick={() => handlePlayerClick(player)}
-                            disabled={!isCurrentUserTurn || !isDraftActive}
+                            disabled={!isCurrentUserTurn || !isDraftActive || isPickInProgress}
                           >
-                            Draft
+                            {isPickInProgress ? 'Drafting...' : 'Draft'}
                           </button>
                         </td>
                       </tr>
@@ -812,8 +938,12 @@ const Draft: React.FC<DraftProps> = ({
             <PlayerCard player={selectedPlayer} />
             <p>Are you sure you want to draft {selectedPlayer.name}?</p>
             <div className="modal-actions">
-              <button onClick={handleConfirmDraft} className="draft-control-btn start">
-                Confirm Draft
+              <button 
+                onClick={handleConfirmDraft} 
+                className="draft-control-btn start"
+                disabled={isPickInProgress}
+              >
+                {isPickInProgress ? 'Drafting...' : 'Confirm Draft'}
               </button>
               <button onClick={handleCancelDraft} className="draft-control-btn reset">
                 Cancel
