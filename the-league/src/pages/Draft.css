@@ -1819,3 +1819,210 @@ tbody tr:hover td {
     font-size: 0.85rem;
   }
 }
+
+/* Drafted Players Section */
+.drafted-players-section {
+  margin: 40px 0;
+  z-index: 1;
+  position: relative;
+}
+
+.drafted-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.drafted-header h3 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.team-card {
+  background: rgba(245, 242, 232, 0.08);
+  border: 2px solid var(--border-cream);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.team-card:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.15);
+}
+
+.team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-cream);
+}
+
+.team-position {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.team-info {
+  flex: 1;
+  margin-left: 12px;
+}
+
+.team-name {
+  font-weight: 600;
+  color: var(--text-cream);
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+.team-username {
+  color: var(--text-cream-muted);
+  font-size: 0.9rem;
+}
+
+.team-pick-count {
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--accent-gold);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.team-picks {
+  min-height: 60px;
+}
+
+.no-picks {
+  color: var(--text-cream-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  border: 2px dashed var(--border-cream);
+  border-radius: 8px;
+}
+
+.picks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pick-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  gap: 8px;
+  align-items: center;
+  background: rgba(245, 242, 232, 0.05);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-cream);
+  transition: all 0.2s ease;
+}
+
+.pick-item:hover {
+  background: rgba(245, 242, 232, 0.1);
+  border-color: var(--accent-gold);
+}
+
+.pick-number {
+  background: rgba(212, 175, 55, 0.3);
+  color: var(--accent-gold);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.player-name {
+  color: var(--text-cream);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.player-position {
+  background: rgba(245, 242, 232, 0.15);
+  color: var(--text-cream);
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  min-width: 30px;
+  text-align: center;
+}
+
+.player-team {
+  color: var(--text-cream-muted);
+  font-size: 0.8rem;
+}
+
+.player-league {
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-align: center;
+  min-width: 30px;
+}
+
+.player-league.nfl {
+  background: rgba(255, 87, 51, 0.2);
+  color: #ff5733;
+}
+
+.player-league.mlb {
+  background: rgba(51, 122, 255, 0.2);
+  color: #337aff;
+}
+
+.player-league.nba {
+  background: rgba(255, 165, 0, 0.2);
+  color: #ffa500;
+}
+
+@media (max-width: 768px) {
+  .teams-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .team-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .pick-item {
+    grid-template-columns: auto 1fr;
+    gap: 4px;
+  }
+  
+  .player-position,
+  .player-team,
+  .player-league {
+    display: none;
+  }
+}
