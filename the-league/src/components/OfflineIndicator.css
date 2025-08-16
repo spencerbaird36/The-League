@@ -1,0 +1,97 @@
+.offline-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.offline-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(220, 53, 69, 0.2);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #dc3545;
+}
+
+.offline-dot {
+  font-size: 0.6rem;
+  animation: pulse 2s infinite;
+}
+
+.offline-text {
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.install-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.install-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+.install-icon {
+  font-size: 0.9rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .offline-indicator {
+    gap: 8px;
+  }
+
+  .offline-status,
+  .install-button {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  .install-text,
+  .offline-text {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .offline-indicator {
+    position: absolute;
+    top: 8px;
+    right: 60px;
+    gap: 4px;
+  }
+
+  .offline-status,
+  .install-button {
+    padding: 4px 8px;
+    min-width: auto;
+  }
+}

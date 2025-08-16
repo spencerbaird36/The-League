@@ -194,9 +194,13 @@
 .clickable-player-name {
   cursor: pointer;
   transition: all 0.3s ease;
-  padding: 2px 4px;
+  padding: 8px 4px;
+  margin: -8px -4px;
   border-radius: 4px;
   text-decoration: none;
+  display: inline-block;
+  min-height: 24px;
+  line-height: 1.2;
 }
 
 .clickable-player-name:hover {
@@ -374,6 +378,16 @@
   }
 }
 
+@media (max-width: 768px) {
+  .clickable-player-name {
+    padding: 12px 8px;
+    margin: -12px -8px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
 @media (max-width: 480px) {
   .my-team-container {
     padding: 15px 10px;
@@ -383,11 +397,51 @@
     padding: 20px 15px;
   }
   
-  .team-table th,
+  /* Convert tables to card layout on mobile */
+  .team-table,
+  .roster-table {
+    display: block;
+  }
+  
+  .team-table thead,
+  .roster-table thead {
+    display: none;
+  }
+  
+  .team-table tbody,
+  .roster-table tbody {
+    display: block;
+  }
+  
+  .team-table tr,
+  .roster-table tr {
+    display: block;
+    background: rgba(245, 242, 232, 0.05);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 16px;
+  }
+  
   .team-table td,
-  .roster-table th,
   .roster-table td {
-    padding: 12px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border: none;
+    font-size: 0.9rem;
+  }
+  
+  .team-table td:before,
+  .roster-table td:before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--accent-gold);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
   }
   
   .stats {

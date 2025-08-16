@@ -3,6 +3,7 @@ import { Player } from '../types/Player';
 import { players } from '../data/players';
 import PlayerInfoModal from '../components/PlayerInfoModal';
 import { useDraftOperations } from '../hooks/useDraftOperations';
+import { usePWA } from '../hooks/usePWA';
 import { apiRequest } from '../config/api';
 import './FreeAgents.css';
 
@@ -29,6 +30,7 @@ interface FreeAgentsProps {
 
 const FreeAgents: React.FC<FreeAgentsProps> = ({ user }) => {
   const draftOperations = useDraftOperations(user);
+  const { isOnline, saveOfflineData, registerBackgroundSync } = usePWA();
   
   // Filter states
   const [selectedLeague, setSelectedLeague] = useState<'ALL' | 'NFL' | 'MLB' | 'NBA'>('ALL');
@@ -110,22 +112,48 @@ const FreeAgents: React.FC<FreeAgentsProps> = ({ user }) => {
     setIsPickingUp(true);
     setPickupMessage('');
 
+    const playerPickupData = {
+      userId: user.id,
+      leagueId: user.league.id,
+      playerId: player.id,
+      playerName: player.name,
+      playerPosition: player.position,
+      playerTeam: player.team,
+      playerLeague: player.league
+    };
+
     try {
+      if (!isOnline) {
+        // Handle offline pickup
+        saveOfflineData('pendingTransactions', playerPickupData);
+        setPickupMessage(`${player.name} will be picked up when you're back online!`);
+        
+        // Add player to local picked up players to remove them from available players
+        setLocalPickedUpPlayers(prev => {
+          const newSet = new Set(prev);
+          newSet.add(player.id);
+          return newSet;
+        });
+
+        // Register background sync for when connection is restored
+        try {
+          await registerBackgroundSync('transaction-sync');
+        } catch (syncError) {
+          console.warn('Background sync not supported:', syncError);
+        }
+
+        // Clear message after 5 seconds for offline
+        setTimeout(() => setPickupMessage(''), 5000);
+        return;
+      }
+
       // Call API to add player to user's team
       const response = await apiRequest('/api/teams/pickup-player', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.id,
-          leagueId: user.league.id,
-          playerId: player.id,
-          playerName: player.name,
-          playerPosition: player.position,
-          playerTeam: player.team,
-          playerLeague: player.league
-        }),
+        body: JSON.stringify(playerPickupData),
       });
 
       if (response.ok) {
@@ -146,7 +174,19 @@ const FreeAgents: React.FC<FreeAgentsProps> = ({ user }) => {
       }
     } catch (error) {
       console.error('Error picking up player:', error);
-      setPickupMessage(`Error picking up ${player.name}. Please try again.`);
+      
+      if (!isOnline) {
+        // If offline, save for later sync
+        saveOfflineData('pendingTransactions', playerPickupData);
+        setPickupMessage(`${player.name} saved for pickup when online!`);
+        setLocalPickedUpPlayers(prev => {
+          const newSet = new Set(prev);
+          newSet.add(player.id);
+          return newSet;
+        });
+      } else {
+        setPickupMessage(`Error picking up ${player.name}. Please try again.`);
+      }
     } finally {
       setIsPickingUp(false);
     }
@@ -344,7 +384,7 @@ const FreeAgents: React.FC<FreeAgentsProps> = ({ user }) => {
                 <tbody>
                   {filteredPlayers.map((player: Player) => (
                     <tr key={player.id}>
-                      <td>
+                      <td data-label="Player">
                         <span 
                           className="player-name clickable-player-name"
                           onClick={() => handlePlayerNameClick(player)}
@@ -352,18 +392,18 @@ const FreeAgents: React.FC<FreeAgentsProps> = ({ user }) => {
                           {player.name}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Position">
                         <span className="position">{player.position}</span>
                       </td>
-                      <td>
+                      <td data-label="Team">
                         <span className="team">{player.team}</span>
                       </td>
-                      <td>
+                      <td data-label="League">
                         <span className={`league-badge ${player.league.toLowerCase()}`}>
                           {player.league}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Action">
                         <button
                           className={`pickup-btn ${(isPickingUp || !isDraftCompleted) ? 'disabled' : ''}`}
                           onClick={() => handlePickupPlayer(player)}

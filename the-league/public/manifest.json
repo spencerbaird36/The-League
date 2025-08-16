@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "name": "Fantasy Sports League",
+  "short_name": "FantasyLeague",
+  "description": "Manage your fantasy sports teams across NFL, MLB, and NBA",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,16 +11,60 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "maskable any"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "maskable any"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "theme_color": "#daa520",
+  "background_color": "#1e3a5f",
+  "lang": "en-US",
+  "categories": ["sports", "games", "entertainment"],
+  "shortcuts": [
+    {
+      "name": "My Team",
+      "short_name": "Team",
+      "description": "View your fantasy team roster",
+      "url": "/my-team",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Draft",
+      "short_name": "Draft",
+      "description": "Join the draft room",
+      "url": "/draft",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Free Agents",
+      "short_name": "Free Agents",
+      "description": "Browse available free agents",
+      "url": "/free-agents",
+      "icons": [
+        {
+          "src": "logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

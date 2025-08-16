@@ -1,0 +1,113 @@
+.pull-to-refresh-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.pull-to-refresh-indicator {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: var(--surface-dark);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  min-width: 140px;
+}
+
+.pull-to-refresh-indicator.visible {
+  opacity: 1;
+}
+
+.pull-to-refresh-indicator.refreshing {
+  animation: refreshPulse 2s infinite;
+}
+
+.refresh-icon {
+  font-size: 1.5rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pull-to-refresh-indicator.refreshing .refresh-icon {
+  animation: refreshSpin 1s linear infinite;
+}
+
+.refresh-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-cream);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.pull-to-refresh-content {
+  width: 100%;
+}
+
+/* Animations */
+@keyframes refreshSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes refreshPulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(218, 165, 32, 0.3);
+  }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  .pull-to-refresh-indicator {
+    top: -70px;
+    padding: 12px;
+    min-width: 120px;
+  }
+
+  .refresh-icon {
+    font-size: 1.2rem;
+  }
+
+  .refresh-text {
+    font-size: 0.75rem;
+  }
+}
+
+/* Prevent text selection during pull gesture */
+.pull-to-refresh-container * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* iOS-specific improvements */
+@supports (-webkit-overflow-scrolling: touch) {
+  .pull-to-refresh-container {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Disable native iOS pull-to-refresh on specific elements */
+.pull-to-refresh-container {
+  overscroll-behavior-y: contain;
+}

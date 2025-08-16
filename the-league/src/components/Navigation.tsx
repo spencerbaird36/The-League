@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDraft } from '../context/DraftContext';
+import OfflineIndicator from './OfflineIndicator';
 import './Navigation.css';
 
 interface League {
@@ -36,6 +37,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const location = useLocation();
   const { state: draftState } = useDraft();
   const [showLoginForm, setShowLoginForm] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -72,6 +74,15 @@ const Navigation: React.FC<NavigationProps> = ({
   const handleLogout = () => {
     logout();
     setShowLoginForm(false);
+    setMobileMenuOpen(false);
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
   };
 
   // Determine draft navigation text based on draft completion status
@@ -84,16 +95,31 @@ const Navigation: React.FC<NavigationProps> = ({
         <Link 
           to="/" 
           className={`nav-logo ${isActive('/') ? 'active' : ''}`}
+          onClick={closeMobileMenu}
         >
           THE LEAGUE
         </Link>
+
+        {/* Mobile menu button */}
+        {isAuthenticated && user?.league && (
+          <button 
+            className={`mobile-menu-button ${mobileMenuOpen ? 'open' : ''}`}
+            onClick={toggleMobileMenu}
+            aria-label="Toggle mobile menu"
+          >
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+          </button>
+        )}
         
         {isAuthenticated && user?.league && (
-          <ul className="nav-menu">
+          <ul className={`nav-menu ${mobileMenuOpen ? 'mobile-open' : ''}`}>
             <li className="nav-item">
               <Link 
                 to="/draft" 
                 className={`nav-link ${isActive('/draft') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 {draftNavText}
               </Link>
@@ -102,6 +128,7 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link 
                 to="/my-team" 
                 className={`nav-link ${isActive('/my-team') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 My Team
               </Link>
@@ -110,6 +137,7 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link 
                 to="/free-agents" 
                 className={`nav-link ${isActive('/free-agents') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 Free Agents
               </Link>
@@ -118,6 +146,7 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link 
                 to="/standings" 
                 className={`nav-link ${isActive('/standings') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 Standings
               </Link>
@@ -126,6 +155,7 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link 
                 to="/schedule" 
                 className={`nav-link ${isActive('/schedule') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 Schedule
               </Link>
@@ -134,6 +164,7 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link 
                 to="/chat" 
                 className={`nav-link ${isActive('/chat') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
               >
                 Chat
               </Link>
@@ -142,6 +173,7 @@ const Navigation: React.FC<NavigationProps> = ({
         )}
 
         <div className="nav-auth">
+          <OfflineIndicator />
           {isAuthenticated ? (
             <div className="auth-section">
               <span className="welcome-text">Welcome, {user?.firstName}!</span>

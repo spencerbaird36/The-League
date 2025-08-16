@@ -86,7 +86,7 @@
   background: transparent;
   color: var(--accent-gold);
   border: 1px solid var(--accent-gold);
-  padding: 8px 16px;
+  padding: 12px 16px;
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 600;
@@ -95,6 +95,8 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  justify-content: center;
 }
 
 .view-more-btn:hover {
@@ -389,6 +391,10 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn:hover {
@@ -416,6 +422,8 @@
   transition: all 0.3s ease;
   text-decoration: none;
   color: inherit;
+  min-height: 88px;
+  justify-content: center;
 }
 
 .quick-action-btn:hover {
@@ -504,6 +512,7 @@
     flex-direction: row;
     justify-content: flex-start;
     padding: 16px;
+    min-height: 64px;
   }
   
   .action-text {

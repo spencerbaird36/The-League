@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../config/api';
+import PullToRefresh from './PullToRefresh';
+import LoadingSkeleton from './LoadingSkeleton';
 import './LeagueHomepage.css';
 
 interface League {
@@ -128,19 +130,23 @@ const LeagueHomepage: React.FC<LeagueHomepageProps> = ({ user }) => {
     }
   }, [user?.league?.id]);
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      fetchStandings(),
+      fetchUpcomingMatchups(),
+      fetchRecentTransactions()
+    ]);
+  }, [fetchStandings, fetchUpcomingMatchups, fetchRecentTransactions]);
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchStandings(),
-        fetchUpcomingMatchups(),
-        fetchRecentTransactions()
-      ]);
+      await handleRefresh();
       setLoading(false);
     };
 
     fetchData();
-  }, [fetchStandings, fetchUpcomingMatchups, fetchRecentTransactions]);
+  }, [handleRefresh]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -188,20 +194,47 @@ const LeagueHomepage: React.FC<LeagueHomepageProps> = ({ user }) => {
   if (loading) {
     return (
       <div className="league-homepage">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <p>Loading your league dashboard...</p>
+        <div className="homepage-header">
+          <h1>Welcome back, {user?.firstName}!</h1>
+          <p className="league-name">{user?.league?.name}</p>
+        </div>
+        <div className="dashboard-grid">
+          <div className="dashboard-card">
+            <div className="card-header">
+              <h2>League Standings</h2>
+            </div>
+            <div className="card-content">
+              <LoadingSkeleton type="list" rows={5} />
+            </div>
+          </div>
+          <div className="dashboard-card">
+            <div className="card-header">
+              <h2>Upcoming Matchups</h2>
+            </div>
+            <div className="card-content">
+              <LoadingSkeleton type="card" />
+            </div>
+          </div>
+          <div className="dashboard-card">
+            <div className="card-header">
+              <h2>Recent Transactions</h2>
+            </div>
+            <div className="card-content">
+              <LoadingSkeleton type="list" rows={6} />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="league-homepage">
-      <div className="homepage-header">
-        <h1>Welcome back, {user?.firstName}!</h1>
-        <p className="league-name">{user?.league?.name}</p>
-      </div>
+    <PullToRefresh onRefresh={handleRefresh}>
+      <div className="league-homepage">
+        <div className="homepage-header">
+          <h1>Welcome back, {user?.firstName}!</h1>
+          <p className="league-name">{user?.league?.name}</p>
+        </div>
 
       <div className="dashboard-grid">
         {/* Standings Preview */}
@@ -380,7 +413,8 @@ const LeagueHomepage: React.FC<LeagueHomepageProps> = ({ user }) => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PullToRefresh>
   );
 };
 

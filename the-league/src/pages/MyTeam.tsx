@@ -240,10 +240,10 @@ const MyTeam: React.FC<MyTeamProps> = ({
               {/* Starting lineup */}
               {roster.map((slot, index) => (
                 <tr key={`${leagueName}-${slot.position}-${index}`} className="starter-row">
-                  <td className="roster-position">{slot.position}</td>
+                  <td data-label="Position" className="roster-position">{slot.position}</td>
                   {slot.player ? (
                     <>
-                      <td className="player-name">
+                      <td data-label="Player" className="player-name">
                         <span 
                           className="clickable-player-name"
                           onClick={() => handlePlayerNameClick(slot.player!)}
@@ -251,14 +251,14 @@ const MyTeam: React.FC<MyTeamProps> = ({
                           {slot.player.name}
                         </span>
                       </td>
-                      <td className="team">{slot.player.team}</td>
-                      <td className="stats">{renderStats(slot.player)}</td>
+                      <td data-label="Team" className="team">{slot.player.team}</td>
+                      <td data-label="Stats" className="stats">{renderStats(slot.player)}</td>
                     </>
                   ) : (
                     <>
-                      <td className="empty-slot">Empty</td>
-                      <td className="empty-slot">-</td>
-                      <td className="empty-slot">-</td>
+                      <td data-label="Player" className="empty-slot">Empty</td>
+                      <td data-label="Team" className="empty-slot">-</td>
+                      <td data-label="Stats" className="empty-slot">-</td>
                     </>
                   )}
                 </tr>
@@ -268,14 +268,14 @@ const MyTeam: React.FC<MyTeamProps> = ({
               {bench.length > 0 && (
                 <>
                   <tr className="bench-divider">
-                    <td colSpan={4} className="bench-header">
+                    <td colSpan={4} className="bench-header" data-label="">
                       <span>Bench</span>
                     </td>
                   </tr>
                   {bench.map((player, index) => (
                     <tr key={`${leagueName}-bench-${index}`} className="bench-row">
-                      <td className="roster-position">BN</td>
-                      <td className="player-name">
+                      <td data-label="Position" className="roster-position">BN</td>
+                      <td data-label="Player" className="player-name">
                         <span 
                           className="clickable-player-name"
                           onClick={() => handlePlayerNameClick(player)}
@@ -283,8 +283,8 @@ const MyTeam: React.FC<MyTeamProps> = ({
                           {player.name}
                         </span>
                       </td>
-                      <td className="team">{player.team}</td>
-                      <td className="stats">{renderStats(player)}</td>
+                      <td data-label="Team" className="team">{player.team}</td>
+                      <td data-label="Stats" className="stats">{renderStats(player)}</td>
                     </tr>
                   ))}
                 </>
