@@ -195,7 +195,7 @@ namespace FantasyLeague.Api.Controllers
                     }
                     else
                     {
-                        // Batter stats
+                        // Batter stats (includes 1B, 2B, 3B, SS, C, DH, OF)
                         if (player.BattingAverage.HasValue) stats["BA"] = player.BattingAverage.Value.ToString("F3");
                         if (player.HomeRuns.HasValue) stats["HR"] = player.HomeRuns.Value;
                         if (player.RunsBattedIn.HasValue) stats["RBI"] = player.RunsBattedIn.Value;
@@ -265,13 +265,27 @@ namespace FantasyLeague.Api.Controllers
                     }
                     else
                     {
-                        // Batter stats
+                        // Batter stats (includes 1B, 2B, 3B, SS, C, DH, OF)
                         player.BattingAverage = Math.Round(random.NextDouble() * 0.15 + 0.22, 3);
                         player.HomeRuns = random.Next(5, 45);
                         player.RunsBattedIn = random.Next(30, 120);
                         player.Runs = random.Next(40, 110);
                         player.Hits = random.Next(80, 200);
                         player.StolenBases = random.Next(2, 30);
+                        
+                        // Position-specific adjustments
+                        if (player.Position == "C")
+                        {
+                            // Catchers typically have fewer stolen bases
+                            player.StolenBases = random.Next(0, 8);
+                        }
+                        else if (player.Position == "DH")
+                        {
+                            // DHs typically have more power but fewer stolen bases
+                            player.HomeRuns = random.Next(15, 50);
+                            player.RunsBattedIn = random.Next(50, 130);
+                            player.StolenBases = random.Next(0, 12);
+                        }
                     }
                     player.GamesPlayed = random.Next(120, 162);
                     break;
@@ -344,7 +358,7 @@ namespace FantasyLeague.Api.Controllers
                     };
 
                 case "MLB":
-                    var mlbPositions = new[] { "SP", "CP", "1B", "2B", "3B", "SS", "OF" };
+                    var mlbPositions = new[] { "SP", "CP", "1B", "2B", "3B", "SS", "C", "DH", "OF" };
                     var mlbPosition = mlbPositions[random.Next(mlbPositions.Length)];
                     
                     if (mlbPosition == "SP" || mlbPosition == "CP")
