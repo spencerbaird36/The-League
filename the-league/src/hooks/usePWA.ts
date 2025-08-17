@@ -30,14 +30,10 @@ export const usePWA = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Handle install prompt
+    // Install prompt disabled - no PWA installation
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setPwaState(prev => ({ 
-        ...prev, 
-        isInstallable: true, 
-        installPrompt: e 
-      }));
+      e.preventDefault(); // Prevent the install prompt from showing
+      // Do not set installable state - keep PWA install disabled
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -63,25 +59,9 @@ export const usePWA = () => {
   }, []);
 
   const installApp = async () => {
-    if (!pwaState.installPrompt) return false;
-
-    try {
-      const result = await pwaState.installPrompt.prompt();
-      console.log('Install prompt result:', result);
-      
-      if (result.outcome === 'accepted') {
-        setPwaState(prev => ({ 
-          ...prev, 
-          isInstallable: false, 
-          installPrompt: null 
-        }));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error installing app:', error);
-      return false;
-    }
+    // PWA installation disabled - always return false
+    console.log('PWA installation is disabled');
+    return false;
   };
 
   const shareApp = async () => {

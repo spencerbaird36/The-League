@@ -1,0 +1,152 @@
+.virtual-scroll-table {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+}
+
+.virtual-table-header {
+  background: var(--surface-dark);
+  border-bottom: 2px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.virtual-table-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.header-row {
+  border-bottom: none;
+}
+
+.data-row {
+  background: transparent;
+}
+
+.data-row.clickable {
+  cursor: pointer;
+}
+
+.data-row.clickable:hover {
+  background: rgba(212, 175, 55, 0.08);
+  transform: scale(1.01);
+}
+
+.data-row.clickable:hover .virtual-table-cell {
+  color: var(--text-white);
+}
+
+.virtual-table-cell {
+  padding: 16px 12px;
+  color: var(--accent-platinum);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-cell {
+  color: var(--accent-platinum);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+  text-align: left;
+  background: var(--surface-dark);
+}
+
+.data-cell {
+  font-size: 0.9rem;
+}
+
+.virtual-table-body {
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.virtual-table-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.virtual-table-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.virtual-table-body::-webkit-scrollbar-thumb {
+  background: var(--accent-gold);
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+.virtual-table-body::-webkit-scrollbar-thumb:hover {
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.virtual-table-spacer {
+  position: relative;
+  width: 100%;
+}
+
+.virtual-table-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+/* Performance optimizations */
+.virtual-scroll-table * {
+  box-sizing: border-box;
+}
+
+.virtual-table-row {
+  contain: layout;
+}
+
+.virtual-table-content {
+  contain: layout;
+  transform: translateZ(0); /* Enable hardware acceleration */
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .virtual-table-cell {
+    padding: 12px 8px;
+    font-size: 0.85rem;
+  }
+  
+  .header-cell {
+    font-size: 0.75rem;
+  }
+  
+  .virtual-table-body::-webkit-scrollbar {
+    width: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .virtual-table-cell {
+    padding: 10px 6px;
+    font-size: 0.8rem;
+  }
+  
+  .header-cell {
+    font-size: 0.7rem;
+    padding: 10px 6px;
+  }
+}

@@ -1,4 +1,4 @@
-import * as signalR from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, LogLevel, HubConnectionState, HttpTransportType } from '@microsoft/signalr';
 import { ChatMessage } from '../types/Chat';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   : 'http://localhost:5000';
 
 class SignalRService {
-  private connection: signalR.HubConnection | null = null;
+  private connection: HubConnection | null = null;
   private messageCallbacks: ((message: ChatMessage) => void)[] = [];
   private userOnlineCallbacks: ((user: any) => void)[] = [];
   private userOfflineCallbacks: ((user: any) => void)[] = [];
@@ -21,7 +21,7 @@ class SignalRService {
   private draftCompletedCallbacks: ((data: any) => void)[] = [];
 
   async connect(): Promise<void> {
-    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+    if (this.connection?.state === HubConnectionState.Connected) {
       return;
     }
 
@@ -35,13 +35,13 @@ class SignalRService {
       this.connection = null;
     }
 
-    this.connection = new signalR.HubConnectionBuilder()
+    this.connection = new HubConnectionBuilder()
       .withUrl(`${API_BASE_URL}/chathub`, {
         withCredentials: false, // CORS might not allow credentials
-        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+        transport: HttpTransportType.WebSockets | HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 10000, 30000])
-      .configureLogging(signalR.LogLevel.Information)
+      .configureLogging(LogLevel.Information)
       .build();
 
     this.connection.on('ReceiveMessage', (message: ChatMessage) => {
@@ -130,7 +130,7 @@ class SignalRService {
   }
 
   async joinLeague(leagueId: number, userId: number): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       throw new Error('SignalR connection not established');
     }
 
@@ -144,7 +144,7 @@ class SignalRService {
   }
 
   async leaveLeague(leagueId: number): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       return;
     }
 
@@ -157,7 +157,7 @@ class SignalRService {
   }
 
   async sendMessage(leagueId: number, userId: number, message: string): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
 
@@ -215,7 +215,7 @@ class SignalRService {
   }
 
   isConnected(): boolean {
-    return this.connection?.state === signalR.HubConnectionState.Connected;
+    return this.connection?.state === HubConnectionState.Connected;
   }
 
   // Draft methods
@@ -224,7 +224,7 @@ class SignalRService {
     console.log('Connection state:', this.connection?.state);
     console.log('Connection object:', this.connection);
     
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       console.error('❌ SignalR connection not ready');
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
@@ -239,13 +239,19 @@ class SignalRService {
     }
   }
 
-  async makeDraftPick(leagueId: number, playerId: string, playerName: string, position: string, team: string, league: string): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+  async makeDraftPick(leagueId: number, playerId: string, playerName: string, position: string, team: string, league: string, isAutoDraft: boolean = false): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
 
     try {
-      await this.connection.invoke('MakeDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
+      if (isAutoDraft) {
+        console.log('Making auto-draft pick via WebSocket');
+        await this.connection.invoke('MakeAutoDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
+      } else {
+        console.log('Making manual draft pick via WebSocket');
+        await this.connection.invoke('MakeDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
+      }
       console.log('Draft pick made successfully');
     } catch (err) {
       console.error('Error making draft pick:', err);
@@ -254,7 +260,7 @@ class SignalRService {
   }
 
   async pauseDraft(leagueId: number): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
 
@@ -268,7 +274,7 @@ class SignalRService {
   }
 
   async resumeDraft(leagueId: number): Promise<void> {
-    if (!this.connection || this.connection.state !== signalR.HubConnectionState.Connected) {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
     }
 
@@ -277,6 +283,20 @@ class SignalRService {
       console.log('Draft resumed successfully');
     } catch (err) {
       console.error('Error resuming draft:', err);
+      throw err;
+    }
+  }
+
+  async getCurrentDraftState(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('GetCurrentDraftState', leagueId.toString());
+      console.log('Requested current draft state via WebSocket');
+    } catch (err) {
+      console.error('Error requesting current draft state:', err);
       throw err;
     }
   }

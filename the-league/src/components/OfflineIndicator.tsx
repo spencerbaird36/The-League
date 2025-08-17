@@ -3,9 +3,10 @@ import { usePWA } from '../hooks/usePWA';
 import './OfflineIndicator.css';
 
 const OfflineIndicator: React.FC = () => {
-  const { isOnline, isInstallable, installApp } = usePWA();
+  const { isOnline } = usePWA();
 
-  if (isOnline && !isInstallable) return null;
+  // Only show offline status, PWA install button disabled
+  if (isOnline) return null;
 
   return (
     <div className="offline-indicator">
@@ -16,16 +17,7 @@ const OfflineIndicator: React.FC = () => {
         </div>
       )}
       
-      {isInstallable && (
-        <button 
-          className="install-button"
-          onClick={installApp}
-          title="Install app for better experience"
-        >
-          <span className="install-icon">📱</span>
-          <span className="install-text">Install</span>
-        </button>
-      )}
+      {/* PWA install button disabled */}
     </div>
   );
 };

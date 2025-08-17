@@ -241,20 +241,32 @@
   gap: 8px;
 }
 
-.status-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  display: inline-block;
+/* Slack style chat specific circular status indicators */
+.slack-chat .status-indicator,
+.slack-style-chat .status-indicator {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  border: none !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
 }
 
-.status-indicator.live {
-  background: #2ed573;
-  animation: glow 2s infinite;
+/* Slack style chat status indicator colors */
+.slack-chat .status-indicator.live,
+.slack-style-chat .status-indicator.live {
+  background: #2ed573 !important;
+  animation: glow 2s infinite !important;
 }
 
-.status-indicator.basic {
-  background: var(--accent-gold);
+.slack-chat .status-indicator.basic,
+.slack-style-chat .status-indicator.basic {
+  background: var(--accent-gold) !important;
 }
 
 .messages-container {

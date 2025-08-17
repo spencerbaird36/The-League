@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Player } from '../types/Player';
 import TimerDisplay from '../components/TimerDisplay';
-import PlayerInfoModal from '../components/PlayerInfoModal';
+import LazyLoadFallback from '../components/LazyLoadFallback';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
+
+// Lazy load modal since it's only needed when users click on players
+const PlayerInfoModal = lazy(() => import('../components/PlayerInfoModal'));
 
 interface User {
   id: number;
@@ -321,10 +324,10 @@ const MyTeam: React.FC<MyTeamProps> = ({
 
   return (
     <div className="my-team-container">
-      <div className="my-team-header">
-        <h1>My Team</h1>
+      <div className="page-header my-team-header">
+        <h1 className="page-title">My Team</h1>
         {allDraftedPlayers.length > 0 && (
-          <p>
+          <p className="page-subtitle">
             You have drafted {allDraftedPlayers.length} players across all leagues
           </p>
         )}
@@ -347,11 +350,15 @@ const MyTeam: React.FC<MyTeamProps> = ({
       </div>
 
       {/* Player Info Modal */}
-      <PlayerInfoModal
-        isOpen={isPlayerInfoModalOpen}
-        onClose={handleClosePlayerInfo}
-        player={selectedPlayerForInfo}
-      />
+      {isPlayerInfoModalOpen && (
+        <Suspense fallback={<LazyLoadFallback type="modal" />}>
+          <PlayerInfoModal
+            isOpen={isPlayerInfoModalOpen}
+            onClose={handleClosePlayerInfo}
+            player={selectedPlayerForInfo}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -1,15 +1,22 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Player } from '../types/Player';
 import { players } from '../data/players';
-import Modal from '../components/Modal';
-import PlayerCard from '../components/PlayerCard';
-import PlayerInfoModal from '../components/PlayerInfoModal';
-import DraftConfirmationModal from '../components/DraftConfirmationModal';
+import LazyLoadFallback from '../components/LazyLoadFallback';
+import VirtualScrollTable from '../components/VirtualScrollTable';
 import { useDraft } from '../context/DraftContext';
 import { useDraftOperations } from '../hooks/useDraftOperations';
+// Performance optimization imports disabled to fix re-rendering
+// import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
+// import { useDataCache } from '../hooks/useDataCache';
+// import { useOptimizedAPI, useBatchRequests } from '../hooks/useOptimizedAPI';
+// import { withMemo, useStableCallbacks } from '../utils/renderOptimizations';
 import signalRService from '../services/signalRService';
 import './Draft.css';
+
+// Lazy load modals since they're only needed when users interact
+const PlayerInfoModal = lazy(() => import('../components/PlayerInfoModal'));
+const DraftConfirmationModal = lazy(() => import('../components/DraftConfirmationModal'));
 
 
 interface User {
@@ -31,7 +38,8 @@ interface DraftProps {
   draftedNFL: Player[];
   draftedMLB: Player[];
   draftedNBA: Player[];
-  draftPlayer: (player: Player) => void;
+  draftPlayer: (player: Player, isAutoDraft?: boolean) => void;
+  addDraftToast: (playerName: string, playerPosition: string, playerTeam: string, isAutoDraft?: boolean) => void;
   user: User | null;
   clearRosters: () => void;
   isDrafting: boolean;
@@ -49,6 +57,7 @@ const Draft: React.FC<DraftProps> = ({
   draftedMLB,
   draftedNBA,
   draftPlayer,
+  addDraftToast,
   user,
   clearRosters,
   isDrafting,
@@ -60,6 +69,23 @@ const Draft: React.FC<DraftProps> = ({
   onTimeExpired,
   timerStartTime,
 }) => {
+  // Performance monitoring disabled to fix re-rendering
+  // const { detectMemoryLeaks, getPerformanceReport } = usePerformanceMonitor({
+  //   componentName: 'Draft',
+  //   enableMemoryTracking: true,
+  //   logThreshold: 20, // 20ms threshold for draft page
+  //   onPerformanceIssue: (metrics) => {
+  //     console.warn('Draft performance issue:', metrics);
+  //   },
+  // });
+
+  // Data caching disabled to fix re-rendering
+  // const { data: cachedPlayers, loading: playersLoading } = useDataCache(
+  //   'draft-players',
+  //   async () => players,
+  //   { ttl: 30 * 60 * 1000, persistToIndexedDB: true } // 30 minutes cache
+  // );
+
   // Use the new draft context and operations
   const { state, dispatch } = useDraft();
   const draftOperations = useDraftOperations(user);
@@ -170,6 +196,17 @@ const Draft: React.FC<DraftProps> = ({
       }
       
       console.log('✅ Draft started successfully');
+      
+      // Wait a moment for WebSocket event, then manually sync state as fallback
+      setTimeout(async () => {
+        console.log('🔄 Checking if WebSocket draft state was set after start...');
+        if (!webSocketDraftState) {
+          console.log('⚠️ WebSocket draft state still null after starting, manually syncing...');
+          await fetchCurrentDraftState();
+        } else {
+          console.log('✅ WebSocket draft state is set, no manual sync needed');
+        }
+      }, 2000);
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
       console.error('Error details:', {
@@ -182,6 +219,80 @@ const Draft: React.FC<DraftProps> = ({
 
   // Track if a pick is currently being made to prevent duplicates
   const [isPickInProgress, setIsPickInProgress] = useState(false);
+
+  // Function to fetch current draft state via REST API
+  const fetchCurrentDraftState = useCallback(async () => {
+    if (!user?.league?.id) return;
+    
+    try {
+      console.log('🔄 Fetching current draft state via REST API...');
+      
+      // Try multiple possible API endpoints
+      const possibleEndpoints = [
+        `/api/leagues/${user.league.id}/draft/state`,
+        `/api/leagues/${user.league.id}/draft/status`,
+        `/api/leagues/${user.league.id}/draft`
+      ];
+      
+      let currentState = null;
+      let successfulEndpoint = null;
+      
+      for (const endpoint of possibleEndpoints) {
+        try {
+          console.log(`🔍 Trying endpoint: ${endpoint}`);
+          const response = await fetch(endpoint);
+          if (response.ok) {
+            currentState = await response.json();
+            successfulEndpoint = endpoint;
+            console.log(`✅ Successfully fetched from: ${endpoint}`);
+            break;
+          } else {
+            console.log(`❌ Endpoint ${endpoint} returned:`, response.status);
+          }
+        } catch (endpointError) {
+          console.log(`❌ Endpoint ${endpoint} failed:`, endpointError);
+        }
+      }
+      
+      if (currentState) {
+        console.log('📊 Current draft state from API:', currentState);
+        console.log('📊 Using endpoint:', successfulEndpoint);
+        
+        // Handle different possible response structures
+        const isActive = currentState.isActive || currentState.IsActive || false;
+        const currentUserId = currentState.CurrentUserId || currentState.currentUserId || currentState.currentTurn;
+        const timeLimit = currentState.TimeLimit || currentState.timeLimit || 15;
+        
+        if (isActive) {
+          console.log('🎯 Setting WebSocket draft state from API');
+          // Normalize the structure
+          const normalizedState = {
+            ...currentState,
+            isActive: isActive,
+            CurrentUserId: currentUserId,
+            TimeLimit: timeLimit
+          };
+          setWebSocketDraftState(normalizedState);
+          const myTurn = currentUserId === user.id;
+          setIsMyTurn(myTurn);
+          
+          console.log('📊 Normalized state:', normalizedState);
+          console.log('📊 My turn:', myTurn, 'Current user ID:', currentUserId, 'My ID:', user.id);
+          
+          if (myTurn && timeLimit) {
+            console.log('⏰ Starting timer from current state with time limit:', timeLimit);
+            // startDraftTimer will be called when needed
+          }
+        } else {
+          console.log('⚠️ Draft is not active according to API');
+        }
+      } else {
+        console.log('⚠️ Could not fetch draft state from any endpoint');
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch current draft state:', error);
+    }
+  }, [user?.league?.id, user?.id]);
 
   // Make a draft pick using the new draft operations
   const makeDraftPick = useCallback(async (player: Player) => {
@@ -233,8 +344,11 @@ const Draft: React.FC<DraftProps> = ({
         console.log('User League ID:', user?.league?.id);
         console.log('Making draft pick via REST API...');
         await draftOperations.makeDraftPick(player);
+        // Add toast notification for REST API picks (since no WebSocket event will fire)
+        console.log('🎯 Adding toast for REST API draft pick:', { player: player.name, isAutoDraft: false });
+        addDraftToast(player.name, player.position, player.team, false);
         // Update legacy roster state for backward compatibility
-        draftPlayer(player);
+        draftPlayer(player, false);
         
         // For REST API, manually restart timer since no WebSocket events
         console.log('🔄 REST API pick completed, manually restarting timer');
@@ -256,48 +370,26 @@ const Draft: React.FC<DraftProps> = ({
     } finally {
       setIsPickInProgress(false);
     }
-  }, [draftOperations, draftPlayer, user?.league?.id, draftTimerActive, draftTimer, isPickInProgress]);
+  }, [draftOperations, draftPlayer, addDraftToast, user?.league?.id, draftTimerActive, draftTimer, isPickInProgress]);
 
   // Handle player name click to show player info
-  const handlePlayerNameClick = (player: Player) => {
+  const handlePlayerNameClick = useCallback((player: Player) => {
     setSelectedPlayerForInfo(player);
     setIsPlayerInfoModalOpen(true);
-  };
+  }, []);
 
-  // Handle draft button click to show confirmation
-  const handleDraftClick = (player: Player) => {
-    console.log('🎯 Draft button clicked:', player.name);
-    console.log('=== TURN DETECTION DEBUG ===');
-    console.log('User ID:', user?.id);
-    console.log('SignalR Connected:', signalRService.isConnected());
-    console.log('WebSocket Draft State:', webSocketDraftState);
-    console.log('Is My Turn (WebSocket):', isMyTurn);
-    console.log('Draft State:', draftState);
-    console.log('Draft State Active:', draftState?.isActive);
-    console.log('Is Current User Turn (final):', isCurrentUserTurn);
-    console.log('Is Draft Active (final):', isDraftActive);
-    console.log('============================');
-    
-    // Check if it's the user's turn and draft is active
-    if (!isCurrentUserTurn) {
-      alert("It's not your turn to draft!");
-      return;
-    }
-    
-    if (!isDraftActive) {
-      alert("Draft is not active!");
-      return;
-    }
-    
-    setSelectedPlayerForDraft(player);
-    setIsDraftConfirmModalOpen(true);
-  };
+  // Draft button click will be defined after variable declarations
 
   const handleConfirmDraft = () => {
+    console.log('🎯 CONFIRM DRAFT CLICKED');
+    console.log('Selected player for draft:', selectedPlayerForDraft);
     if (selectedPlayerForDraft) {
+      console.log('🎯 Calling makeDraftPick with player:', selectedPlayerForDraft.name);
       makeDraftPick(selectedPlayerForDraft);
       setIsDraftConfirmModalOpen(false);
       setSelectedPlayerForDraft(null);
+    } else {
+      console.error('❌ No selected player for draft!');
     }
   };
 
@@ -339,6 +431,35 @@ const Draft: React.FC<DraftProps> = ({
     navigate(`/team/${userId}`);
   };
 
+  // Handle draft button click to show confirmation - optimized with useCallback
+  const handleDraftClick = useCallback((player: Player) => {
+    console.log('🎯 Draft button clicked:', player.name);
+    console.log('=== TURN DETECTION DEBUG ===');
+    console.log('User ID:', user?.id);
+    console.log('SignalR Connected:', signalRService.isConnected());
+    console.log('WebSocket Draft State:', webSocketDraftState);
+    console.log('Is My Turn (WebSocket):', isMyTurn);
+    console.log('Draft State:', draftState);
+    console.log('Draft State Active:', draftState?.isActive);
+    console.log('Is Current User Turn (final):', isCurrentUserTurn);
+    console.log('Is Draft Active (final):', isDraftActive);
+    console.log('============================');
+    
+    // Check if it's the user's turn and draft is active
+    if (!isCurrentUserTurn) {
+      alert("It's not your turn to draft!");
+      return;
+    }
+    
+    if (!isDraftActive) {
+      alert("Draft is not active!");
+      return;
+    }
+    
+    setSelectedPlayerForDraft(player);
+    setIsDraftConfirmModalOpen(true);
+  }, [user?.id, webSocketDraftState, isMyTurn, draftState, isCurrentUserTurn, isDraftActive]);
+
   // Auto-draft logic for timeouts
   const handleAutoDraft = useCallback(async () => {
     if (!user?.league?.id || !isMyTurn) return;
@@ -371,19 +492,23 @@ const Draft: React.FC<DraftProps> = ({
             randomPlayer.name,
             randomPlayer.position,
             randomPlayer.team,
-            randomPlayer.league
+            randomPlayer.league,
+            true  // isAutoDraft = true
           );
         } else {
           // Fallback to REST API
           await draftOperations.makeDraftPick(randomPlayer);
+          // Add toast notification for REST API auto-draft (since no WebSocket event will fire)
+          console.log('🎯 Adding toast for REST API auto-draft:', { player: randomPlayer.name, isAutoDraft: true });
+          addDraftToast(randomPlayer.name, randomPlayer.position, randomPlayer.team, true);
           // Update legacy roster state for backward compatibility
-          draftPlayer(randomPlayer);
+          draftPlayer(randomPlayer, true);
         }
       }
     } catch (error) {
       console.error('Auto-draft failed:', error);
     }
-  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, draftOperations, draftPlayer]);
+  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, draftOperations, draftPlayer, addDraftToast]);
 
 
   // WebSocket draft timer
@@ -445,6 +570,7 @@ const Draft: React.FC<DraftProps> = ({
       return;
     }
 
+
     // Join the league group for WebSocket events
     const joinLeagueGroup = async () => {
       try {
@@ -453,6 +579,9 @@ const Draft: React.FC<DraftProps> = ({
         await signalRService.joinLeague(user.league!.id, user.id);
         hasJoinedLeagueRef.current = true;
         console.log('✅ Successfully joined league group:', user.league!.id);
+        
+        // After joining, fetch current state to sync
+        await fetchCurrentDraftState();
       } catch (error) {
         console.error('❌ Failed to join league group:', error);
         hasJoinedLeagueRef.current = false;
@@ -518,15 +647,46 @@ const Draft: React.FC<DraftProps> = ({
     };
 
     const handlePlayerDrafted = (data: any) => {
-      console.log('Player drafted via WebSocket:', data);
+      console.log('🎯 Player drafted via WebSocket - RAW DATA:', data);
+      console.log('🎯 All data keys:', Object.keys(data));
+      
+      // Handle both naming conventions - server uses lowercase, some events use uppercase
+      const playerName = data.playerName || data.PlayerName || 'Unknown Player';
+      const position = data.position || data.Position || 'Unknown';
+      const team = data.team || data.Team || 'Unknown';
+      const league = data.league || data.League || 'Unknown';
+      const playerId = data.playerId || data.PlayerId || 0;
+      const isAutoDraft = data.isAutoDraft || data.IsAutoDraft || false;
+      
+      console.log('🎯 Extracted player info:', {
+        playerName,
+        position, 
+        team,
+        league,
+        playerId,
+        isAutoDraft
+      });
+      
       // Update local state to remove the drafted player
       const draftedPlayer: Player = {
-        id: data.PlayerId,
-        name: data.PlayerName,
-        position: data.Position,
-        team: data.Team,
-        league: data.League
+        id: playerId,
+        name: playerName,
+        position: position,
+        team: team,
+        league: league as 'NFL' | 'NBA' | 'MLB'
       };
+      
+      console.log('🎯 Adding toast for WebSocket draft:', {
+        playerName,
+        position,
+        team,
+        isAutoDraft
+      });
+      
+      // Add toast notification - now using the correct extracted values
+      addDraftToast(playerName, position, team, isAutoDraft);
+      
+      // Remove the drafted player from available players
       draftPlayer(draftedPlayer);
       
       // Immediately update turn state to reduce lag
@@ -556,13 +716,21 @@ const Draft: React.FC<DraftProps> = ({
       setIsMyTurn(false);
     };
 
-    // Register WebSocket event listeners
+    // Register WebSocket event listeners with debugging
+    console.log('🎯 REGISTERING WEBSOCKET EVENT LISTENERS');
     signalRService.onDraftStarted(handleDraftStarted);
+    console.log('✅ Registered DraftStarted listener');
     signalRService.onTurnChanged(handleTurnChanged);
+    console.log('✅ Registered TurnChanged listener');
     signalRService.onPlayerDrafted(handlePlayerDrafted);
+    console.log('✅ Registered PlayerDrafted listener');
     signalRService.onDraftPaused(handleDraftPaused);
+    console.log('✅ Registered DraftPaused listener');
     signalRService.onDraftResumed(handleDraftResumed);
+    console.log('✅ Registered DraftResumed listener');
     signalRService.onDraftCompleted(handleDraftCompleted);
+    console.log('✅ Registered DraftCompleted listener');
+    console.log('🎯 ALL WEBSOCKET EVENT LISTENERS REGISTERED');
 
     return () => {
       // Cleanup event listeners
@@ -578,9 +746,9 @@ const Draft: React.FC<DraftProps> = ({
 
   return (
     <div className="draft-container">
-      <header className="draft-header">
-        <h1>Fantasy Draft</h1>
-        <p>Select players to build your ultimate fantasy team</p>
+      <header className="page-header draft-header">
+        <h1 className="page-title">Fantasy Draft</h1>
+        <p className="page-subtitle">Select players to build your ultimate fantasy team</p>
         
         {/* Draft Timer Section */}
         {(draftState?.isActive || draftTimerActive || webSocketDraftState) && (
@@ -625,11 +793,7 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             )}
             
-            {state.timer.timeoutMessage && (
-              <div className="timeout-message">
-                {state.timer.timeoutMessage}
-              </div>
-            )}
+            {/* Timeout messages now handled by toast notifications */}
           </div>
         )}
         
@@ -647,9 +811,19 @@ const Draft: React.FC<DraftProps> = ({
           {isDraftCreated && !draftState?.isActive && !draftTimerActive && !webSocketDraftState && !draftState?.isCompleted && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
-              <button onClick={startDraftSession} className="start-draft-btn">
-                Start Draft
-              </button>
+              <div className="draft-management-buttons">
+                <button onClick={startDraftSession} className="start-draft-btn">
+                  Start Draft
+                </button>
+                <button onClick={handleResetDraft} className="draft-control-btn reset">
+                  Reset Draft
+                </button>
+                {!draftState?.isCompleted && (
+                  <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                    Auto Draft
+                  </button>
+                )}
+              </div>
             </div>
           )}
           
@@ -669,6 +843,47 @@ const Draft: React.FC<DraftProps> = ({
               {(isMyTurn || isCurrentUserTurn) && (
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
+              <div className="draft-management-buttons">
+                <button onClick={handleResetDraft} className="draft-control-btn reset">
+                  Reset Draft
+                </button>
+                {!draftState?.isCompleted && (
+                  <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                    Auto Draft
+                  </button>
+                )}
+                {process.env.NODE_ENV === 'development' && (
+                  <>
+                    <button 
+                      onClick={() => {
+                        console.log('🧪 Testing toast notification system...');
+                        addDraftToast('Test Player', 'QB', 'Test Team', true);
+                      }} 
+                      className="draft-control-btn"
+                      style={{ backgroundColor: '#ff6b35' }}
+                    >
+                      Test Toast
+                    </button>
+                    <button 
+                      onClick={() => {
+                        console.log('🔍 CONNECTION DEBUG:');
+                        console.log('SignalR Connected:', signalRService.isConnected());
+                        console.log('User:', user);
+                        console.log('Draft State:', draftState);
+                        console.log('WebSocket Draft State:', webSocketDraftState);
+                        console.log('Is My Turn:', isMyTurn);
+                        console.log('Is Current User Turn:', isCurrentUserTurn);
+                        console.log('Is Draft Active:', isDraftActive);
+                        console.log('Available Players Count:', availablePlayers.length);
+                      }} 
+                      className="draft-control-btn"
+                      style={{ backgroundColor: '#35a3ff' }}
+                    >
+                      Debug State
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -722,17 +937,6 @@ const Draft: React.FC<DraftProps> = ({
               );
             })}
           </div>
-
-          <div className="draft-controls">
-            <button onClick={handleResetDraft} className="draft-control-btn reset">
-              Reset Draft
-            </button>
-            {!draftState?.isCompleted && (
-              <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-                Auto Draft
-              </button>
-            )}
-          </div>
         </section>
       )}
 
@@ -743,173 +947,250 @@ const Draft: React.FC<DraftProps> = ({
         {/* Show Available Players and Filters only when draft is not completed */}
         {!draftState?.isCompleted ? (
           <>
-            {/* Left Sidebar - Filters */}
-            <aside className="draft-sidebar">
-              <div className="sidebar-header">
+            {/* Filters Section - moved above available players */}
+            <section className="filters-section">
+              <div className="filters-header">
                 <h3>Filters</h3>
               </div>
               
-              <div className="league-filter">
-                <h4>League</h4>
-                <div className="league-buttons">
-                  <button
-                    className={selectedLeague === 'ALL' ? 'active' : ''}
-                    onClick={() => setSelectedLeague('ALL')}
-                  >
-                    All Leagues
-                  </button>
-                  <button
-                    className={selectedLeague === 'NFL' ? 'active' : ''}
-                    onClick={() => setSelectedLeague('NFL')}
-                  >
-                    NFL
-                  </button>
-                  <button
-                    className={selectedLeague === 'MLB' ? 'active' : ''}
-                    onClick={() => setSelectedLeague('MLB')}
-                  >
-                    MLB
-                  </button>
-                  <button
-                    className={selectedLeague === 'NBA' ? 'active' : ''}
-                    onClick={() => setSelectedLeague('NBA')}
-                  >
-                    NBA
-                  </button>
+              <div className="filters-content">
+                <div className="league-filter">
+                  <h4>League</h4>
+                  <div className="league-buttons">
+                    <button
+                      className={selectedLeague === 'ALL' ? 'active' : ''}
+                      onClick={() => setSelectedLeague('ALL')}
+                    >
+                      All Leagues
+                    </button>
+                    <button
+                      className={selectedLeague === 'NFL' ? 'active' : ''}
+                      onClick={() => setSelectedLeague('NFL')}
+                    >
+                      NFL
+                    </button>
+                    <button
+                      className={selectedLeague === 'MLB' ? 'active' : ''}
+                      onClick={() => setSelectedLeague('MLB')}
+                    >
+                      MLB
+                    </button>
+                    <button
+                      className={selectedLeague === 'NBA' ? 'active' : ''}
+                      onClick={() => setSelectedLeague('NBA')}
+                    >
+                      NBA
+                    </button>
+                  </div>
+                </div>
+
+                <div className="position-filter">
+                  <h4>Filter by Position</h4>
+                  <div className="position-tabs">
+                    <button
+                      className={selectedPosition === 'ALL' ? 'active' : ''}
+                      onClick={() => setSelectedPosition('ALL')}
+                    >
+                      All
+                    </button>
+                    {selectedLeague === 'ALL' && (
+                      <>
+                        <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
+                        <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
+                        <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
+                        <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                        <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
+                        <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
+                        <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
+                        <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
+                        <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
+                        <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                        <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
+                        <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
+                        <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
+                        <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
+                        <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
+                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                      </>
+                    )}
+                    {selectedLeague === 'NFL' && (
+                      <>
+                        <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
+                        <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
+                        <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
+                        <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                      </>
+                    )}
+                    {selectedLeague === 'MLB' && (
+                      <>
+                        <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
+                        <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
+                        <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
+                        <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
+                        <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
+                        <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                        <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
+                      </>
+                    )}
+                    {selectedLeague === 'NBA' && (
+                      <>
+                        <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
+                        <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
+                        <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
+                        <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
+                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Available Players Section - side by side with drafted players */}
+            <section className="available-players-section">
+              <div className="available-players">
+                <h2>
+                  Available Players ({filteredPlayers.length})
+                  {!state.timer.isDrafting ? (
+                    <span className="draft-status"> - Draft Not Started</span>
+                  ) : state.timer.isPaused ? (
+                    <span className="draft-status paused"> - Draft Paused</span>
+                  ) : null}
+                </h2>
+
+                <div className="table-container">
+                  {filteredPlayers.length === 0 ? (
+                    <div className="empty-state">
+                      <p>No available players</p>
+                      <p>Try adjusting your filters or wait for more players to become available.</p>
+                    </div>
+                  ) : (
+                    <VirtualScrollTable
+                      data={filteredPlayers}
+                      columns={[
+                        {
+                          key: 'name',
+                          header: 'Player',
+                          width: '35%',
+                          render: (player: Player, index: number) => (
+                            <span 
+                              className="player-name clickable-player-name"
+                              onClick={() => handlePlayerNameClick(player)}
+                            >
+                              {player.name}
+                            </span>
+                          )
+                        },
+                        {
+                          key: 'position',
+                          header: 'Pos',
+                          width: '10%',
+                          render: (player: Player, index: number) => (
+                            <span className="position">{player.position}</span>
+                          )
+                        },
+                        {
+                          key: 'team',
+                          header: 'Team',
+                          width: '15%',
+                          render: (player: Player, index: number) => (
+                            <span className="team">{player.team}</span>
+                          )
+                        },
+                        {
+                          key: 'league',
+                          header: 'League',
+                          width: '10%',
+                          render: (player: Player, index: number) => (
+                            <span className={`league-badge ${player.league.toLowerCase()}`}>
+                              {player.league}
+                            </span>
+                          )
+                        },
+                        {
+                          key: 'action',
+                          header: 'Action',
+                          width: '30%',
+                          render: (player: Player, index: number) => (
+                            <button
+                              className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
+                              onClick={() => handleDraftClick(player)}
+                              disabled={!isCurrentUserTurn || !isDraftActive || isPickInProgress}
+                            >
+                              {isPickInProgress ? 'Drafting...' : 'Draft'}
+                            </button>
+                          )
+                        }
+                      ]}
+                      itemHeight={60}
+                      containerHeight={500}
+                      className="draft-virtual-table"
+                      getRowKey={(player: Player) => player.id}
+                    />
+                  )}
                 </div>
               </div>
 
-              <div className="position-filter">
-              <h4>Filter by Position</h4>
-              <div className="position-tabs">
-                <button
-                  className={selectedPosition === 'ALL' ? 'active' : ''}
-                  onClick={() => setSelectedPosition('ALL')}
-                >
-                  All
-                </button>
-                {selectedLeague === 'ALL' && (
-                  <>
-                    <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
-                    <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
-                    <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
-                    <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
-                    <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
-                    <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
-                    <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
-                    <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
-                    <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
-                    <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                    <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-                    <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
-                    <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
-                    <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
-                    <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
-                    <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
-                  </>
-                )}
-                {selectedLeague === 'NFL' && (
-                  <>
-                    <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
-                    <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
-                    <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
-                    <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
-                  </>
-                )}
-                {selectedLeague === 'MLB' && (
-                  <>
-                    <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
-                    <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
-                    <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
-                    <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
-                    <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
-                    <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                    <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-                  </>
-                )}
-                {selectedLeague === 'NBA' && (
-                  <>
-                    <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
-                    <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
-                    <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
-                    <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
-                    <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
-                  </>
-                )}
-              </div>
-            </div>
-            </aside>
-
-            {/* Right Main Content - Available Players */}
-            <main className="draft-main">
-              <section className="available-players">
-              <h2>
-                Available Players ({filteredPlayers.length})
-                {!state.timer.isDrafting ? (
-                  <span className="draft-status"> - Draft Not Started</span>
-                ) : state.timer.isPaused ? (
-                  <span className="draft-status paused"> - Draft Paused</span>
-                ) : null}
-              </h2>
-
-              <div className="table-container">
-                {filteredPlayers.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No available players</p>
-                    <p>Try adjusting your filters or wait for more players to become available.</p>
+              {/* Drafted Players Sidebar - now inside available-players-section */}
+              <aside className="drafted-players-sidebar">
+                <div className="sidebar-header">
+                  <h3>Drafted Players</h3>
+                </div>
+                {isDraftCreated && draftState && draftState.draftPicks && (
+                  <div className="total-picks-container">
+                    <span className="total-picks">{draftState.draftPicks.length} total picks</span>
                   </div>
-                ) : (
-                  <table key={`${selectedLeague}-${selectedPosition}`}>
-                    <thead>
-                      <tr>
-                        <th>Player</th>
-                        <th>Position</th>
-                        <th>Team</th>
-                        <th>League</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPlayers.map((player: Player) => {
+                )}
+                
+                {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 ? (
+                  <div className="drafted-players-container">
+                    {draftState.draftPicks
+                      .sort((a: any, b: any) => b.pickNumber - a.pickNumber) // Sort newest first (most recent at top)
+                      .map((pick: any) => {
+                        const member = state.leagueMembers.find(m => m.id === pick.userId);
+                        const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
+                        
                         return (
-                          <tr key={player.id}>
-                            <td>
-                              <span 
-                                className="player-name clickable-player-name"
-                                onClick={() => handlePlayerNameClick(player)}
-                              >
-                                {player.name}
-                              </span>
-                            </td>
-                            <td>
-                              <span className="position">{player.position}</span>
-                            </td>
-                            <td>
-                              <span className="team">{player.team}</span>
-                            </td>
-                            <td>
-                              <span className={`league-badge ${player.league.toLowerCase()}`}>
-                                {player.league}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
-                                onClick={() => handleDraftClick(player)}
-                                disabled={!isCurrentUserTurn || !isDraftActive || isPickInProgress}
-                              >
-                                {isPickInProgress ? 'Drafting...' : 'Draft'}
-                              </button>
-                            </td>
-                          </tr>
+                          <div key={pick.id} className="drafted-player-card">
+                            <div className="pick-number">#{pick.pickNumber}</div>
+                            <div className="pick-details">
+                              <div className="player-info">
+                                <span 
+                                  className="player-name clickable-player-name"
+                                  onClick={() => {
+                                    const player: Player = {
+                                      id: pick.playerId || 0,
+                                      name: pick.playerName,
+                                      position: pick.playerPosition,
+                                      team: pick.playerTeam,
+                                      league: pick.playerLeague as 'NFL' | 'NBA' | 'MLB',
+                                      stats: {}
+                                    };
+                                    handlePlayerNameClick(player);
+                                  }}
+                                >
+                                  {pick.playerName}
+                                </span>
+                                <span className="player-meta">
+                                  {pick.playerPosition} • {pick.playerTeam} • 
+                                  <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
+                                    {pick.playerLeague}
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="drafted-by">{memberName}</div>
+                            </div>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
+                  </div>
+                ) : (
+                  <div className="no-drafts-message">
+                    No players drafted yet
+                  </div>
                 )}
-              </div>
-              </section>
-            </main>
+              </aside>
+            </section>
           </>
         ) : (
           /* When draft is completed, show message to use Free Agents */
@@ -927,81 +1208,31 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           </div>
         )}
-
-        {/* Right Sidebar - Drafted Players */}
-        <aside className="drafted-players-sidebar">
-          <div className="sidebar-header">
-            <h3>Drafted Players</h3>
-            {isDraftCreated && draftState && draftState.draftPicks && (
-              <span className="total-picks">{draftState.draftPicks.length} total picks</span>
-            )}
-          </div>
-          
-          {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 ? (
-            <div className="drafted-players-container">
-              {draftState.draftPicks
-                .sort((a: any, b: any) => b.pickNumber - a.pickNumber) // Sort newest first (most recent at top)
-                .map((pick: any) => {
-                  const member = state.leagueMembers.find(m => m.id === pick.userId);
-                  const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
-                  
-                  return (
-                    <div key={pick.id} className="drafted-player-card">
-                      <div className="pick-number">#{pick.pickNumber}</div>
-                      <div className="pick-details">
-                        <div className="player-info">
-                          <span 
-                            className="player-name clickable-player-name"
-                            onClick={() => {
-                              const player: Player = {
-                                id: pick.playerId || 0,
-                                name: pick.playerName,
-                                position: pick.playerPosition,
-                                team: pick.playerTeam,
-                                league: pick.playerLeague as 'NFL' | 'NBA' | 'MLB',
-                                stats: {}
-                              };
-                              handlePlayerNameClick(player);
-                            }}
-                          >
-                            {pick.playerName}
-                          </span>
-                          <span className="player-meta">
-                            {pick.playerPosition} • {pick.playerTeam} • 
-                            <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
-                              {pick.playerLeague}
-                            </span>
-                          </span>
-                        </div>
-                        <div className="drafted-by">{memberName}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          ) : (
-            <div className="no-drafts-message">
-              No players drafted yet
-            </div>
-          )}
-        </aside>
       </section>
 
       {/* Player Info Modal */}
-      <PlayerInfoModal
-        isOpen={isPlayerInfoModalOpen}
-        onClose={handleClosePlayerInfo}
-        player={selectedPlayerForInfo}
-      />
+      {isPlayerInfoModalOpen && (
+        <Suspense fallback={<LazyLoadFallback type="modal" />}>
+          <PlayerInfoModal
+            isOpen={isPlayerInfoModalOpen}
+            onClose={handleClosePlayerInfo}
+            player={selectedPlayerForInfo}
+          />
+        </Suspense>
+      )}
 
       {/* Draft Confirmation Modal */}
-      <DraftConfirmationModal
-        isOpen={isDraftConfirmModalOpen}
-        onClose={handleCancelDraft}
-        onConfirm={handleConfirmDraft}
-        player={selectedPlayerForDraft}
-        isProcessing={isPickInProgress}
-      />
+      {isDraftConfirmModalOpen && (
+        <Suspense fallback={<LazyLoadFallback type="modal" />}>
+          <DraftConfirmationModal
+            isOpen={isDraftConfirmModalOpen}
+            onClose={handleCancelDraft}
+            onConfirm={handleConfirmDraft}
+            player={selectedPlayerForDraft}
+            isProcessing={isPickInProgress}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

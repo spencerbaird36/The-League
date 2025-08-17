@@ -1,0 +1,523 @@
+/* =================================================================
+   FANTASY SPORTS LEAGUE - DESIGN SYSTEM
+   Consistent typography, spacing, and component styles across all pages
+   ================================================================= */
+
+/* =================================================================
+   TYPOGRAPHY SYSTEM
+   ================================================================= */
+
+/* Override existing inconsistent page title styles */
+.draft-header h1,
+.free-agents-header h1,
+.my-team-header h1,
+.standings-header h1,
+.schedule-header h1,
+.page-header h1 {
+  font-family: 'Poppins', sans-serif !important;
+  font-size: clamp(2.5rem, 5vw, 3.5rem) !important;
+  font-weight: 700 !important;
+  background: var(--gradient-gold) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  margin-bottom: 16px !important;
+  letter-spacing: -1px !important;
+  position: relative !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+/* Remove any decorative pseudo-elements that cause inconsistency */
+.draft-header h1::after,
+.my-team-header h1::after {
+  display: none !important;
+}
+
+/* Page Titles - Consistent across all pages */
+.page-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 700;
+  background: var(--gradient-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
+  letter-spacing: -1px;
+  position: relative;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Section Titles */
+.section-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
+  color: var(--text-white);
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+/* Subsection Titles */
+.subsection-title {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+  font-weight: 600;
+  color: var(--text-cream);
+  margin-bottom: 8px;
+}
+
+/* Body Text */
+.body-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-cream);
+  line-height: 1.6;
+}
+
+/* Small Text */
+.small-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-gray);
+  line-height: 1.5;
+}
+
+/* Caption Text */
+.caption-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-gray);
+  line-height: 1.4;
+}
+
+/* =================================================================
+   PLAYER NAME STYLES - Consistent across all contexts
+   ================================================================= */
+
+/* Override ALL existing player name styles across the application */
+.draft-container .clickable-player-name,
+.free-agents-container .clickable-player-name,
+.my-team-container .clickable-player-name,
+.standings-container .clickable-player-name,
+.schedule-container .clickable-player-name,
+.matchup-modal .clickable-player-name,
+.player-info-modal .clickable-player-name,
+.draft-confirmation-modal .clickable-player-name,
+.virtual-table-content .clickable-player-name,
+table .clickable-player-name,
+tbody .clickable-player-name,
+tr .clickable-player-name,
+td .clickable-player-name {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: var(--text-white) !important;
+  line-height: 1.4 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid transparent !important;
+  transition: color 0.2s ease, border-bottom-color 0.2s ease, background-color 0.2s ease !important;
+  padding: 4px 6px !important;
+  border-radius: 4px !important;
+  display: inline-block !important;
+  margin: 0 !important;
+  min-height: auto !important;
+  max-height: auto !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.draft-container .clickable-player-name:hover,
+.free-agents-container .clickable-player-name:hover,
+.my-team-container .clickable-player-name:hover,
+.standings-container .clickable-player-name:hover,
+.schedule-container .clickable-player-name:hover,
+.matchup-modal .clickable-player-name:hover,
+.player-info-modal .clickable-player-name:hover,
+.draft-confirmation-modal .clickable-player-name:hover,
+.virtual-table-content .clickable-player-name:hover,
+table .clickable-player-name:hover,
+tbody .clickable-player-name:hover,
+tr .clickable-player-name:hover,
+td .clickable-player-name:hover {
+  color: var(--accent-gold) !important;
+  border-bottom-color: var(--accent-gold) !important;
+  background: rgba(218, 165, 32, 0.1) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.draft-container .clickable-player-name:active,
+.free-agents-container .clickable-player-name:active,
+.my-team-container .clickable-player-name:active,
+.standings-container .clickable-player-name:active,
+.schedule-container .clickable-player-name:active,
+.matchup-modal .clickable-player-name:active,
+.player-info-modal .clickable-player-name:active,
+.draft-confirmation-modal .clickable-player-name:active,
+.virtual-table-content .clickable-player-name:active,
+table .clickable-player-name:active,
+tbody .clickable-player-name:active,
+tr .clickable-player-name:active,
+td .clickable-player-name:active {
+  background: rgba(218, 165, 32, 0.15) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.draft-container .clickable-player-name:focus,
+.free-agents-container .clickable-player-name:focus,
+.my-team-container .clickable-player-name:focus,
+.standings-container .clickable-player-name:focus,
+.schedule-container .clickable-player-name:focus,
+.matchup-modal .clickable-player-name:focus,
+.player-info-modal .clickable-player-name:focus,
+.draft-confirmation-modal .clickable-player-name:focus,
+.virtual-table-content .clickable-player-name:focus,
+table .clickable-player-name:focus,
+tbody .clickable-player-name:focus,
+tr .clickable-player-name:focus,
+td .clickable-player-name:focus {
+  outline: 2px solid var(--accent-gold) !important;
+  outline-offset: 2px !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.player-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-white);
+  line-height: 1.4;
+  margin: 0;
+  transition: none; /* Prevent unwanted transitions */
+}
+
+.clickable-player-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: var(--text-white) !important;
+  line-height: 1.4 !important;
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-bottom-color 0.2s ease, background-color 0.2s ease !important;
+  padding: 4px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin: 0 !important;
+  /* Prevent font size changes */
+  min-height: auto !important;
+  max-height: auto !important;
+}
+
+.clickable-player-name:hover {
+  color: var(--accent-gold) !important;
+  border-bottom-color: var(--accent-gold);
+  background: rgba(218, 165, 32, 0.1);
+  font-size: 1rem !important; /* Force consistent size */
+  font-weight: 600 !important; /* Force consistent weight */
+  transform: none !important; /* Prevent transform changes */
+}
+
+.clickable-player-name:active {
+  background: rgba(218, 165, 32, 0.15);
+  font-size: 1rem !important; /* Force consistent size */
+  font-weight: 600 !important; /* Force consistent weight */
+  transform: none !important; /* Prevent transform changes */
+}
+
+.clickable-player-name:focus {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+  font-size: 1rem !important; /* Force consistent size */
+  font-weight: 600 !important; /* Force consistent weight */
+}
+
+/* =================================================================
+   PAGE HEADER COMPONENTS
+   ================================================================= */
+
+.page-header {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  text-align: center;
+  box-shadow: var(--shadow-premium);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gradient-gold);
+  opacity: 0.6;
+}
+
+.page-header .page-title {
+  margin-bottom: 8px;
+}
+
+.page-header .page-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.1rem;
+  color: var(--text-cream);
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* =================================================================
+   BUTTON SYSTEM
+   ================================================================= */
+
+.btn-primary {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(218, 165, 32, 0.4);
+}
+
+.btn-secondary {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-cream);
+  border: 2px solid var(--border-light);
+  border-radius: 8px;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-glass);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+/* =================================================================
+   TABLE SYSTEM
+   ================================================================= */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface-glass);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  border: 1px solid var(--border-light);
+}
+
+.data-table th {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-white);
+  background: var(--gradient-navy);
+  padding: 16px 12px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--accent-gold);
+}
+
+.data-table td {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-cream);
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--border-cream);
+  transition: background-color 0.2s ease;
+}
+
+.data-table tr:hover td {
+  background: rgba(218, 165, 32, 0.05);
+}
+
+/* =================================================================
+   CARD SYSTEM
+   ================================================================= */
+
+.card {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow-premium);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-deep);
+}
+
+.card-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-white);
+  margin-bottom: 12px;
+}
+
+.card-content {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-cream);
+  line-height: 1.6;
+}
+
+/* =================================================================
+   STATUS INDICATORS
+   ================================================================= */
+
+.status-indicator {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+
+.status-success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* =================================================================
+   UTILITY CLASSES
+   ================================================================= */
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-xs { margin-bottom: 4px; }
+.mb-sm { margin-bottom: 8px; }
+.mb-md { margin-bottom: 16px; }
+.mb-lg { margin-bottom: 24px; }
+.mb-xl { margin-bottom: 32px; }
+
+.mt-xs { margin-top: 4px; }
+.mt-sm { margin-top: 8px; }
+.mt-md { margin-top: 16px; }
+.mt-lg { margin-top: 24px; }
+.mt-xl { margin-top: 32px; }
+
+.font-weight-normal { font-weight: 400; }
+.font-weight-medium { font-weight: 500; }
+.font-weight-semibold { font-weight: 600; }
+.font-weight-bold { font-weight: 700; }
+
+/* =================================================================
+   RESPONSIVE UTILITIES
+   ================================================================= */
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: clamp(2rem, 8vw, 2.5rem);
+    margin-bottom: 12px;
+  }
+  
+  .section-title {
+    font-size: clamp(1.3rem, 5vw, 1.75rem);
+    margin-bottom: 10px;
+  }
+  
+  .page-header {
+    padding: 24px 20px;
+    margin-bottom: 24px;
+  }
+  
+  .card {
+    padding: 20px 16px;
+  }
+  
+  .clickable-player-name {
+    font-size: 0.95rem !important;
+    padding: 3px 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: clamp(1.75rem, 10vw, 2.25rem);
+  }
+  
+  .clickable-player-name {
+    font-size: 0.9rem !important;
+    padding: 2px 4px;
+  }
+}

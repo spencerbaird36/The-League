@@ -126,9 +126,9 @@ const Standings: React.FC<StandingsProps> = ({ user }) => {
 
   return (
     <div className="standings-container">
-      <div className="standings-header">
-        <h1>{standingsData.leagueName} Standings</h1>
-        <p>{standingsData.standings.length} teams</p>
+      <div className="page-header standings-header">
+        <h1 className="page-title">{standingsData.leagueName} Standings</h1>
+        <p className="page-subtitle">{standingsData.standings.length} teams</p>
       </div>
 
       <div className="standings-table-container">

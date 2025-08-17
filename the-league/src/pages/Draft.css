@@ -110,20 +110,20 @@
 .start-draft-btn {
   background: var(--gradient-gold);
   color: var(--primary-navy);
-  border: none;
-  padding: 16px 40px;
+  border: 2px solid var(--accent-gold);
+  padding: 16px 32px;
   border-radius: 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-family: inherit;
+  font-family: 'Poppins', sans-serif;
   box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
   position: relative;
   overflow: hidden;
-  margin-top: 12px;
+  min-width: 140px;
 }
 
 .start-draft-btn::before {
@@ -322,7 +322,7 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-top: 16px;
 }
 
 .auto-draft-btn {
@@ -338,9 +338,10 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: 'Poppins', sans-serif;
-  box-shadow: var(--shadow-premium);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
   position: relative;
   overflow: hidden;
+  min-width: 140px;
 }
 
 .auto-draft-btn::before {
@@ -407,15 +408,15 @@
   }
 }
 
-/* League Members Section */
+/* League Members Section - Compact */
 .league-members-section {
   background: var(--surface-glass);
   backdrop-filter: blur(15px);
-  border-radius: 16px;
-  padding: 25px;
-  margin-bottom: 40px;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
   border: 1px solid var(--border-light);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   z-index: 1;
   position: relative;
 }
@@ -424,15 +425,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .league-members-section h3 {
   color: var(--text-white);
   font-family: 'Poppins', sans-serif;
-  font-size: 1.3rem;
+  font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
   letter-spacing: -0.5px;
@@ -480,10 +481,10 @@
 .league-members-list {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   overflow-x: auto;
-  padding: 8px 0;
+  padding: 4px 0;
 }
 
 .league-member-card {
@@ -493,9 +494,9 @@
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px 20px;
-  min-width: 140px;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 120px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -560,46 +561,46 @@
 .member-position {
   background: var(--gradient-gold);
   color: var(--primary-navy);
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.9rem;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
 }
 
 .member-info {
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .member-name {
   color: var(--text-white);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   line-height: 1.2;
 }
 
 .member-username {
   color: var(--accent-platinum);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   opacity: 0.8;
   font-weight: 500;
 }
 
 .turn-indicator {
   color: var(--accent-gold);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -625,10 +626,11 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-premium);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
   position: relative;
   overflow: hidden;
   font-family: 'Poppins', sans-serif;
+  min-width: 140px;
 }
 
 .draft-control-btn::before {
@@ -1054,11 +1056,240 @@
 
 /* Main Content Layout */
 .draft-main-content {
-  display: grid;
-  grid-template-columns: 320px 1fr 320px;
+  display: flex;
+  flex-direction: column;
   gap: 30px;
   margin-bottom: 40px;
   min-height: 80vh;
+}
+
+/* Filters Section - Compact horizontal layout at top */
+.filters-section {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 20px 32px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  z-index: 1;
+  position: relative;
+}
+
+.filters-header {
+  display: none; /* Remove header to save space */
+}
+
+.filters-content {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 60px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Filters section league and position filters - compact inline layout */
+.filters-section .league-filter,
+.filters-section .position-filter {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.filters-section .league-filter h4,
+.filters-section .position-filter h4 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.filters-section .league-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.filters-section .league-buttons button {
+  background: rgba(245, 242, 232, 0.08);
+  color: var(--text-cream);
+  border: 2px solid var(--border-cream);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.85rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+}
+
+.filters-section .league-buttons button:hover {
+  background: rgba(245, 242, 232, 0.12);
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.filters-section .league-buttons button.active {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border-color: var(--accent-gold);
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+.filters-section .position-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filters-section .position-tabs button {
+  background: rgba(245, 242, 232, 0.08);
+  color: var(--text-cream);
+  border: 2px solid var(--border-cream);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 0.75rem;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  min-width: 40px;
+}
+
+.filters-section .position-tabs button:hover {
+  background: rgba(245, 242, 232, 0.12);
+  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+}
+
+.filters-section .position-tabs button.active {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border-color: var(--accent-gold);
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+/* Available Players Section - Side by side layout */
+.available-players-section {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 30px;
+  height: calc(75vh);
+}
+
+.available-players-section .available-players {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.available-players-section .available-players h2 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
+  flex-shrink: 0;
+}
+
+/* Drafted Players Sidebar Title - Match Available Players styling */
+.available-players-section .drafted-players-sidebar .sidebar-header h3 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
+  margin: 0 0 20px 0;
+}
+
+.available-players-section .table-container {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Ensure drafted players sidebar works properly in the new layout */
+.available-players-section .drafted-players-sidebar {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar header styling to match available players */
+.available-players-section .drafted-players-sidebar .sidebar-header {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+/* Total picks container - positioned below title */
+.available-players-section .drafted-players-sidebar .total-picks-container {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Total picks styling */
+.available-players-section .drafted-players-sidebar .total-picks {
+  font-size: 0.85rem;
+  color: var(--accent-gold);
+  background: rgba(212, 175, 55, 0.15);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-block;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.available-players-section .drafted-players-sidebar .total-picks:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Drafted players container to match table container behavior */
+.available-players-section .drafted-players-sidebar .drafted-players-container {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-gold) transparent;
+  padding-right: 5px;
+  min-height: 0;
 }
 
 /* Left Sidebar - Filters */
@@ -1960,38 +2191,63 @@ tbody tr:hover td {
 }
 
 /* Responsive Design for New Layout */
+@media (max-width: 1400px) {
+  .available-players-section {
+    grid-template-columns: 1fr 320px;
+    gap: 25px;
+  }
+}
+
 @media (max-width: 1200px) {
-  .draft-main-content {
-    grid-template-columns: 280px 1fr 280px;
+  .available-players-section {
+    grid-template-columns: 1fr 280px;
     gap: 20px;
+    height: calc(70vh);
   }
   
   .drafted-players-sidebar {
     padding: 20px;
   }
+  
+  .filters-content {
+    gap: 40px;
+  }
 }
 
 @media (max-width: 968px) {
-  .draft-main-content {
+  .available-players-section {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
+    height: auto;
   }
   
-  .draft-sidebar {
+  .available-players-section .available-players {
+    height: 50vh;
+    min-height: 400px;
+  }
+  
+  .available-players-section .drafted-players-sidebar {
     position: static;
-    order: 1;
-    margin-top: 20px;
-  }
-  
-  .draft-main {
     order: 2;
+    height: 50vh;
+    min-height: 400px;
+    max-height: none;
   }
   
-  .drafted-players-sidebar {
-    position: static;
-    order: 3;
-    margin-top: 20px;
-    max-height: 400px;
+  .filters-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .filters-section {
+    padding: 16px 24px;
+  }
+  
+  .filters-section .league-filter,
+  .filters-section .position-filter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 
@@ -2009,9 +2265,13 @@ tbody tr:hover td {
     padding: 20px 30px;
   }
   
-  .begin-draft-btn {
-    padding: 14px 32px;
-    font-size: 1rem;
+  .begin-draft-btn,
+  .start-draft-btn,
+  .auto-draft-btn,
+  .draft-control-btn {
+    padding: 14px 28px;
+    font-size: 0.9rem;
+    min-width: 120px;
   }
   
   .pause-btn {
@@ -2019,73 +2279,89 @@ tbody tr:hover td {
     font-size: 0.85rem;
   }
   
-  .auto-draft-btn {
-    padding: 12px 28px;
-    font-size: 0.9rem;
+  /* Filters section mobile styles - more compact */
+  .filters-section {
+    padding: 16px 20px;
   }
   
-  .league-filter {
-    gap: 8px;
+  .filters-content {
+    gap: 16px;
   }
   
-  .league-filter button {
-    padding: 12px 20px;
-    font-size: 0.8rem;
+  .filters-section .league-filter h4,
+  .filters-section .position-filter h4 {
+    font-size: 0.85rem;
   }
   
-  .position-filter {
-    padding: 20px;
-    max-width: 100%;
-  }
-  
-  .position-tabs {
+  .filters-section .league-buttons {
     gap: 6px;
   }
   
-  .position-tabs button {
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    min-width: 45px;
+  .filters-section .league-buttons button {
+    padding: 6px 12px;
+    font-size: 0.75rem;
   }
   
-  .available-players {
+  .filters-section .position-tabs {
+    gap: 4px;
+  }
+  
+  .filters-section .position-tabs button {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    min-width: 35px;
+  }
+  
+  .available-players-section .available-players {
     padding: 25px 20px;
-    height: 60vh;
-    min-height: 500px;
+    height: 45vh;
+    min-height: 350px;
   }
-
-  .league-members-section {
+  
+  .available-players-section .drafted-players-sidebar {
     padding: 20px;
-    margin-bottom: 30px;
+    height: 45vh;
+    min-height: 350px;
   }
-
-  .league-members-section h3 {
-    font-size: 1.1rem;
+  
+  .available-players-section .available-players h2,
+  .available-players-section .drafted-players-sidebar .sidebar-header h3 {
+    font-size: 1.3rem;
     margin-bottom: 16px;
   }
 
+  .league-members-section {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .league-members-section h3 {
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+
   .league-members-list {
-    gap: 12px;
+    gap: 8px;
   }
 
   .league-member-card {
-    min-width: 120px;
-    padding: 12px 16px;
+    min-width: 100px;
+    padding: 10px 12px;
   }
 
   .member-position {
-    width: 28px;
-    height: 28px;
-    font-size: 0.8rem;
-    margin-bottom: 10px;
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+    margin-bottom: 6px;
   }
 
   .member-name {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   .member-username {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
   }
   
   table {
@@ -2111,48 +2387,85 @@ tbody tr:hover td {
     padding: 15px 10px;
   }
   
-  .available-players {
+  /* Filters section small mobile styles - very compact */
+  .filters-section {
+    padding: 12px 15px;
+  }
+  
+  .filters-content {
+    gap: 12px;
+  }
+  
+  .filters-section .league-filter h4,
+  .filters-section .position-filter h4 {
+    font-size: 0.8rem;
+  }
+  
+  .filters-section .league-buttons button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+  
+  .filters-section .position-tabs button {
+    padding: 4px 6px;
+    font-size: 0.65rem;
+    min-width: 30px;
+  }
+  
+  .available-players-section .available-players {
     padding: 20px 15px;
-    height: 65vh;
-    min-height: 450px;
+    height: 40vh;
+    min-height: 300px;
   }
-
-  .league-members-section {
+  
+  .available-players-section .drafted-players-sidebar {
     padding: 15px;
-    margin-bottom: 25px;
+    height: 40vh;
+    min-height: 300px;
   }
-
-  .league-members-section h3 {
-    font-size: 1rem;
+  
+  .available-players-section .available-players h2,
+  .available-players-section .drafted-players-sidebar .sidebar-header h3 {
+    font-size: 1.1rem;
     margin-bottom: 12px;
   }
 
+  .league-members-section {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+
+  .league-members-section h3 {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
   .league-members-list {
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-start;
     overflow-x: auto;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
   }
 
   .league-member-card {
-    min-width: 100px;
-    padding: 10px 12px;
+    min-width: 85px;
+    padding: 8px 10px;
     flex-shrink: 0;
   }
 
   .member-position {
-    width: 24px;
-    height: 24px;
-    font-size: 0.75rem;
-    margin-bottom: 8px;
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
   }
 
   .member-name {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
   }
 
   .member-username {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
   }
   
   .stats {
@@ -2193,19 +2506,18 @@ tbody tr:hover td {
     font-size: 1rem;
   }
   
-  .begin-draft-btn {
-    padding: 12px 28px;
-    font-size: 0.9rem;
+  .begin-draft-btn,
+  .start-draft-btn,
+  .auto-draft-btn,
+  .draft-control-btn {
+    padding: 12px 24px;
+    font-size: 0.85rem;
+    min-width: 100px;
   }
   
   .pause-btn {
     padding: 7px 14px;
     font-size: 0.8rem;
-  }
-  
-  .auto-draft-btn {
-    padding: 10px 24px;
-    font-size: 0.85rem;
   }
 }
 
@@ -2532,4 +2844,27 @@ tbody tr:hover td {
     padding: 12px 28px;
     font-size: 0.9rem;
   }
+}
+/* Virtual scroll table styling for draft page */
+.draft-virtual-table {
+  height: 100%;
+  background: transparent;
+  border: none;
+}
+
+.draft-virtual-table .virtual-table-header {
+  background: var(--surface-dark);
+}
+
+.draft-virtual-table .header-cell {
+  background: var(--surface-dark);
+}
+
+.draft-virtual-table .data-row.clickable:hover {
+  background: rgba(212, 175, 55, 0.08);
+  transform: scale(1.01);
+}
+
+.draft-virtual-table .data-row.clickable:hover .virtual-table-cell {
+  color: var(--text-white);
 }

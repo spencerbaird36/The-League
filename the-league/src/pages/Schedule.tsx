@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { SeasonSchedule, ScheduleMatchup, WeekSchedule } from '../types/Schedule';
 import './Schedule.css';
 import { apiRequest } from '../config/api';
-import MatchupModal from '../components/MatchupModal';
+import LazyLoadFallback from '../components/LazyLoadFallback';
+
+// Lazy load modal since it's only needed when users click on matchups
+const MatchupModal = lazy(() => import('../components/MatchupModal'));
 
 interface League {
   id: number;
@@ -228,9 +231,9 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
 
   return (
     <div className="schedule-container">
-      <div className="schedule-header">
-        <h1>League Schedule</h1>
-        <p>{user?.league?.name} - {currentSchedule?.season} Season</p>
+      <div className="page-header schedule-header">
+        <h1 className="page-title">League Schedule</h1>
+        <p className="page-subtitle">{user?.league?.name} - {currentSchedule?.season} Season</p>
       </div>
 
       {/* League Selector */}
@@ -355,13 +358,17 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
       )}
 
       {/* Matchup Modal */}
-      <MatchupModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        matchup={selectedMatchup}
-        selectedLeague={selectedLeague}
-        leagueId={user?.league?.id || 0}
-      />
+      {isModalOpen && (
+        <Suspense fallback={<LazyLoadFallback type="modal" />}>
+          <MatchupModal
+            isOpen={isModalOpen}
+            onClose={handleCloseModal}
+            matchup={selectedMatchup}
+            selectedLeague={selectedLeague}
+            leagueId={user?.league?.id || 0}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -1,0 +1,126 @@
+.lazy-fallback {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-fallback {
+  background: linear-gradient(135deg, 
+    var(--primary-navy) 0%, 
+    var(--secondary-navy) 100%
+  );
+  padding: 40px 20px;
+}
+
+.page-skeleton {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.skeleton-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.skeleton-header .skeleton-title {
+  width: 300px;
+  height: 40px;
+  margin: 0 auto 16px;
+}
+
+.skeleton-header .skeleton-subtitle {
+  width: 200px;
+  height: 20px;
+  margin: 0 auto;
+}
+
+.skeleton-content {
+  width: 100%;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.modal-fallback {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+}
+
+.modal-skeleton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface-dark);
+  border-radius: 20px;
+  padding: 40px;
+  min-width: 400px;
+  max-width: 90vw;
+  max-height: 90vh;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.component-fallback {
+  min-height: 200px;
+  padding: 20px;
+  background: var(--surface-glass);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+/* Animation for smooth transitions */
+.lazy-fallback {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .page-fallback {
+    padding: 20px 15px;
+  }
+
+  .skeleton-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .modal-skeleton {
+    padding: 20px;
+    min-width: auto;
+    width: 90vw;
+  }
+
+  .skeleton-header .skeleton-title {
+    width: 250px;
+    height: 32px;
+  }
+
+  .skeleton-header .skeleton-subtitle {
+    width: 150px;
+    height: 16px;
+  }
+}

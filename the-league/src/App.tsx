@@ -1,20 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import FreeAgentsComponent from './pages/FreeAgentsNew';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import Navigation from './components/Navigation';
-import Home from './pages/Home';
-import Draft from './pages/Draft';
-import MyTeam from './pages/MyTeam';
-import FreeAgents from './pages/FreeAgents';
-import Standings from './pages/Standings';
-import Schedule from './pages/Schedule';
-import TeamPage from './pages/TeamPage';
-import Chat from './pages/Chat';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
 import { players } from './data/players';
 import signalRService from './services/signalRService';
 import './App.css';
 import { apiRequest } from './config/api';
+import { useToast } from './hooks/useToast';
+import ToastContainer from './components/ToastContainer';
+
+// Import all components directly to avoid lazy loading issues
+import Home from './pages/Home';
+import Draft from './pages/Draft';
+import MyTeam from './pages/MyTeam';
+import Standings from './pages/Standings';
+import Schedule from './pages/Schedule';
+import TeamPage from './pages/TeamPage';
+import Chat from './pages/Chat';
 
 interface League {
   id: number;
@@ -36,6 +40,7 @@ interface User {
 // AppContent component that uses useNavigate
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
+  const { toasts, addDraftToast, removeToast } = useToast();
   
   // Authentication state
   const [user, setUser] = useState<User | null>(null);
@@ -60,6 +65,7 @@ const AppContent: React.FC = () => {
   // Auto Draft state
   const [isAutoDrafting, setIsAutoDrafting] = useState<boolean>(false);
   const autoDraftTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   const allDraftedPlayers = [...draftedNFL, ...draftedMLB, ...draftedNBA];
   const availablePlayers = players.filter(player => 
@@ -121,46 +127,47 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Optimized timer effect - minimal state updates
-  useEffect(() => {
-    if (isDrafting && !isPaused) {
-      const startTime = Date.now();
-      timerStartRef.current = startTime;
+  // Timer effect DISABLED to prevent re-rendering
+  // useEffect(() => {
+  //   console.log('Timer useEffect triggered:', { isDrafting, isPaused });
+  //   if (isDrafting && !isPaused) {
+  //     const startTime = Date.now();
+  //     timerStartRef.current = startTime;
       
-      // Set warning timer for 5 seconds remaining (2 seconds after start) - TESTING: reduced timer
-      if (!hasWarned) {
-        warningTimerRef.current = setTimeout(() => {
-          try {
-            createWarningSound();
-            setHasWarned(true);
-          } catch (error) {
-            console.warn('Could not play warning sound:', error);
-          }
-        }, 2000); // TESTING: 5 - 3 = 2 seconds for warning
-      }
+  //     // Set warning timer for 5 seconds remaining (2 seconds after start) - TESTING: reduced timer
+  //     if (!hasWarned) {
+  //       warningTimerRef.current = setTimeout(() => {
+  //         try {
+  //           createWarningSound();
+  //           setHasWarned(true);
+  //         } catch (error) {
+  //           console.warn('Could not play warning sound:', error);
+  //         }
+  //       }, 2000); // TESTING: 5 - 3 = 2 seconds for warning
+  //     }
       
-      // Set timeout timer for 0 seconds remaining (5 seconds after start) - TESTING: reduced timer
-      console.log('Setting up 5-second timeout timer...');
-      timerRef.current = setTimeout(() => {
-        console.log('=== TIMER EXPIRED IN APP.TSX ===');
-        console.log('isDrafting:', isDrafting);
-        console.log('isPaused:', isPaused);
-        console.log('Current time:', new Date().toLocaleTimeString());
-        setTimeRemaining(0);
-        handleTimeExpired();
-      }, 5000); // TESTING: reduced from 15000 to 5000
-      console.log('Timer set with ID:', timerRef.current);
-    }
+  //     // Set timeout timer for 0 seconds remaining (5 seconds after start) - TESTING: reduced timer
+  //     console.log('Setting up 5-second timeout timer...');
+  //     timerRef.current = setTimeout(() => {
+  //       console.log('=== TIMER EXPIRED IN APP.TSX ===');
+  //       console.log('isDrafting:', isDrafting);
+  //       console.log('isPaused:', isPaused);
+  //       console.log('Current time:', new Date().toLocaleTimeString());
+  //       setTimeRemaining(0);
+  //       handleTimeExpired();
+  //     }, 5000); // TESTING: reduced from 15000 to 5000
+  //     console.log('Timer set with ID:', timerRef.current);
+  //   }
 
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      if (warningTimerRef.current) {
-        clearTimeout(warningTimerRef.current);
-      }
-    };
-  }, [isDrafting, isPaused]); // Only re-run when timer starts/stops/pauses
+  //   return () => {
+  //     if (timerRef.current) {
+  //       clearTimeout(timerRef.current);
+  //     }
+  //     if (warningTimerRef.current) {
+  //       clearTimeout(warningTimerRef.current);
+  //     }
+  //   };
+  // }, [isDrafting, isPaused]); // Only timer state dependencies
 
   // Start draft timer
   const startDraft = () => {
@@ -187,6 +194,7 @@ const AppContent: React.FC = () => {
     }
     setTimeRemaining(15);
     setHasWarned(false);
+    setIsDrafting(false); // Stop drafting to prevent infinite loop
     setIsPaused(false);
     timerStartRef.current = null;
   };
@@ -261,7 +269,7 @@ const AppContent: React.FC = () => {
   };
 
   // WebSocket-aware auto-draft handler
-  const handleWebSocketAutoDraft = async (userId: number, leagueId: number): Promise<void> => {
+  const handleWebSocketAutoDraft = useCallback(async (userId: number, leagueId: number): Promise<void> => {
     console.log('=== WEBSOCKET AUTO-DRAFT TRIGGERED ===');
     console.log('User ID:', userId, 'League ID:', leagueId);
     
@@ -292,23 +300,35 @@ const AppContent: React.FC = () => {
       }
 
       if (playerToSelect && signalRService.isConnected()) {
-        console.log('Auto-drafting via WebSocket:', playerToSelect.name);
+        console.log('🎯 Auto-drafting via WebSocket:', {
+          player: playerToSelect.name,
+          position: playerToSelect.position,
+          team: playerToSelect.team,
+          league: playerToSelect.league,
+          playerId: playerToSelect.id
+        });
         await signalRService.makeDraftPick(
           leagueId,
           playerToSelect.id,
           playerToSelect.name,
           playerToSelect.position,
           playerToSelect.team,
-          playerToSelect.league
+          playerToSelect.league,
+          true  // isAutoDraft = true
         );
-        console.log('WebSocket auto-draft successful');
+        console.log('✅ WebSocket auto-draft call completed, awaiting PlayerDrafted event for toast notification');
+      } else {
+        console.warn('❌ Auto-draft failed: playerToSelect or SignalR not available', {
+          playerToSelect: !!playerToSelect,
+          signalRConnected: signalRService.isConnected()
+        });
       }
     } catch (error) {
       console.error('WebSocket auto-draft failed:', error);
     }
-  };
+  }, [availablePlayers, getNeededPositions]);
 
-  // Expose WebSocket auto-draft handler globally for the Draft component
+  // WebSocket handler - re-enabled for auto-draft functionality
   useEffect(() => {
     (window as any).webSocketAutoDraftHandler = handleWebSocketAutoDraft;
     return () => {
@@ -375,15 +395,21 @@ const AppContent: React.FC = () => {
     }
 
     if (playerToSelect) {
-      setTimeoutMessage(`Time expired! Auto-drafted ${playerToSelect.name} (${playerToSelect.position}, ${playerToSelect.team}) - Roster need filled`);
-      draftPlayer(playerToSelect);
+      // Note: Toast will be handled by Draft component via WebSocket events
+      draftPlayer(playerToSelect, true);
     }
-    resetTimer();
+    // Stop drafting to prevent timer restart loop
+    setIsDrafting(false);
+    setIsPaused(false);
+    setTimeRemaining(15);
+    setHasWarned(false);
     
     setTimeout(() => setTimeoutMessage(''), 5000);
   };
 
-  const draftPlayer = (player: Player) => {
+  const draftPlayer = (player: Player, isAutoDraft: boolean = false) => {
+    console.log('⚽ draftPlayer called:', { player: player.name, isAutoDraft });
+    
     switch (player.league) {
       case 'NFL':
         setDraftedNFL(prev => [...prev, player]);
@@ -395,6 +421,9 @@ const AppContent: React.FC = () => {
         setDraftedNBA(prev => [...prev, player]);
         break;
     }
+    
+    // Note: Toast notifications are now handled by the Draft component to avoid duplicates
+    console.log('⚽ Player drafted, skipping toast (handled by Draft component)');
     
     createSuccessSound();
     
@@ -466,26 +495,25 @@ const AppContent: React.FC = () => {
     }
 
     if (playerToSelect) {
-      draftPlayer(playerToSelect);
-      setTimeoutMessage(`Auto-drafted: ${playerToSelect.name} (${playerToSelect.position}, ${playerToSelect.team})`);
-      setTimeout(() => setTimeoutMessage(''), 3000);
+      // Note: Toast will be handled by Draft component via WebSocket events
+      draftPlayer(playerToSelect, true);
     }
   };
 
-  // Auto draft effect
-  useEffect(() => {
-    if (isAutoDrafting && !isAutoDraftComplete()) {
-      autoDraftTimerRef.current = setTimeout(() => {
-        performAutoDraft();
-      }, 3000);
-    }
+  // Auto draft effect disabled to prevent re-rendering
+  // useEffect(() => {
+  //   if (isAutoDrafting && !isAutoDraftComplete()) {
+  //     autoDraftTimerRef.current = setTimeout(() => {
+  //       performAutoDraft();
+  //     }, 3000);
+  //   }
 
-    return () => {
-      if (autoDraftTimerRef.current) {
-        clearTimeout(autoDraftTimerRef.current);
-      }
-    };
-  }, [isAutoDrafting, draftedNFL, draftedMLB, draftedNBA]);
+  //   return () => {
+  //     if (autoDraftTimerRef.current) {
+  //       clearTimeout(autoDraftTimerRef.current);
+  //     }
+  //   };
+  // }, [isAutoDrafting, draftedNFL, draftedMLB, draftedNBA, isAutoDraftComplete, performAutoDraft]);
 
   // Start/Stop Auto Draft
   const toggleAutoDraft = () => {
@@ -559,6 +587,7 @@ const AppContent: React.FC = () => {
     }
   }, [navigate]);
 
+
   return (
     <div className="App">
       <Navigation 
@@ -567,7 +596,7 @@ const AppContent: React.FC = () => {
         login={login} 
         logout={logout} 
       />
-      <Routes>
+        <Routes>
           <Route path="/" element={
             <Home 
               registerAndLogin={registerAndLogin} 
@@ -590,6 +619,7 @@ const AppContent: React.FC = () => {
                   draftedMLB={draftedMLB}
                   draftedNBA={draftedNBA}
                   draftPlayer={draftPlayer}
+                  addDraftToast={addDraftToast}
                   isDrafting={isDrafting}
                   isPaused={isPaused}
                   timeRemaining={timeRemaining}
@@ -632,7 +662,7 @@ const AppContent: React.FC = () => {
             path="/free-agents" 
             element={
               isAuthenticated && user?.league ? (
-                <FreeAgents user={user} />
+                <FreeAgentsComponent user={user} />
               ) : !isAuthenticated ? (
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to view free agents.</div>
               ) : (
@@ -696,7 +726,29 @@ const AppContent: React.FC = () => {
               )
             } 
           />
-      </Routes>
+        </Routes>
+      
+        {/* Toast notifications */}
+        <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+        
+        {/* DEBUG: Test toast button */}
+        <button 
+          onClick={() => addDraftToast('Test Player', 'QB', 'TestTeam', false)}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            padding: '10px',
+            backgroundColor: 'green',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            zIndex: 10000
+          }}
+        >
+          Test Toast
+        </button>
     </div>
   );
 };

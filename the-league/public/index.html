@@ -10,25 +10,7 @@
       content="Fantasy Sports League - Manage your fantasy teams across NFL, MLB, and NBA. Draft players, track scores, and compete with friends."
     />
     
-    <!-- PWA Meta Tags -->
-    <meta name="application-name" content="Fantasy League" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Fantasy League" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="msapplication-TileColor" content="#1e3a5f" />
-    <meta name="msapplication-tap-highlight" content="no" />
-    
-    <!-- Icons -->
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="apple-touch-icon" sizes="167x167" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!-- PWA functionality disabled - removed manifest and PWA meta tags -->
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
@@ -43,6 +25,55 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    
+    <!-- Unregister existing service workers and clear all PWA data -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            console.log('Unregistering service worker:', registration);
+            registration.unregister().then(function(success) {
+              if (success) {
+                console.log('Service worker unregistered successfully');
+                // Force reload to clear any cached service worker code
+                setTimeout(() => {
+                  if (registration.active && registration.active.state === 'activated') {
+                    window.location.reload(true);
+                  }
+                }, 100);
+              }
+            });
+          }
+        });
+        
+        // Clear all caches aggressively
+        if ('caches' in window) {
+          caches.keys().then(function(cacheNames) {
+            return Promise.all(
+              cacheNames.map(function(cacheName) {
+                console.log('Deleting cache:', cacheName);
+                return caches.delete(cacheName);
+              })
+            );
+          }).then(() => {
+            console.log('All caches cleared');
+          });
+        }
+        
+        // Clear localStorage items related to PWA
+        const keysToRemove = Object.keys(localStorage).filter(key => 
+          key.includes('offline_') || 
+          key.includes('pwa_') || 
+          key.includes('sw_') ||
+          key.includes('cache_')
+        );
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+          console.log('Removed localStorage key:', key);
+        });
+      }
+    </script>
+    
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
