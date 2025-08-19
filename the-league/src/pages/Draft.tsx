@@ -6,12 +6,23 @@ import LazyLoadFallback from '../components/LazyLoadFallback';
 import VirtualScrollTable from '../components/VirtualScrollTable';
 import { useDraft } from '../context/DraftContext';
 import { useDraftOperations } from '../hooks/useDraftOperations';
-// Performance optimization imports disabled to fix re-rendering
-// import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
-// import { useDataCache } from '../hooks/useDataCache';
-// import { useOptimizedAPI, useBatchRequests } from '../hooks/useOptimizedAPI';
-// import { withMemo, useStableCallbacks } from '../utils/renderOptimizations';
+// Phase 1 Redesign: New draft hooks
+import { useDraftState } from '../hooks/useDraftState';
+import { useDraftTimer } from '../hooks/useDraftTimer';
+import { useNotifications } from '../hooks/useNotifications';
+import { useWebSocketDraft } from '../hooks/useWebSocketDraft';
+// Phase 2 Redesign: Enhanced features
+import { useDraftAnalytics } from '../hooks/useDraftAnalytics';
+import { useDraftProgress } from '../hooks/useDraftProgress';
+import DraftBoard from '../components/DraftBoard';
+import PlayerRecommendations from '../components/PlayerRecommendations';
+import DraftProgressBar from '../components/DraftProgressBar';
+// Phase 4 Redesign: Real-time collaboration and management tools
+import DraftChatRoom from '../components/DraftChatRoom';
+import CommissionerControls from '../components/CommissionerControls';
+import { DraftAction } from '../components/CommissionerControls';
 import signalRService from '../services/signalRService';
+import { draftService } from '../services/draftService';
 import './Draft.css';
 
 // Lazy load modals since they're only needed when users interact
@@ -69,35 +80,186 @@ const Draft: React.FC<DraftProps> = ({
   onTimeExpired,
   timerStartTime,
 }) => {
-  // Performance monitoring disabled to fix re-rendering
-  // const { detectMemoryLeaks, getPerformanceReport } = usePerformanceMonitor({
-  //   componentName: 'Draft',
-  //   enableMemoryTracking: true,
-  //   logThreshold: 20, // 20ms threshold for draft page
-  //   onPerformanceIssue: (metrics) => {
-  //     console.warn('Draft performance issue:', metrics);
-  //   },
-  // });
-
-  // Data caching disabled to fix re-rendering
-  // const { data: cachedPlayers, loading: playersLoading } = useDataCache(
-  //   'draft-players',
-  //   async () => players,
-  //   { ttl: 30 * 60 * 1000, persistToIndexedDB: true } // 30 minutes cache
-  // );
+  // Phase 1 Redesign: New draft state management
+  const [draftState, draftStateActions] = useDraftState();
+  const [notifications, notificationActions] = useNotifications({
+    maxNotifications: 5,
+    defaultDuration: 4000,
+    enableSounds: true
+  });
+  // Phase 1 Redesign: New timer management
+  const [timerState, timerActions] = useDraftTimer({
+    defaultDuration: 15, // 15 seconds to match backend
+    onTimerExpired: () => {
+      console.log('⏰ Timer expired, triggering auto-draft');
+      if (draftState.isActive && draftStateActions.isMyTurn(user?.id || 0)) {
+        handleAutoDraft();
+      }
+    },
+    onTimerTick: (timeRemaining) => {
+      draftStateActions.setTimeRemaining(timeRemaining);
+    }
+  });
 
   // Use the new draft context and operations
   const { state, dispatch } = useDraft();
   const draftOperations = useDraftOperations(user);
   const navigate = useNavigate();
   
-  // WebSocket draft state
+  // Phase 1 Redesign: WebSocket draft management
+  const webSocketActions = useWebSocketDraft({
+    leagueId: user?.league?.id,
+    userId: user?.id,
+    events: {
+      onDraftStarted: (data) => {
+        console.log('🎯 Draft started event received:', data);
+        draftStateActions.updateDraftState({
+          isActive: true,
+          currentPlayerId: data.CurrentUserId || data.currentUserId,
+          currentTurn: data.CurrentTurn || data.currentTurn || 0,
+          currentRound: data.CurrentRound || data.currentRound || 1
+        });
+        // Initialize WebSocket timer state
+        setWebSocketTimer({
+          timeRemaining: data.TimeLimit || 15,
+          isActive: true
+        });
+        
+        // Initialize WebSocket draft state for UI compatibility
+        setWebSocketDraftState({
+          CurrentUserId: data.CurrentUserId || data.currentUserId,
+          CurrentTurn: data.CurrentTurn || data.currentTurn || 0,
+          CurrentRound: data.CurrentRound || data.currentRound || 1,
+          TimeLimit: data.TimeLimit || 15
+        });
+        
+        timerActions.startTimer(data.TimeLimit || 15);
+        notificationActions.notifyDraftStarted();
+        if (draftStateActions.isMyTurn(user?.id || 0)) {
+          notificationActions.notifyYourTurn();
+        }
+      },
+      onTurnChanged: (data) => {
+        console.log('🔄 Turn changed event received:', data);
+        const newCurrentPlayerId = data.CurrentUserId || data.currentUserId;
+        draftStateActions.updateDraftState({
+          isActive: true,
+          currentPlayerId: newCurrentPlayerId,
+          currentTurn: data.CurrentTurn || data.currentTurn,
+          currentRound: data.CurrentRound || data.currentRound
+        });
+        // Reset WebSocket timer for new turn
+        setWebSocketTimer({
+          timeRemaining: data.TimeLimit || 15,
+          isActive: true
+        });
+        
+        // Update WebSocket draft state for compatibility
+        setWebSocketDraftState((prev: any) => ({
+          ...prev,
+          CurrentUserId: newCurrentPlayerId,
+          CurrentTurn: data.CurrentTurn || data.currentTurn,
+          CurrentRound: data.CurrentRound || data.currentRound,
+          TimeLimit: data.TimeLimit || 15
+        }));
+        
+        // Update isMyTurn state
+        const isMyTurnNow = newCurrentPlayerId === user?.id;
+        setIsMyTurn(isMyTurnNow);
+        console.log(`🎯 Turn changed - My turn: ${isMyTurnNow} (User ID: ${user?.id}, Current: ${newCurrentPlayerId})`);
+        
+        timerActions.resetTimer(data.TimeLimit || 15);
+        if (isMyTurnNow) {
+          notificationActions.notifyYourTurn();
+        }
+      },
+      onPlayerDrafted: (data) => {
+        console.log('✅ Player drafted event received:', data);
+        const playerName = data.playerName || data.PlayerName || 'Unknown Player';
+        const position = data.position || data.Position || 'Unknown';
+        const team = data.team || data.Team || 'Unknown';
+        const isAutoDraft = data.isAutoDraft || data.IsAutoDraft || false;
+        
+        // Add to notifications
+        notificationActions.notifyPlayerPicked(playerName, position, team, isAutoDraft);
+        
+        // Update legacy rosters for backward compatibility
+        const draftedPlayer: Player = {
+          id: data.playerId || data.PlayerId || 0,
+          name: playerName,
+          position: position,
+          team: team,
+          league: (data.league || data.League || 'NFL') as 'NFL' | 'NBA' | 'MLB'
+        };
+        draftPlayer(draftedPlayer);
+        
+        // 🔄 CRITICAL: Refresh backend draft state to update UI
+        console.log('🔄 Refreshing draft state after PlayerDrafted event');
+        draftOperations.fetchDraftState().catch(error => {
+          console.error('❌ Failed to refresh draft state after player drafted:', error);
+        });
+      },
+      onDraftPaused: (data) => {
+        console.log('⏸️ Draft paused event received:', data);
+        draftStateActions.updateDraftState({ isPaused: true });
+        timerActions.pauseTimer();
+        notificationActions.notifyDraftPaused();
+      },
+      onDraftResumed: (data) => {
+        console.log('▶️ Draft resumed event received:', data);
+        draftStateActions.updateDraftState({ isPaused: false });
+        timerActions.resumeTimer();
+        notificationActions.notifyDraftResumed();
+      },
+      onDraftCompleted: (data) => {
+        console.log('🏁 Draft completed event received:', data);
+        draftStateActions.updateDraftState({ 
+          isCompleted: true, 
+          isActive: false 
+        });
+        // Stop WebSocket timer
+        setWebSocketTimer({
+          timeRemaining: 0,
+          isActive: false
+        });
+        timerActions.stopTimer();
+        notificationActions.notifyDraftCompleted();
+      },
+      onTimerTick: (data) => {
+        console.log('⏰ Timer tick received:', data);
+        const timeRemaining = data.TimeRemaining ?? data.timeRemaining;
+        if (timeRemaining !== undefined) {
+          console.log('🔄 Updating webSocketTimer to:', timeRemaining);
+          draftStateActions.setTimeRemaining(timeRemaining);
+          // Update WebSocket timer state for UI display
+          setWebSocketTimer({
+            timeRemaining: timeRemaining,
+            isActive: true
+          });
+        } else {
+          console.warn('❌ TimerTick data missing timeRemaining:', data);
+        }
+      },
+      onAutoDraft: (data) => {
+        console.log('🤖 Auto draft event received:', data);
+        // Auto-draft logic handled in onPlayerDrafted
+      }
+    }
+  });
+
+  // Legacy state for backward compatibility
   const [webSocketDraftState, setWebSocketDraftState] = useState<any>(null);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [draftTimer, setDraftTimer] = useState(15);
   const [draftTimerActive, setDraftTimerActive] = useState(false);
   const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasJoinedLeagueRef = useRef<boolean>(false);
+  
+  // WebSocket timer state
+  const [webSocketTimer, setWebSocketTimer] = useState<{timeRemaining: number; isActive: boolean}>({
+    timeRemaining: 15,
+    isActive: false
+  });
   
   // Functions to update filters
   const setSelectedLeague = (league: 'ALL' | 'NFL' | 'MLB' | 'NBA') => {
@@ -112,14 +274,37 @@ const Draft: React.FC<DraftProps> = ({
   const selectedLeague = state.selectedLeague as 'ALL' | 'NFL' | 'MLB' | 'NBA';
   const selectedPosition = state.selectedPosition;
   
+  // Phase 1 Redesign: Update legacy state based on new draft state
+  useEffect(() => {
+    setIsMyTurn(draftStateActions.isMyTurn(user?.id || 0));
+    setDraftTimer(timerState.timeRemaining);
+    setDraftTimerActive(timerState.isActive);
+  }, [draftState.currentPlayerId, user?.id, timerState.timeRemaining, timerState.isActive, draftStateActions]);
+  
   const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
   const [isDraftConfirmModalOpen, setIsDraftConfirmModalOpen] = useState<boolean>(false);
   const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
   const [selectedPlayerForDraft, setSelectedPlayerForDraft] = useState<Player | null>(null);
   
-  // Get values from draft context
-  const draftState = draftOperations.draftState;
-  const isDraftCreated = !!draftState;
+  
+  // Phase 4 Redesign: Chat and commissioner controls visibility
+  const [isDraftChatVisible, setIsDraftChatVisible] = useState(false);
+  const [isCommissionerControlsVisible, setIsCommissionerControlsVisible] = useState(false);
+  
+  
+  // Get values from draft context (legacy)
+  const legacyDraftState = draftOperations.draftState;
+  const isDraftCreated = !!legacyDraftState;
+  
+  // Phase 2 Redesign: Enhanced analytics and progress tracking
+  const draftAnalytics = useDraftAnalytics();
+  const draftProgress = useDraftProgress(
+    legacyDraftState?.draftOrder || draftState.draftOrder,
+    legacyDraftState?.draftPicks || draftState.picks,
+    draftState.currentTurn,
+    user?.id
+  );
+  
   
   // Get available players reactively (this will update when draft picks change)
   const availablePlayers = React.useMemo(() => {
@@ -138,6 +323,17 @@ const Draft: React.FC<DraftProps> = ({
     
     return filtered;
   }, [availablePlayers, selectedLeague, selectedPosition]);
+  
+  // Phase 2 Redesign: Smart recommendations and analytics
+  const teamNeeds = React.useMemo(() => {
+    if (!user?.id || !legacyDraftState?.draftPicks) return [];
+    return draftAnalytics.analyzeTeamNeeds(user.id, legacyDraftState.draftPicks);
+  }, [user?.id, legacyDraftState?.draftPicks, draftAnalytics]);
+  
+  const playerSuggestions = React.useMemo(() => {
+    if (!user?.id || !legacyDraftState?.draftPicks || !draftStateActions.isMyTurn(user.id)) return [];
+    return draftAnalytics.getSuggestedPicks(user.id, legacyDraftState.draftPicks, availablePlayers);
+  }, [user?.id, legacyDraftState?.draftPicks, draftStateActions, availablePlayers, draftAnalytics]);
 
   // Create draft
   const createDraft = async () => {
@@ -151,120 +347,89 @@ const Draft: React.FC<DraftProps> = ({
     }
   };
 
-  // Start draft (timer starts automatically)
+  // Phase 1 Redesign: Enhanced draft start with new systems
   const startDraftSession = async () => {
-    console.log('=== START DRAFT SESSION CALLED ===');
-    console.log('User:', user);
-    console.log('League ID:', user?.league?.id);
-    console.log('SignalR Connected:', signalRService.isConnected());
-    console.log('Draft State:', draftState);
-    console.log('Draft State Active:', draftState?.isActive);
+    console.log('=== START DRAFT SESSION CALLED (Phase 1) ===');
     
     if (!user?.league?.id) {
-      console.error('❌ No league found');
-      alert('No league found. Please make sure you are in a league.');
+      notificationActions.notifyError('No league found. Please make sure you are in a league.');
       return;
     }
 
-    if (!draftState) {
-      console.error('❌ No draft found');
-      alert('No draft found. Please create a draft first.');
+    const currentLegacyDraftState = draftOperations.draftState;
+    if (!currentLegacyDraftState) {
+      notificationActions.notifyError('No draft found. Please create a draft first.');
       return;
     }
 
-    if (draftState.isActive) {
-      console.error('❌ Draft already active');
-      alert('Draft is already active.');
+    if (currentLegacyDraftState.isActive || draftState.isActive) {
+      notificationActions.notifyError('Draft is already active.');
       return;
     }
 
     try {
-      // Always call REST API to update database state
-      console.log('📡 Starting draft via REST API...');
-      console.log('Calling draftOperations.startDraft...');
-      await draftOperations.startDraft();
-      console.log('✅ REST API startDraft completed');
-      
-      // Also call WebSocket to notify all users if connected
-      if (signalRService.isConnected()) {
-        console.log('🚀 Sending WebSocket notifications...');
-        console.log('Calling signalRService.startDraft with league ID:', user.league.id);
-        await signalRService.startDraft(user.league.id);
-        console.log('✅ WebSocket startDraft call completed');
+      // Use WebSocket-based draft system if connected
+      if (webSocketActions.isConnected()) {
+        console.log('🚀 Starting draft via WebSocket (skipping legacy timer)...');
+        // Start the draft state in backend, but WebSocket will handle timer
+        const updatedDraft = await draftService.startDraft(currentLegacyDraftState.id);
+        // Update draft state without starting legacy timer
+        draftStateActions.updateDraftState({ 
+          isActive: true,
+          draftOrder: updatedDraft.draftOrder || [],
+          currentTurn: updatedDraft.currentTurn || 0,
+          currentRound: updatedDraft.currentRound || 1,
+        });
+        await webSocketActions.startDraft(user.league.id);
+        console.log('✅ WebSocket startDraft completed (legacy timer disabled)');
       } else {
-        console.warn('⚠️ SignalR not connected - users will not receive real-time notifications');
+        console.warn('⚠️ WebSocket not connected - starting timer locally');
+        // Fallback: start timer locally if WebSocket not available
+        draftStateActions.updateDraftState({ 
+          isActive: true,
+          draftOrder: currentLegacyDraftState.draftOrder || [],
+          currentTurn: 0,
+          currentRound: 1,
+          currentPlayerId: currentLegacyDraftState.draftOrder?.[0] || 0
+        });
+        timerActions.startTimer(15);
       }
       
       console.log('✅ Draft started successfully');
       
-      // Wait a moment for WebSocket event, then manually sync state as fallback
-      setTimeout(async () => {
-        console.log('🔄 Checking if WebSocket draft state was set after start...');
-        if (!webSocketDraftState) {
-          console.log('⚠️ WebSocket draft state still null after starting, manually syncing...');
-          await fetchCurrentDraftState();
-        } else {
-          console.log('✅ WebSocket draft state is set, no manual sync needed');
-        }
-      }, 2000);
     } catch (error) {
       console.error('❌ Failed to start draft:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      alert(`Failed to start draft: ${error instanceof Error ? error.message : error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationActions.notifyError(`Failed to start draft: ${errorMessage}`);
     }
   };
 
   // Track if a pick is currently being made to prevent duplicates
   const [isPickInProgress, setIsPickInProgress] = useState(false);
 
-  // Function to fetch current draft state via REST API
+  // Function to fetch current draft state via correct API
   const fetchCurrentDraftState = useCallback(async () => {
     if (!user?.league?.id) return;
     
     try {
-      console.log('🔄 Fetching current draft state via REST API...');
+      console.log('🔄 Fetching current draft state via draftService...');
       
-      // Try multiple possible API endpoints
-      const possibleEndpoints = [
-        `/api/leagues/${user.league.id}/draft/state`,
-        `/api/leagues/${user.league.id}/draft/status`,
-        `/api/leagues/${user.league.id}/draft`
-      ];
-      
-      let currentState = null;
-      let successfulEndpoint = null;
-      
-      for (const endpoint of possibleEndpoints) {
-        try {
-          console.log(`🔍 Trying endpoint: ${endpoint}`);
-          const response = await fetch(endpoint);
-          if (response.ok) {
-            currentState = await response.json();
-            successfulEndpoint = endpoint;
-            console.log(`✅ Successfully fetched from: ${endpoint}`);
-            break;
-          } else {
-            console.log(`❌ Endpoint ${endpoint} returned:`, response.status);
-          }
-        } catch (endpointError) {
-          console.log(`❌ Endpoint ${endpoint} failed:`, endpointError);
-        }
-      }
+      // Use the correct draft service endpoint
+      await draftOperations.fetchDraftState();
+      const currentState = draftOperations.draftState;
+      console.log('📊 Current draft state from hook:', currentState);
       
       if (currentState) {
-        console.log('📊 Current draft state from API:', currentState);
-        console.log('📊 Using endpoint:', successfulEndpoint);
-        
         // Handle different possible response structures
-        const isActive = currentState.isActive || currentState.IsActive || false;
-        const currentUserId = currentState.CurrentUserId || currentState.currentUserId || currentState.currentTurn;
-        const timeLimit = currentState.TimeLimit || currentState.timeLimit || 15;
+        const isActive = currentState.isActive || false;
+        const timeLimit = 15; // Default timer value
         
         if (isActive) {
           console.log('🎯 Setting WebSocket draft state from API');
+          // Determine current user ID from draft order and current turn
+          const currentUserIndex = currentState.currentTurn % currentState.draftOrder.length;
+          const currentUserId = currentState.draftOrder[currentUserIndex];
+          
           // Normalize the structure
           const normalizedState = {
             ...currentState,
@@ -287,18 +452,16 @@ const Draft: React.FC<DraftProps> = ({
           console.log('⚠️ Draft is not active according to API');
         }
       } else {
-        console.log('⚠️ Could not fetch draft state from any endpoint');
+        console.log('⚠️ Could not fetch draft state');
       }
     } catch (error) {
       console.warn('⚠️ Failed to fetch current draft state:', error);
     }
-  }, [user?.league?.id, user?.id]);
+  }, [user?.league?.id, user?.id, draftOperations.fetchDraftState, draftOperations.draftState]);
 
-  // Make a draft pick using the new draft operations
+  // Phase 1 Redesign: Enhanced draft pick with new systems
   const makeDraftPick = useCallback(async (player: Player) => {
-    console.log('🎯 Making draft pick for player:', player.name);
-    console.log('Timer active before pick:', draftTimerActive);
-    console.log('Timer value before pick:', draftTimer);
+    console.log('🎯 Making draft pick for player (Phase 1):', player.name);
     
     // Prevent duplicate pick attempts
     if (isPickInProgress) {
@@ -309,74 +472,62 @@ const Draft: React.FC<DraftProps> = ({
     setIsPickInProgress(true);
     
     try {
-      console.log('🔍 DEBUGGING DRAFT PICK PATH:');
-      console.log('SignalR Connected:', signalRService.isConnected());
-      console.log('User League ID:', user?.league?.id);
-      console.log('Both conditions met:', signalRService.isConnected() && user?.league?.id);
-      
-      if (signalRService.isConnected() && user?.league?.id) {
-        // Use WebSocket to make draft pick
-        console.log('✅ Taking WebSocket path for draft pick');
-        console.log('Making draft pick via WebSocket...');
-        await signalRService.makeDraftPick(
-          user.league.id,
-          player.id,
-          player.name,
-          player.position,
-          player.team,
-          player.league
-        );
-        console.log('📞 WebSocket draft pick call completed, waiting for events...');
-        
-        // Set up fallback timer reset in case TurnChanged event doesn't arrive
-        setTimeout(() => {
-          console.log('⏰ Fallback: No TurnChanged event received, manually restarting timer');
-          if (user?.league?.id) {
-            // Restart timer for next turn as fallback - will be handled by timer reference
-            console.log('Timer fallback triggered');
-          }
-        }, 2000); // Wait 2 seconds for WebSocket events
-        
+      if (webSocketActions.isConnected() && user?.league?.id) {
+        // Use WebSocket via new hook
+        console.log('✅ Using WebSocket draft pick (Phase 1)');
+        await webSocketActions.makePick(user.league.id, player, false);
+        console.log('📞 WebSocket draft pick completed');
       } else {
         // Fallback to REST API
-        console.log('❌ SignalR not connected or no league ID, using REST API fallback');
-        console.log('SignalR Connected:', signalRService.isConnected());
-        console.log('User League ID:', user?.league?.id);
-        console.log('Making draft pick via REST API...');
+        console.log('❌ Using REST API fallback (Phase 1)');
         await draftOperations.makeDraftPick(player);
-        // Add toast notification for REST API picks (since no WebSocket event will fire)
-        console.log('🎯 Adding toast for REST API draft pick:', { player: player.name, isAutoDraft: false });
+        
+        // Manual notifications for REST API fallback
+        notificationActions.notifyPlayerPicked(
+          player.name, 
+          player.position, 
+          player.team, 
+          false
+        );
+        
+        // Legacy compatibility
         addDraftToast(player.name, player.position, player.team, false);
-        // Update legacy roster state for backward compatibility
         draftPlayer(player, false);
         
-        // For REST API, manually restart timer since no WebSocket events
-        console.log('🔄 REST API pick completed, manually restarting timer');
-        setTimeout(() => {
-          console.log('REST API timer restart triggered');
-        }, 1000);
+        // Advance turn manually in new state
+        draftStateActions.advanceTurn();
+        timerActions.resetTimer(15);
       }
-      console.log('✅ Draft pick successful');
       
-      // Immediately start timer for next turn to reduce lag
-      console.log('🔄 Immediately restarting timer for next turn (will be confirmed by WebSocket events)');
-      setTimeout(() => {
-        // Use a small delay to allow for WebSocket events to process
-        console.log('Triggering immediate timer restart fallback');
-      }, 500); // Small delay to let the pick process
+      console.log('✅ Draft pick successful (Phase 1)');
+      
     } catch (error) {
       console.error('❌ Draft pick failed:', error);
-      alert(`Failed to draft ${player.name}: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationActions.notifyError(`Failed to draft ${player.name}: ${errorMessage}`);
     } finally {
       setIsPickInProgress(false);
     }
-  }, [draftOperations, draftPlayer, addDraftToast, user?.league?.id, draftTimerActive, draftTimer, isPickInProgress]);
+  }, [webSocketActions, draftOperations, draftPlayer, addDraftToast, notificationActions, draftStateActions, timerActions, user?.league?.id, isPickInProgress]);
 
   // Handle player name click to show player info
   const handlePlayerNameClick = useCallback((player: Player) => {
     setSelectedPlayerForInfo(player);
     setIsPlayerInfoModalOpen(true);
   }, []);
+  
+  
+  // Phase 2 Redesign: Draft board slot click handler
+  const handleDraftSlotClick = useCallback((slot: any) => {
+    if (slot.player) {
+      // Show player info if slot is filled
+      handlePlayerNameClick(slot.player);
+    } else if (slot.isCurrentPick && slot.isUserPick) {
+      // Focus on player selection if it's user's current pick
+      const availablePlayersSection = document.querySelector('.available-players');
+      availablePlayersSection?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [handlePlayerNameClick]);
 
   // Draft button click will be defined after variable declarations
 
@@ -405,26 +556,32 @@ const Draft: React.FC<DraftProps> = ({
 
   // Reset draft function
   const handleResetDraft = async () => {
-    if (!draftState?.id) return;
+    if (!legacyDraftState?.id) return;
     
     try {
-      await draftOperations.resetDraft(draftState.id);
+      await draftOperations.resetDraft(legacyDraftState.id);
       // Also clear local rosters for backward compatibility
       clearRosters();
+      // Reset new draft state too
+      draftStateActions.resetDraftState();
+      timerActions.stopTimer();
       console.log('✅ Draft reset successfully');
     } catch (error) {
       console.error('❌ Failed to reset draft:', error);
-      alert(`Failed to reset draft: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationActions.notifyError(`Failed to reset draft: ${errorMessage}`);
     }
   };
 
   // Check if it's the current user's turn (WebSocket mode takes precedence)
   const isCurrentUserTurn = draftState && user ? 
-    (signalRService.isConnected() && webSocketDraftState ? isMyTurn : draftOperations.isUserTurn(user.id)) : false;
+    (signalRService.isConnected() && webSocketDraftState ? 
+      (webSocketDraftState.CurrentUserId === user.id && draftState.isActive) : 
+      draftOperations.isUserTurn(user.id)) : false;
 
   // Check if draft is active (WebSocket mode takes precedence)
   const isDraftActive = signalRService.isConnected() && webSocketDraftState ? 
-    true : draftState?.isActive;
+    draftState.isActive : draftState?.isActive;
 
   // Handle clicking on a manager's tile to view their team
   const handleManagerClick = (userId: number) => {
@@ -460,334 +617,271 @@ const Draft: React.FC<DraftProps> = ({
     setIsDraftConfirmModalOpen(true);
   }, [user?.id, webSocketDraftState, isMyTurn, draftState, isCurrentUserTurn, isDraftActive]);
 
-  // Auto-draft logic for timeouts
-  const handleAutoDraft = useCallback(async () => {
-    if (!user?.league?.id || !isMyTurn) return;
+  // Phase 2 Redesign: Quick draft from recommendations
+  const handleQuickDraft = useCallback((player: Player) => {
+    if (!isCurrentUserTurn || !isDraftActive) {
+      notificationActions.notifyError("It's not your turn to draft!");
+      return;
+    }
     
-    console.log('Executing auto-draft for timeout...');
+    setSelectedPlayerForDraft(player);
+    setIsDraftConfirmModalOpen(true);
+  }, [isCurrentUserTurn, isDraftActive, notificationActions]);
+  
+
+
+  // Phase 4 Redesign: Commissioner action handler
+  const handleCommissionerAction = useCallback((action: DraftAction) => {
+    console.log('Commissioner action:', action);
+    
+    switch (action.type) {
+      case 'pause':
+        draftStateActions.setTimerActive(false);
+        notificationActions.notifyDraftPaused();
+        break;
+        
+      case 'resume':
+        draftStateActions.setTimerActive(true);
+        notificationActions.notifyDraftResumed();
+        break;
+        
+      case 'reset_timer':
+        draftStateActions.setTimeRemaining(10); // Reset to default
+        break;
+        
+      case 'extend_timer':
+        const currentTime = draftState.timeRemaining;
+        draftStateActions.setTimeRemaining(currentTime + (action.data?.seconds || 30));
+        break;
+        
+      case 'skip_pick':
+        draftStateActions.advanceTurn();
+        break;
+        
+      case 'force_pick':
+        if (action.data?.player) {
+          // This would normally call the draft player function
+          console.log('Force picking:', action.data.player.name);
+        }
+        break;
+        
+      case 'backup_draft':
+        console.log('Creating draft backup...');
+        // Would implement backup functionality
+        break;
+        
+      case 'emergency_stop':
+        draftStateActions.setTimerActive(false);
+        notificationActions.notifyError('Draft stopped by commissioner');
+        break;
+        
+      case 'send_announcement':
+        if (action.data?.message) {
+          notificationActions.addNotification({
+            type: 'turn',
+            title: 'Commissioner Announcement',
+            message: action.data.message,
+            duration: 10000
+          });
+        }
+        break;
+        
+      default:
+        console.warn('Unknown commissioner action:', action.type);
+    }
+  }, [draftState, draftStateActions, notificationActions]);
+
+  // Phase 1 Redesign: Enhanced auto-draft with new systems
+  const handleAutoDraft = useCallback(async () => {
+    const currentPlayerId = draftState.currentPlayerId || (webSocketDraftState?.CurrentUserId);
+    const userIsCurrentPlayer = currentPlayerId === user?.id;
+    
+    if (!user?.league?.id || !userIsCurrentPlayer) {
+      console.log('❌ Cannot auto-draft: league ID:', user?.league?.id, 'isCurrentPlayer:', userIsCurrentPlayer);
+      return;
+    }
+    
+    console.log('🤖 ===== STARTING AUTO-DRAFT PROCESS (Phase 1) =====');
+    console.log('🤖 User ID:', user.id, 'League ID:', user.league.id);
     
     try {
-      // Use the global WebSocket auto-draft handler from App.tsx if available
-      const webSocketAutoDraftHandler = (window as any).webSocketAutoDraftHandler;
-      if (webSocketAutoDraftHandler && typeof webSocketAutoDraftHandler === 'function') {
-        console.log('Using WebSocket auto-draft handler from App.tsx');
-        await webSocketAutoDraftHandler(user.id, user.league.id);
-        return;
-      }
-      
-      // Fallback to local auto-draft logic
-      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CL', '1B', '2B', '3B', 'SS', 'OF', 'PG', 'SG', 'SF', 'PF', 'C'];
+      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CP', '1B', '2B', '3B', 'SS', 'C', 'DH', 'OF', 'PG', 'SG', 'SF', 'PF'];
       const availablePlayersForAutoDraft = availablePlayers.filter(player =>
         neededPositions.includes(player.position)
       );
       
+      console.log('🤖 Available players for auto-draft:', availablePlayersForAutoDraft.length);
+      
       if (availablePlayersForAutoDraft.length > 0) {
         const randomPlayer = availablePlayersForAutoDraft[Math.floor(Math.random() * availablePlayersForAutoDraft.length)];
-        console.log('Auto-drafting player:', randomPlayer.name);
+        console.log('🤖 Selected random player for auto-draft:', randomPlayer.name);
         
-        if (signalRService.isConnected()) {
-          await signalRService.makeDraftPick(
-            user.league.id,
-            randomPlayer.id,
-            randomPlayer.name,
-            randomPlayer.position,
-            randomPlayer.team,
-            randomPlayer.league,
-            true  // isAutoDraft = true
-          );
+        if (webSocketActions.isConnected() && user?.league?.id) {
+          // Use WebSocket for auto-draft
+          await webSocketActions.makePick(user.league.id, randomPlayer, true);
         } else {
-          // Fallback to REST API
+          // Fallback to REST API with auto-draft flag
           await draftOperations.makeDraftPick(randomPlayer);
-          // Add toast notification for REST API auto-draft (since no WebSocket event will fire)
-          console.log('🎯 Adding toast for REST API auto-draft:', { player: randomPlayer.name, isAutoDraft: true });
+          
+          // Manual notification for auto-draft
+          notificationActions.notifyPlayerPicked(
+            randomPlayer.name, 
+            randomPlayer.position, 
+            randomPlayer.team, 
+            true // isAutoDraft
+          );
+          
+          // Legacy compatibility
           addDraftToast(randomPlayer.name, randomPlayer.position, randomPlayer.team, true);
-          // Update legacy roster state for backward compatibility
           draftPlayer(randomPlayer, true);
+          
+          // Advance turn manually
+          draftStateActions.advanceTurn();
+          timerActions.resetTimer(15);
         }
+        
+        console.log('🤖 Auto-draft completed (Phase 1)');
+      } else {
+        console.log('🤖 No available players for auto-draft!');
+        notificationActions.notifyError('No available players for auto-draft');
       }
     } catch (error) {
       console.error('Auto-draft failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      notificationActions.notifyError(`Auto-draft failed: ${errorMessage}`);
     }
-  }, [user?.league?.id, user?.id, isMyTurn, availablePlayers, draftOperations, draftPlayer, addDraftToast]);
+  }, [user?.league?.id, user?.id, draftState.currentPlayerId, webSocketDraftState?.CurrentUserId, availablePlayers, webSocketActions, draftOperations, notificationActions, addDraftToast, draftPlayer, draftStateActions, timerActions]);
 
 
-  // WebSocket draft timer
+  // Phase 1 Redesign: Legacy timer wrapper for backward compatibility
   const startDraftTimer = useCallback((timeLimit: number = 15) => {
     console.log('⏰ Starting draft timer with limit:', timeLimit);
-    console.log('Is my turn when starting timer:', isMyTurn);
-    
-    setDraftTimer(timeLimit);
-    setDraftTimerActive(true);
-    
-    if (draftTimerRef.current) {
-      console.log('Clearing existing timer');
-      clearInterval(draftTimerRef.current);
-    }
-    
-    console.log('Setting up new timer interval');
-    draftTimerRef.current = setInterval(() => {
-      setDraftTimer(prev => {
-        const newTime = prev - 1;
-        console.log('Timer tick:', newTime);
-        
-        if (newTime <= 0) {
-          console.log('⏰ Timer expired!');
-          setDraftTimerActive(false);
-          clearInterval(draftTimerRef.current!);
-          
-          // Auto-draft logic
-          if (isMyTurn && user?.league?.id) {
-            console.log('🤖 Time expired, triggering auto-draft for user:', user.id);
-            handleAutoDraft();
-          } else {
-            console.log('⏳ Time expired but not my turn, waiting for auto-draft from current picker');
-            // TODO: Add fallback mechanism if no auto-draft happens
-          }
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
-    
-    console.log('Timer setup completed, interval ID:', draftTimerRef.current);
-  }, [isMyTurn, user?.league?.id, user?.id, handleAutoDraft]);
+    timerActions.startTimer(timeLimit);
+  }, [timerActions]);
 
   const stopDraftTimer = useCallback(() => {
-    setDraftTimerActive(false);
-    if (draftTimerRef.current) {
-      clearInterval(draftTimerRef.current);
-      draftTimerRef.current = null;
-    }
-  }, []);
+    console.log('🛑 stopDraftTimer called');
+    timerActions.stopTimer();
+  }, [timerActions]);
 
-  // WebSocket event handlers and league joining
+  const resetDraftTimer = useCallback((timeLimit: number = 15) => {
+    console.log('🔄 resetDraftTimer called with timeLimit:', timeLimit);
+    timerActions.resetTimer(timeLimit);
+  }, [timerActions]);
+
+  // Phase 1 Redesign: WebSocket management now handled by useWebSocketDraft hook
+  // Legacy cleanup - keeping some state sync for backward compatibility
   useEffect(() => {
-    if (!user?.league?.id || !user?.id) return;
-    
-    // Only join league once per session
-    if (hasJoinedLeagueRef.current) {
-      console.log('🔗 Already joined league, skipping duplicate join');
-      return;
+    // Sync legacy state with WebSocket state for components that still need it
+    if (webSocketDraftState) {
+      setIsMyTurn(webSocketDraftState.CurrentUserId === user?.id);
+      setDraftTimer(webSocketDraftState.TimeLimit || 15);
     }
+  }, [webSocketDraftState, user?.id]);
 
-
-    // Join the league group for WebSocket events
-    const joinLeagueGroup = async () => {
-      try {
-        console.log('🔗 Joining league group for WebSocket events...');
-        await signalRService.connect();
-        await signalRService.joinLeague(user.league!.id, user.id);
-        hasJoinedLeagueRef.current = true;
-        console.log('✅ Successfully joined league group:', user.league!.id);
-        
-        // After joining, fetch current state to sync
-        await fetchCurrentDraftState();
-      } catch (error) {
-        console.error('❌ Failed to join league group:', error);
-        hasJoinedLeagueRef.current = false;
-      }
-    };
-
-    joinLeagueGroup();
-
-    const handleDraftStarted = (data: any) => {
-      console.log('🎯🎯🎯 DRAFT STARTED EVENT RECEIVED 🎯🎯🎯');
-      console.log('Draft started via WebSocket event:', data);
-      console.log('Current user ID:', user.id);
-      console.log('Current turn user ID:', data.CurrentUserId);
-      console.log('Is my turn:', data.CurrentUserId === user.id);
-      console.log('Event data:', JSON.stringify(data, null, 2));
-      
-      setWebSocketDraftState(data);
-      const myTurn = data.CurrentUserId === user.id;
-      setIsMyTurn(myTurn);
-      
-      if (myTurn) {
-        console.log('🔥 Starting timer - it\'s my turn!');
-        startDraftTimer(data.TimeLimit || 15);
-      } else {
-        console.log('⏳ Not my turn, waiting...');
-        // Start timer for everyone to see the countdown, even if it's not their turn
-        startDraftTimer(data.TimeLimit || 15);
-      }
-      
-      console.log('✅ Draft started event processing complete');
-    };
-
-    const handleTurnChanged = (data: any) => {
-      console.log('🔄 Turn changed via WebSocket:', data);
-      console.log('Next user ID:', data.CurrentUserId);
-      console.log('Current user ID:', user.id);
-      
-      const myTurn = data.CurrentUserId === user.id;
-      setIsMyTurn(myTurn);
-      
-      // IMMEDIATELY stop any existing timer and start fresh
-      console.log('⏹️ Stopping existing timer before starting new one');
-      stopDraftTimer();
-      
-      // Start timer for everyone so all users can see the countdown
-      console.log('⏰ Starting fresh timer for everyone with time limit:', data.TimeLimit || 15);
-      setTimeout(() => {
-        startDraftTimer(data.TimeLimit || 15);
-      }, 100); // Small delay to ensure clean timer restart
-      
-      if (myTurn) {
-        console.log('🎯 It\'s my turn!');
-        // Play notification sound only for the current user
-        try {
-          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmMdATuM1/LPeSsFJHfH8N2QQAoUXrTp6hVFApGn+DyvmMdATuM1/LPeSsF');
-          audio.play().catch(e => console.log('Could not play notification sound'));
-        } catch (e) {
-          console.log('Could not create notification sound');
-        }
-      } else {
-        console.log('⏳ Not my turn, but showing timer for current picker');
-      }
-    };
-
-    const handlePlayerDrafted = (data: any) => {
-      console.log('🎯 Player drafted via WebSocket - RAW DATA:', data);
-      console.log('🎯 All data keys:', Object.keys(data));
-      
-      // Handle both naming conventions - server uses lowercase, some events use uppercase
-      const playerName = data.playerName || data.PlayerName || 'Unknown Player';
-      const position = data.position || data.Position || 'Unknown';
-      const team = data.team || data.Team || 'Unknown';
-      const league = data.league || data.League || 'Unknown';
-      const playerId = data.playerId || data.PlayerId || 0;
-      const isAutoDraft = data.isAutoDraft || data.IsAutoDraft || false;
-      
-      console.log('🎯 Extracted player info:', {
-        playerName,
-        position, 
-        team,
-        league,
-        playerId,
-        isAutoDraft
-      });
-      
-      // Update local state to remove the drafted player
-      const draftedPlayer: Player = {
-        id: playerId,
-        name: playerName,
-        position: position,
-        team: team,
-        league: league as 'NFL' | 'NBA' | 'MLB'
-      };
-      
-      console.log('🎯 Adding toast for WebSocket draft:', {
-        playerName,
-        position,
-        team,
-        isAutoDraft
-      });
-      
-      // Add toast notification - now using the correct extracted values
-      addDraftToast(playerName, position, team, isAutoDraft);
-      
-      // Remove the drafted player from available players
-      draftPlayer(draftedPlayer);
-      
-      // Immediately update turn state to reduce lag
-      console.log('🔄 Player drafted, immediately updating turn state');
-      setIsMyTurn(false); // Current picker is no longer picking
-      
-      console.log('✅ Player drafted, waiting for TurnChanged event to handle timer');
-    };
-
-    const handleDraftPaused = (data: any) => {
-      console.log('Draft paused via WebSocket:', data);
-      stopDraftTimer();
-    };
-
-    const handleDraftResumed = (data: any) => {
-      console.log('Draft resumed via WebSocket:', data);
-      const myTurn = data.CurrentUserId === user.id;
-      setIsMyTurn(myTurn);
-      if (myTurn) {
-        startDraftTimer(data.TimeLimit || 15);
-      }
-    };
-
-    const handleDraftCompleted = (data: any) => {
-      console.log('Draft completed via WebSocket:', data);
-      stopDraftTimer();
-      setIsMyTurn(false);
-    };
-
-    // Register WebSocket event listeners with debugging
-    console.log('🎯 REGISTERING WEBSOCKET EVENT LISTENERS');
-    signalRService.onDraftStarted(handleDraftStarted);
-    console.log('✅ Registered DraftStarted listener');
-    signalRService.onTurnChanged(handleTurnChanged);
-    console.log('✅ Registered TurnChanged listener');
-    signalRService.onPlayerDrafted(handlePlayerDrafted);
-    console.log('✅ Registered PlayerDrafted listener');
-    signalRService.onDraftPaused(handleDraftPaused);
-    console.log('✅ Registered DraftPaused listener');
-    signalRService.onDraftResumed(handleDraftResumed);
-    console.log('✅ Registered DraftResumed listener');
-    signalRService.onDraftCompleted(handleDraftCompleted);
-    console.log('✅ Registered DraftCompleted listener');
-    console.log('🎯 ALL WEBSOCKET EVENT LISTENERS REGISTERED');
-
-    return () => {
-      // Cleanup event listeners
-      signalRService.offDraftStarted(handleDraftStarted);
-      signalRService.offTurnChanged(handleTurnChanged);
-      signalRService.offPlayerDrafted(handlePlayerDrafted);
-      signalRService.offDraftPaused(handleDraftPaused);
-      signalRService.offDraftResumed(handleDraftResumed);
-      signalRService.offDraftCompleted(handleDraftCompleted);
-      stopDraftTimer();
-    };
-  }, [user?.league?.id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="draft-container">
+      {/* Phase 1 Redesign: Notifications Display */}
+      {notifications.length > 0 && (
+        <div className="notifications-container" style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          maxWidth: '400px'
+        }}>
+          {notifications.map(notification => (
+            <div
+              key={notification.id}
+              className={`notification notification-${notification.type}`}
+              style={{
+                background: notification.type === 'error' ? 'linear-gradient(135deg, #dc3545, #e85d6b)' :
+                           notification.type === 'turn' ? 'linear-gradient(135deg, var(--accent-gold), #F4D03F)' :
+                           notification.type === 'pick' ? 'linear-gradient(135deg, #28a745, #34ce57)' :
+                           'linear-gradient(135deg, var(--primary-navy), var(--secondary-navy))',
+                color: 'white',
+                padding: '16px 20px',
+                borderRadius: '12px',
+                boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              onClick={() => notificationActions.removeNotification(notification.id)}
+            >
+              <div style={{ fontWeight: '700', marginBottom: '4px', fontSize: '0.9rem' }}>
+                {notification.title}
+              </div>
+              <div style={{ fontSize: '0.8rem', opacity: '0.9' }}>
+                {notification.message}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
       <header className="page-header draft-header">
         <h1 className="page-title">Fantasy Draft</h1>
         <p className="page-subtitle">Select players to build your ultimate fantasy team</p>
         
-        {/* Draft Timer Section */}
-        {(draftState?.isActive || draftTimerActive || webSocketDraftState) && (
+        {/* Phase 1 Redesign: Updated Timer Section */}
+        {(draftState.isActive || timerState.isActive || webSocketDraftState) && (
           <div className="draft-timer-section">
             <div className="timer-container">
               <div className="timer-display">
                 <span className="timer-label">Time Remaining:</span>
-                <span className={`timer-value ${(draftTimerActive ? draftTimer : state.timer.timeRemaining) <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}>
-                  {draftTimerActive ? draftTimer : state.timer.timeRemaining}s
+                <span className={`timer-value ${
+                  webSocketTimer.timeRemaining <= 5 ? 'urgent' : ''
+                } ${timerState.isPaused || isPaused ? 'paused' : ''}`}>
+                  {webSocketTimer.timeRemaining}s
                 </span>
               </div>
               
               <div className="timer-bar-container">
                 <div 
-                  className={`timer-bar ${(draftTimerActive ? draftTimer : state.timer.timeRemaining) <= 5 ? 'urgent' : ''} ${state.timer.isPaused ? 'paused' : ''}`}
-                  style={{ width: `${((draftTimerActive ? draftTimer : state.timer.timeRemaining) / 15) * 100}%` }}
+                  className={`timer-bar ${
+                    webSocketTimer.timeRemaining <= 5 ? 'urgent' : ''
+                  } ${timerState.isPaused || isPaused ? 'paused' : ''}`}
+                  style={{ width: `${(webSocketTimer.timeRemaining / 15) * 100}%` }}
                 />
               </div>
               
               <button 
-                onClick={draftTimerActive && user?.league?.id ? 
-                  () => signalRService.pauseDraft(user.league!.id) : 
-                  draftOperations.pauseTimer
-                }
+                onClick={() => {
+                  if (timerState.isActive && user?.league?.id && webSocketActions.isConnected()) {
+                    if (timerState.isPaused) {
+                      webSocketActions.resumeDraft(user.league.id);
+                    } else {
+                      webSocketActions.pauseDraft(user.league.id);
+                    }
+                  } else {
+                    if (timerState.isPaused) {
+                      timerActions.resumeTimer();
+                    } else {
+                      timerActions.pauseTimer();
+                    }
+                  }
+                }}
                 className="pause-btn"
               >
-                {state.timer.isPaused ? 'Resume' : 'Pause'}
+                {timerState.isPaused ? 'Resume' : 'Pause'}
               </button>
             </div>
             
-            {draftTimerActive && (
+            {timerState.isActive && (
               <div className="draft-timer-status">
-                {isMyTurn ? (
+                {draftStateActions.isMyTurn(user?.id || 0) ? (
                   <div className="your-turn-message">
-                    🎯 It's your turn to pick! Time remaining: {draftTimer}s
+                    🎯 It's your turn to pick!
                   </div>
                 ) : (
                   <div className="waiting-turn-message">
-                    ⏳ Waiting for pick... Time remaining: {draftTimer}s
+                    ⏳ Waiting for pick...
                   </div>
                 )}
               </div>
@@ -808,7 +902,7 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState?.isActive && !draftTimerActive && !webSocketDraftState && !draftState?.isCompleted && (
+          {isDraftCreated && !draftState.isActive && !timerState.isActive && !webSocketDraftState && !legacyDraftState?.isCompleted && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <div className="draft-management-buttons">
@@ -818,7 +912,7 @@ const Draft: React.FC<DraftProps> = ({
                 <button onClick={handleResetDraft} className="draft-control-btn reset">
                   Reset Draft
                 </button>
-                {!draftState?.isCompleted && (
+                {!legacyDraftState?.isCompleted && (
                   <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
                     Auto Draft
                   </button>
@@ -827,22 +921,33 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && draftState?.isCompleted && (
+          {isDraftCreated && (draftState.isCompleted || legacyDraftState?.isCompleted) && (
             <div className="draft-completed">
               <p>✅ Draft has been completed!</p>
               <p>All teams have finished selecting their players.</p>
             </div>
           )}
           
-          {(draftState?.isActive || webSocketDraftState) && (
+          {(draftState.isActive || timerState.isActive || webSocketDraftState) && (
             <div className="draft-active">
               <p>
-                Draft in progress - Round {webSocketDraftState?.CurrentRound || draftState?.currentRound || 1}, 
-                Pick {(webSocketDraftState?.CurrentTurn || draftState?.currentTurn || 0) + 1}
+                Draft in progress - Round {webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}, 
+                Pick {(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
               </p>
-              {(isMyTurn || isCurrentUserTurn) && (
+              {draftStateActions.isMyTurn(user?.id || 0) && (
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
+              
+              {/* Phase 2 Redesign: Draft Progress Bar */}
+              <DraftProgressBar
+                completionPercentage={draftProgress.getDraftCompletionPercentage()}
+                currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
+                totalRounds={15}
+                currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
+                totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * 15}
+                picksRemaining={draftProgress.getPicksRemaining()}
+              />
+              
               <div className="draft-management-buttons">
                 <button onClick={handleResetDraft} className="draft-control-btn reset">
                   Reset Draft
@@ -852,37 +957,6 @@ const Draft: React.FC<DraftProps> = ({
                     Auto Draft
                   </button>
                 )}
-                {process.env.NODE_ENV === 'development' && (
-                  <>
-                    <button 
-                      onClick={() => {
-                        console.log('🧪 Testing toast notification system...');
-                        addDraftToast('Test Player', 'QB', 'Test Team', true);
-                      }} 
-                      className="draft-control-btn"
-                      style={{ backgroundColor: '#ff6b35' }}
-                    >
-                      Test Toast
-                    </button>
-                    <button 
-                      onClick={() => {
-                        console.log('🔍 CONNECTION DEBUG:');
-                        console.log('SignalR Connected:', signalRService.isConnected());
-                        console.log('User:', user);
-                        console.log('Draft State:', draftState);
-                        console.log('WebSocket Draft State:', webSocketDraftState);
-                        console.log('Is My Turn:', isMyTurn);
-                        console.log('Is Current User Turn:', isCurrentUserTurn);
-                        console.log('Is Draft Active:', isDraftActive);
-                        console.log('Available Players Count:', availablePlayers.length);
-                      }} 
-                      className="draft-control-btn"
-                      style={{ backgroundColor: '#35a3ff' }}
-                    >
-                      Debug State
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           )}
@@ -890,20 +964,20 @@ const Draft: React.FC<DraftProps> = ({
       </header>
 
       {/* League Members Section (Draft Order) */}
-      {isDraftCreated && draftState && (
+      {isDraftCreated && legacyDraftState && (
         <section className="league-members-section">
           <div className="draft-header-info">
             <h3>Draft Order</h3>
             <div className="draft-status">
-              <span className={`status ${draftState.isActive ? 'active' : 'created'}`}>
-                {draftState.isActive ? 'In Progress' : 'Ready'}
+              <span className={`status ${legacyDraftState.isActive || draftState.isActive ? 'active' : 'created'}`}>
+                {legacyDraftState.isActive || draftState.isActive ? 'In Progress' : 'Ready'}
               </span>
             </div>
           </div>
           
           <div className="league-members-list">
-            {draftState.draftOrder?.map((userId, index) => {
-              const isCurrentTurn = draftState.isActive && index === draftState.currentTurn;
+            {legacyDraftState.draftOrder?.map((userId, index) => {
+              const isCurrentTurn = (legacyDraftState.isActive || draftState.isActive) && index === (draftState.currentTurn || legacyDraftState.currentTurn || 0);
               const isCurrentUser = user && userId === user.id;
               
               // Find the member details from the leagueMembers array
@@ -944,9 +1018,50 @@ const Draft: React.FC<DraftProps> = ({
       {/* Draft Main Content Area */}
       <section className="draft-main-content">
         
+        {/* Phase 2 Redesign: Draft Board Visualization */}
+        {(isDraftCreated && (draftState.isActive || legacyDraftState?.isActive || timerState.isActive)) && (
+          <DraftBoard
+            board={draftProgress.getDraftBoard()}
+            onSlotClick={handleDraftSlotClick}
+            className="main-draft-board"
+          />
+        )}
+        
         {/* Show Available Players and Filters only when draft is not completed */}
-        {!draftState?.isCompleted ? (
+        {!draftState.isCompleted && !legacyDraftState?.isCompleted ? (
           <>
+            {/* Phase 2 Redesign: Player Recommendations */}
+            {draftStateActions.isMyTurn(user?.id || 0) && playerSuggestions.length > 0 && (
+              <PlayerRecommendations
+                suggestions={playerSuggestions}
+                teamNeeds={teamNeeds}
+                onPlayerClick={handlePlayerNameClick}
+                onPlayerSelect={handleQuickDraft}
+                className="main-recommendations"
+              />
+            )}
+            
+            {/* Phase 4 Redesign: Draft Chat Room */}
+            <DraftChatRoom
+              leagueId={user?.league?.id}
+              userId={user?.id}
+              username={user?.username}
+              isVisible={isDraftChatVisible}
+              onToggle={() => setIsDraftChatVisible(!isDraftChatVisible)}
+            />
+            
+            {/* Phase 4 Redesign: Commissioner Controls */}
+            <CommissionerControls
+              isCommissioner={user?.id === 1} // Simplified check - would be more sophisticated
+              draftState={webSocketDraftState || draftState}
+              picks={legacyDraftState?.draftPicks || draftState.picks || []}
+              draftOrder={legacyDraftState?.draftOrder || draftState.draftOrder}
+              availablePlayers={availablePlayers}
+              isVisible={isCommissionerControlsVisible}
+              onToggle={() => setIsCommissionerControlsVisible(!isCommissionerControlsVisible)}
+              onDraftAction={handleCommissionerAction}
+            />
+            
             {/* Filters Section - moved above available players */}
             <section className="filters-section">
               <div className="filters-header">
@@ -1005,6 +1120,8 @@ const Draft: React.FC<DraftProps> = ({
                         <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
                         <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
                         <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                        <button className={selectedPosition === 'DH' ? 'active' : ''} onClick={() => setSelectedPosition('DH')}>DH</button>
                         <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
                         <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
                         <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
@@ -1029,6 +1146,8 @@ const Draft: React.FC<DraftProps> = ({
                         <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
                         <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
                         <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                        <button className={selectedPosition === 'DH' ? 'active' : ''} onClick={() => setSelectedPosition('DH')}>DH</button>
                         <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
                       </>
                     )}
@@ -1051,9 +1170,9 @@ const Draft: React.FC<DraftProps> = ({
               <div className="available-players">
                 <h2>
                   Available Players ({filteredPlayers.length})
-                  {!state.timer.isDrafting ? (
+                  {!draftState.isActive && !timerState.isActive ? (
                     <span className="draft-status"> - Draft Not Started</span>
-                  ) : state.timer.isPaused ? (
+                  ) : timerState.isPaused || draftState.isPaused ? (
                     <span className="draft-status paused"> - Draft Paused</span>
                   ) : null}
                 </h2>
@@ -1071,7 +1190,7 @@ const Draft: React.FC<DraftProps> = ({
                         {
                           key: 'name',
                           header: 'Player',
-                          width: '35%',
+                          width: '40%',
                           render: (player: Player, index: number) => (
                             <span 
                               className="player-name clickable-player-name"
@@ -1084,7 +1203,7 @@ const Draft: React.FC<DraftProps> = ({
                         {
                           key: 'position',
                           header: 'Pos',
-                          width: '10%',
+                          width: '12%',
                           render: (player: Player, index: number) => (
                             <span className="position">{player.position}</span>
                           )
@@ -1092,7 +1211,7 @@ const Draft: React.FC<DraftProps> = ({
                         {
                           key: 'team',
                           header: 'Team',
-                          width: '15%',
+                          width: '16%',
                           render: (player: Player, index: number) => (
                             <span className="team">{player.team}</span>
                           )
@@ -1100,7 +1219,7 @@ const Draft: React.FC<DraftProps> = ({
                         {
                           key: 'league',
                           header: 'League',
-                          width: '10%',
+                          width: '12%',
                           render: (player: Player, index: number) => (
                             <span className={`league-badge ${player.league.toLowerCase()}`}>
                               {player.league}
@@ -1110,7 +1229,7 @@ const Draft: React.FC<DraftProps> = ({
                         {
                           key: 'action',
                           header: 'Action',
-                          width: '30%',
+                          width: '20%',
                           render: (player: Player, index: number) => (
                             <button
                               className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
@@ -1136,15 +1255,15 @@ const Draft: React.FC<DraftProps> = ({
                 <div className="sidebar-header">
                   <h3>Drafted Players</h3>
                 </div>
-                {isDraftCreated && draftState && draftState.draftPicks && (
+                {isDraftCreated && legacyDraftState && legacyDraftState.draftPicks && (
                   <div className="total-picks-container">
-                    <span className="total-picks">{draftState.draftPicks.length} total picks</span>
+                    <span className="total-picks">{legacyDraftState.draftPicks.length} total picks</span>
                   </div>
                 )}
                 
-                {isDraftCreated && draftState && draftState.draftPicks && draftState.draftPicks.length > 0 ? (
+                {isDraftCreated && legacyDraftState && legacyDraftState.draftPicks && legacyDraftState.draftPicks.length > 0 ? (
                   <div className="drafted-players-container">
-                    {draftState.draftPicks
+                    {legacyDraftState.draftPicks
                       .sort((a: any, b: any) => b.pickNumber - a.pickNumber) // Sort newest first (most recent at top)
                       .map((pick: any) => {
                         const member = state.leagueMembers.find(m => m.id === pick.userId);
@@ -1193,7 +1312,7 @@ const Draft: React.FC<DraftProps> = ({
             </section>
           </>
         ) : (
-          /* When draft is completed, show message to use Free Agents */
+          /* Phase 1 Redesign: When draft is completed, show message to use Free Agents */
           <div className="draft-completed-section">
             <div className="draft-completed-content">
               <h2>🎉 Draft Complete!</h2>
