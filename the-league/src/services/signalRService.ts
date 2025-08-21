@@ -19,6 +19,8 @@ class SignalRService {
   private draftPausedCallbacks: ((data: any) => void)[] = [];
   private draftResumedCallbacks: ((data: any) => void)[] = [];
   private draftCompletedCallbacks: ((data: any) => void)[] = [];
+  private timerTickCallbacks: ((data: any) => void)[] = [];
+  private draftResetCallbacks: ((data: any) => void)[] = [];
 
   async connect(): Promise<void> {
     if (this.connection?.state === HubConnectionState.Connected) {
@@ -98,6 +100,16 @@ class SignalRService {
     this.connection.on('DraftCompleted', (data: any) => {
       console.log('Draft completed:', data);
       this.draftCompletedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('TimerTick', (data: any) => {
+      console.log('Timer tick:', data);
+      this.timerTickCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('DraftReset', (data: any) => {
+      console.log('Draft reset:', data);
+      this.draftResetCallbacks.forEach(callback => callback(data));
     });
 
     this.connection.onreconnecting((error) => {
@@ -301,6 +313,20 @@ class SignalRService {
     }
   }
 
+  async resetDraft(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      await this.connection.invoke('ResetDraft', leagueId.toString());
+      console.log('Draft reset via WebSocket');
+    } catch (err) {
+      console.error('Error resetting draft:', err);
+      throw err;
+    }
+  }
+
   // Draft event callback registration
   onDraftStarted(callback: (data: any) => void): void {
     this.draftStartedCallbacks.push(callback);
@@ -365,6 +391,28 @@ class SignalRService {
     const index = this.draftCompletedCallbacks.indexOf(callback);
     if (index > -1) {
       this.draftCompletedCallbacks.splice(index, 1);
+    }
+  }
+
+  onTimerTick(callback: (data: any) => void): void {
+    this.timerTickCallbacks.push(callback);
+  }
+
+  offTimerTick(callback: (data: any) => void): void {
+    const index = this.timerTickCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.timerTickCallbacks.splice(index, 1);
+    }
+  }
+
+  onDraftReset(callback: (data: any) => void): void {
+    this.draftResetCallbacks.push(callback);
+  }
+
+  offDraftReset(callback: (data: any) => void): void {
+    const index = this.draftResetCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftResetCallbacks.splice(index, 1);
     }
   }
 }

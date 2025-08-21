@@ -9,7 +9,6 @@ import signalRService from './services/signalRService';
 import './App.css';
 import { apiRequest } from './config/api';
 import { useToast } from './hooks/useToast';
-import ToastContainer from './components/ToastContainer';
 
 // Import all components directly to avoid lazy loading issues
 import Home from './pages/Home';
@@ -40,7 +39,7 @@ interface User {
 // AppContent component that uses useNavigate
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
-  const { toasts, addDraftToast, removeToast } = useToast();
+  const { addDraftToast } = useToast();
   
   // Authentication state
   const [user, setUser] = useState<User | null>(null);
@@ -728,27 +727,6 @@ const AppContent: React.FC = () => {
           />
         </Routes>
       
-        {/* Toast notifications */}
-        <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
-        
-        {/* DEBUG: Test toast button */}
-        <button 
-          onClick={() => addDraftToast('Test Player', 'QB', 'TestTeam', false)}
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
-            padding: '10px',
-            backgroundColor: 'green',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            zIndex: 10000
-          }}
-        >
-          Test Toast
-        </button>
     </div>
   );
 };

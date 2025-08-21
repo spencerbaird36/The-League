@@ -171,21 +171,49 @@ class DraftService {
     // Import players data to find the actual player
     const { players } = require('../data/players');
     
-    // Find the actual player by name, team, and league
+    let cleanPlayerName = draftPick.playerName;
+    let extractedPlayerId: string | null = null;
+    
+    // First, check if the player name contains an ID prefix (e.g., "aaron-rodgers:Aaron Rodgers")
+    const idPrefixMatch = cleanPlayerName.match(/^([^:]+):(.+)$/);
+    if (idPrefixMatch) {
+      extractedPlayerId = idPrefixMatch[1].trim();
+      cleanPlayerName = idPrefixMatch[2].trim();
+      console.log(`🔍 Found ID prefix: "${extractedPlayerId}", extracted name: "${cleanPlayerName}"`);
+    }
+    
+    // Then, remove "(AUTO)" suffix for auto-drafted players
+    cleanPlayerName = cleanPlayerName.replace(/\s*\(AUTO\)\s*$/, '').trim();
+    
+    console.log(`🔍 Converting draft pick to player: "${draftPick.playerName}" -> "${cleanPlayerName}"`);
+    
+    // If we extracted a player ID from the prefix, try to find by ID first
+    if (extractedPlayerId) {
+      const playerById = players.find((player: any) => player.id === extractedPlayerId);
+      if (playerById) {
+        console.log(`✅ Found player by extracted ID: ${playerById.name} (${playerById.id})`);
+        return playerById;
+      }
+    }
+    
+    // Find the actual player by cleaned name, team, and league
     const actualPlayer = players.find((player: any) => 
-      player.name === draftPick.playerName && 
+      player.name === cleanPlayerName && 
       player.team === draftPick.playerTeam &&
       player.league === draftPick.playerLeague
     );
     
     if (actualPlayer) {
+      console.log(`✅ Found actual player by name: ${actualPlayer.name} (${actualPlayer.id})`);
       return actualPlayer;
     }
     
+    console.log(`❌ Could not find player: "${cleanPlayerName}" in ${draftPick.playerTeam} (${draftPick.playerLeague})`);
+    
     // Fallback to synthetic player if not found (shouldn't happen)
     return {
-      id: `${draftPick.playerLeague}-${draftPick.playerName}`, // Synthetic ID
-      name: draftPick.playerName,
+      id: extractedPlayerId || `${draftPick.playerLeague}-${cleanPlayerName.toLowerCase().replace(/\s+/g, '-')}`, // Use extracted ID or generate one
+      name: draftPick.playerName, // Keep original name with prefixes for display
       position: draftPick.playerPosition,
       team: draftPick.playerTeam,
       league: draftPick.playerLeague as 'NFL' | 'MLB' | 'NBA',
@@ -229,6 +257,31 @@ class DraftService {
 
     // Fallback to random available player
     return undraftedPlayers[Math.floor(Math.random() * undraftedPlayers.length)];
+  }
+
+  // Get available players for a draft
+  async fetchAvailablePlayersForDraft(leagueId: number): Promise<Player[]> {
+    try {
+      const response = await apiRequest(`/api/draft/league/${leagueId}/available-players`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`🔍 Fetched ${data.availablePlayers} available players out of ${data.totalPlayers} total (${data.draftedPlayers} drafted)`);
+        
+        // Convert backend format to Player format
+        return data.players.map((player: any) => ({
+          id: player.id,
+          name: player.name,
+          position: player.position,
+          team: player.team,
+          league: player.league as 'NFL' | 'NBA' | 'MLB'
+        } as Player));
+      } else {
+        throw new Error(`Failed to fetch available players: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error fetching available players:', error);
+      throw error;
+    }
   }
 }
 

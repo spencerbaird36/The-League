@@ -62,6 +62,9 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// Initialize static service provider for SignalR Hub timer callbacks
+FantasyLeague.Api.Hubs.ChatHub.InitializeServiceProvider(app.Services);
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

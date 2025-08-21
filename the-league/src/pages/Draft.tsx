@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Player } from '../types/Player';
-import { players } from '../data/players';
 import LazyLoadFallback from '../components/LazyLoadFallback';
 import VirtualScrollTable from '../components/VirtualScrollTable';
 import { useDraft } from '../context/DraftContext';
@@ -80,6 +79,7 @@ const Draft: React.FC<DraftProps> = ({
   onTimeExpired,
   timerStartTime,
 }) => {
+  console.log('🏈 DRAFT COMPONENT MOUNTED!', { user: user?.username, leagueId: user?.league?.id });
   // Phase 1 Redesign: New draft state management
   const [draftState, draftStateActions] = useDraftState();
   const [notifications, notificationActions] = useNotifications({
@@ -174,18 +174,54 @@ const Draft: React.FC<DraftProps> = ({
         }
       },
       onPlayerDrafted: (data) => {
-        console.log('✅ Player drafted event received:', data);
+        console.log('✅ Player drafted event received (Draft.tsx):', data);
+        console.log('🔍 Available keys in data:', Object.keys(data));
+        console.log('🔍 data object type:', typeof data);
+        console.log('🔍 data.playerId:', data.playerId);
+        console.log('🔍 data.PlayerId:', data.PlayerId);
+        console.log('🔍 JSON.stringify(data):', JSON.stringify(data));
+        
+        // Try multiple property access patterns with explicit checks
+        let playerId = null;
+        
+        // Check exact property names with explicit existence tests
+        if ('playerId' in data && data.playerId !== null && data.playerId !== undefined) {
+          playerId = data.playerId;
+          console.log('🎯 Found playerId via data.playerId:', playerId);
+        } else if ('PlayerId' in data && data.PlayerId !== null && data.PlayerId !== undefined) {
+          playerId = data.PlayerId;
+          console.log('🎯 Found playerId via data.PlayerId:', playerId);
+        } else {
+          // Iterate through all properties to find any containing player ID
+          for (const [key, value] of Object.entries(data)) {
+            console.log(`🔍 Checking property: ${key} = ${value}`);
+            if (key.toLowerCase().includes('player') && key.toLowerCase().includes('id') && value) {
+              playerId = value;
+              console.log(`🎯 Found playerId via ${key}:`, playerId);
+              break;
+            }
+          }
+          
+          // If still not found, log all properties
+          if (!playerId) {
+            console.log('❌ No playerId found in any property!');
+            console.log('🔍 All properties:', Object.entries(data));
+          }
+        }
+        
         const playerName = data.playerName || data.PlayerName || 'Unknown Player';
         const position = data.position || data.Position || 'Unknown';
         const team = data.team || data.Team || 'Unknown';
         const isAutoDraft = data.isAutoDraft || data.IsAutoDraft || false;
+        
+        console.log('🔍 Final playerId value (Draft.tsx):', playerId);
         
         // Add to notifications
         notificationActions.notifyPlayerPicked(playerName, position, team, isAutoDraft);
         
         // Update legacy rosters for backward compatibility
         const draftedPlayer: Player = {
-          id: data.playerId || data.PlayerId || 0,
+          id: playerId || `${playerName.toLowerCase().replace(/\s+/g, '-')}-auto-${Date.now()}`, // Generate fallback ID
           name: playerName,
           position: position,
           team: team,
@@ -193,10 +229,13 @@ const Draft: React.FC<DraftProps> = ({
         };
         draftPlayer(draftedPlayer);
         
-        // 🔄 CRITICAL: Refresh backend draft state to update UI
-        console.log('🔄 Refreshing draft state after PlayerDrafted event');
-        draftOperations.fetchDraftState().catch(error => {
-          console.error('❌ Failed to refresh draft state after player drafted:', error);
+        // 🔄 CRITICAL: Refresh backend draft state and available players to update UI
+        console.log('🔄 Refreshing draft state and available players after PlayerDrafted event');
+        Promise.all([
+          draftOperations.fetchDraftState(),
+          fetchAvailablePlayersFromBackend()
+        ]).catch(error => {
+          console.error('❌ Failed to refresh state after player drafted:', error);
         });
       },
       onDraftPaused: (data) => {
@@ -243,6 +282,19 @@ const Draft: React.FC<DraftProps> = ({
       onAutoDraft: (data) => {
         console.log('🤖 Auto draft event received:', data);
         // Auto-draft logic handled in onPlayerDrafted
+      },
+      onDraftReset: (data) => {
+        console.log('🔄 Draft reset event received (Draft.tsx):', data);
+        draftStateActions.resetDraftState();
+        timerActions.stopTimer();
+        notificationActions.addNotification({
+          type: 'turn',
+          title: 'Draft Reset',
+          message: `Draft was reset by ${data.ResetBy || 'Administrator'}`,
+          duration: 5000
+        });
+        // Refresh available players when draft is reset
+        fetchAvailablePlayersFromBackend();
       }
     }
   });
@@ -306,13 +358,69 @@ const Draft: React.FC<DraftProps> = ({
   );
   
   
-  // Get available players reactively (this will update when draft picks change)
-  const availablePlayers = React.useMemo(() => {
-    const draftedPlayers = draftOperations.allDraftedPlayers;
-    return players.filter((player: Player) => 
-      !draftedPlayers.some((drafted: Player) => drafted.id === player.id)
-    );
-  }, [draftOperations.allDraftedPlayers]);
+  // State for available players from backend
+  const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+  const [isLoadingAvailablePlayers, setIsLoadingAvailablePlayers] = useState(false);
+
+  // Function to fetch available players from backend
+  const fetchAvailablePlayersFromBackend = useCallback(async () => {
+    console.log('🔍 fetchAvailablePlayersFromBackend called:', {
+      userLeagueId: user?.league?.id,
+      isLoadingAvailablePlayers,
+      userExists: !!user,
+      leagueExists: !!user?.league
+    });
+    
+    if (!user?.league?.id || isLoadingAvailablePlayers) {
+      console.log('❌ Early return from fetchAvailablePlayersFromBackend:', {
+        noLeagueId: !user?.league?.id,
+        isLoading: isLoadingAvailablePlayers
+      });
+      return;
+    }
+
+    console.log('🚀 Starting to fetch available players for league:', user.league.id);
+    setIsLoadingAvailablePlayers(true);
+    try {
+      const backendPlayers = await draftService.fetchAvailablePlayersForDraft(user.league.id);
+      setAvailablePlayers(backendPlayers);
+      console.log(`✅ Updated available players from backend: ${backendPlayers.length} players`);
+    } catch (error) {
+      console.error('❌ Failed to fetch available players from backend:', error);
+      // No fallback - backend is the single source of truth
+      setAvailablePlayers([]);
+      console.log(`⚠️ Backend unavailable, no players available for selection`);
+    } finally {
+      setIsLoadingAvailablePlayers(false);
+    }
+  }, [user?.league?.id, isLoadingAvailablePlayers]);
+
+  // Fetch available players when component mounts or draft state changes
+  useEffect(() => {
+    console.log('🔄 useEffect triggered for fetchAvailablePlayersFromBackend:', {
+      userLeagueId: user?.league?.id,
+      draftPicksLength: legacyDraftState?.draftPicks?.length
+    });
+    fetchAvailablePlayersFromBackend();
+  }, [user?.league?.id, legacyDraftState?.draftPicks?.length, fetchAvailablePlayersFromBackend]);
+
+  // TEMPORARY: Force API call for testing - BYPASS ALL CONDITIONS
+  useEffect(() => {
+    const testApiCall = async () => {
+      console.log('🧪 TESTING: BYPASS MODE - Force calling API with hardcoded league ID 1');
+      try {
+        const testPlayers = await draftService.fetchAvailablePlayersForDraft(1);
+        console.log('🧪 TESTING: SUCCESS! Got players:', testPlayers.length);
+        console.log('🧪 TESTING: Setting available players to state...');
+        setAvailablePlayers(testPlayers);
+      } catch (error) {
+        console.error('🧪 TESTING: Error:', error);
+      }
+    };
+    
+    // Run once immediately
+    testApiCall();
+  }, []);
 
   const filteredPlayers = React.useMemo(() => {
     const filtered = availablePlayers.filter((player: Player) => {
@@ -565,6 +673,8 @@ const Draft: React.FC<DraftProps> = ({
       // Reset new draft state too
       draftStateActions.resetDraftState();
       timerActions.stopTimer();
+      // Refresh available players after reset
+      await fetchAvailablePlayersFromBackend();
       console.log('✅ Draft reset successfully');
     } catch (error) {
       console.error('❌ Failed to reset draft:', error);

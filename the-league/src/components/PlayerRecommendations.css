@@ -1,0 +1,378 @@
+.player-recommendations {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 20px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  margin-bottom: 24px;
+}
+
+.player-recommendations.empty {
+  text-align: center;
+  color: var(--text-gray);
+}
+
+.recommendations-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.recommendations-header h3 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.recommendations-header .icon {
+  font-size: 1.1rem;
+}
+
+.header-subtitle {
+  color: var(--text-gray);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.empty-state {
+  padding: 40px 20px;
+  color: var(--text-gray);
+  font-style: italic;
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.recommendation-card {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.recommendation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.1), transparent);
+  transition: left 0.6s ease;
+  z-index: 0;
+}
+
+.recommendation-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(218, 165, 32, 0.15);
+}
+
+.recommendation-card:hover::before {
+  left: 100%;
+}
+
+.recommendation-priority {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 16px;
+  min-width: 50px;
+  z-index: 1;
+  position: relative;
+}
+
+.priority-icon {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.recommendation-rank {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-gold);
+  background: rgba(218, 165, 32, 0.2);
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(218, 165, 32, 0.3);
+}
+
+.player-details {
+  flex: 1;
+  z-index: 1;
+  position: relative;
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.player-name {
+  font-weight: 600;
+  color: var(--text-white);
+  font-size: 1rem;
+}
+
+.league-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.league-badge.nfl {
+  background: rgba(1, 51, 105, 0.3);
+  color: #0133ff;
+  border: 1px solid rgba(1, 51, 255, 0.3);
+}
+
+.league-badge.nba {
+  background: rgba(255, 99, 71, 0.3);
+  color: #ff6347;
+  border: 1px solid rgba(255, 99, 71, 0.3);
+}
+
+.league-badge.mlb {
+  background: rgba(34, 139, 34, 0.3);
+  color: #228b22;
+  border: 1px solid rgba(34, 139, 34, 0.3);
+}
+
+.player-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.player-position {
+  font-weight: 600;
+  color: var(--accent-gold);
+  font-size: 0.85rem;
+}
+
+.player-team {
+  color: var(--accent-platinum);
+  font-size: 0.85rem;
+}
+
+.recommendation-reason {
+  color: var(--text-gray);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.recommendation-actions {
+  z-index: 1;
+  position: relative;
+}
+
+.quick-draft-btn {
+  background: var(--gradient-gold);
+  color: var(--primary-navy);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(218, 165, 32, 0.2);
+}
+
+.quick-draft-btn:hover {
+  background: linear-gradient(135deg, #F4D03F, var(--accent-gold));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(218, 165, 32, 0.3);
+}
+
+.quick-draft-btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 0.9rem;
+}
+
+.team-needs-summary {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.team-needs-summary h4 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--accent-platinum);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.needs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.need-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.need-item.priority-high {
+  border-color: rgba(255, 71, 87, 0.4);
+  background: rgba(255, 71, 87, 0.08);
+}
+
+.need-item.priority-medium {
+  border-color: rgba(255, 193, 7, 0.4);
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.need-item.priority-low {
+  border-color: rgba(108, 117, 125, 0.4);
+  background: rgba(108, 117, 125, 0.08);
+}
+
+.need-position {
+  font-weight: 600;
+  color: var(--text-white);
+}
+
+.need-count {
+  color: var(--text-gray);
+  font-size: 0.75rem;
+}
+
+.need-priority {
+  font-size: 0.8rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .player-recommendations {
+    padding: 16px;
+  }
+  
+  .recommendation-card {
+    padding: 12px;
+  }
+  
+  .recommendation-priority {
+    margin-right: 12px;
+    min-width: 40px;
+  }
+  
+  .priority-icon {
+    font-size: 1.2rem;
+  }
+  
+  .recommendation-rank {
+    font-size: 0.75rem;
+    padding: 1px 6px;
+  }
+  
+  .player-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .player-name {
+    font-size: 0.9rem;
+  }
+  
+  .player-meta {
+    gap: 8px;
+  }
+  
+  .player-position,
+  .player-team {
+    font-size: 0.8rem;
+  }
+  
+  .recommendation-reason {
+    font-size: 0.75rem;
+  }
+  
+  .quick-draft-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .needs-list {
+    gap: 6px;
+  }
+  
+  .need-item {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .player-recommendations {
+    padding: 12px;
+  }
+  
+  .recommendation-card {
+    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .recommendation-priority {
+    margin-right: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    align-self: stretch;
+    justify-content: space-between;
+  }
+  
+  .player-header {
+    align-self: stretch;
+  }
+  
+  .recommendation-actions {
+    align-self: stretch;
+  }
+  
+  .quick-draft-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

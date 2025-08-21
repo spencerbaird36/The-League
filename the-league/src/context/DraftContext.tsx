@@ -68,6 +68,7 @@ export interface DraftPick {
   userFullName: string;
   username: string;
   playerName: string;
+  playerId?: string | null; // Add playerId for filtering available players
   playerPosition: string;
   playerTeam: string;
   playerLeague: string;
