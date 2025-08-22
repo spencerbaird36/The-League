@@ -122,6 +122,9 @@ export interface DraftContextState {
     draftState: boolean;
     makingPick: boolean;
   };
+  
+  // Draft reset trigger (for refreshing components when draft is reset)
+  draftResetTrigger: number;
 }
 
 // Action types
@@ -147,7 +150,8 @@ export type DraftAction =
   | { type: 'SET_LOADING_DRAFT_STATE'; payload: boolean }
   | { type: 'SET_LOADING_MAKING_PICK'; payload: boolean }
   | { type: 'ADVANCE_TURN' }
-  | { type: 'TIME_EXPIRED' };
+  | { type: 'TIME_EXPIRED' }
+  | { type: 'DRAFT_RESET' };
 
 const initialState: DraftContextState = {
   draftState: null,
@@ -170,6 +174,7 @@ const initialState: DraftContextState = {
     draftState: false,
     makingPick: false,
   },
+  draftResetTrigger: 0,
 };
 
 function draftReducer(state: DraftContextState, action: DraftAction): DraftContextState {
@@ -392,6 +397,12 @@ function draftReducer(state: DraftContextState, action: DraftAction): DraftConte
           timeRemaining: 0,
           // Don't set isDrafting to false - let the pick handler restart the timer
         },
+      };
+      
+    case 'DRAFT_RESET':
+      return {
+        ...initialState, // Reset to initial state
+        draftResetTrigger: Date.now(), // Update trigger to refresh components
       };
       
     default:

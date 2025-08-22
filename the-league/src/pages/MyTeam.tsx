@@ -4,6 +4,7 @@ import TimerDisplay from '../components/TimerDisplay';
 import LazyLoadFallback from '../components/LazyLoadFallback';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 
 // Lazy load modal since it's only needed when users click on players
 const PlayerInfoModal = lazy(() => import('../components/PlayerInfoModal'));
@@ -86,7 +87,7 @@ const MyTeam: React.FC<MyTeamProps> = ({
           // Convert to UserRosterPlayer format
           const userRosterPlayers = rosterData?.map((player: any) => ({
             id: player.id,
-            playerName: player.playerName,
+            playerName: cleanPlayerName(player.playerName), // Clean the player name
             playerPosition: player.playerPosition,
             playerTeam: player.playerTeam,
             playerLeague: player.playerLeague,

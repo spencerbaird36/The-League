@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Player } from '../types/Player';
 import { DraftPick } from '../hooks/useDraftState';
 import { useDraftStrategy, DraftStrategy, MockDraftResult } from '../hooks/useDraftStrategy';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 import './DraftStrategySelector.css';
 
 interface DraftStrategySelectorProps {
@@ -168,7 +169,7 @@ const MockDraftModal: React.FC<MockDraftModalProps> = ({
                     <div key={pick.pickNumber} className="team-pick">
                       <span className="pick-round">R{pick.round}</span>
                       <span className="pick-player">
-                        {pick.playerName} ({pick.playerPosition})
+                        {cleanPlayerName(pick.playerName)} ({pick.playerPosition})
                       </span>
                     </div>
                   ))}

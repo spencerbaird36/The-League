@@ -4,6 +4,7 @@ import theLeagueLogo from '../assets/the_league.png';
 import LeagueStandings from './LeagueStandings';
 import RecentTransactions from './RecentTransactions';
 import UpcomingMatchups from './UpcomingMatchups';
+import { useDraft } from '../context/DraftContext';
 import './UserDashboard.css';
 
 interface User {
@@ -23,6 +24,8 @@ interface UserDashboardProps {
 }
 
 const UserDashboard: React.FC<UserDashboardProps> = ({ user }) => {
+  const { state } = useDraft();
+  
   if (!user || !user.league) {
     return null;
   }
@@ -42,7 +45,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user }) => {
 
       <div className="dashboard-simple-grid">
         <LeagueStandings user={user} />
-        <RecentTransactions user={user} />
+        <RecentTransactions user={user} refreshTrigger={state.draftResetTrigger} />
         <UpcomingMatchups user={user} />
       </div>
     </div>

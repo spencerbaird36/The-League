@@ -73,6 +73,19 @@ class ChatService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
   }
+
+  async clearAllMessages(leagueId: number, userId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/chat/league/${leagueId}/clear?userId=${userId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  }
 }
 
 const chatService = new ChatService();

@@ -22,6 +22,7 @@ import CommissionerControls from '../components/CommissionerControls';
 import { DraftAction } from '../components/CommissionerControls';
 import signalRService from '../services/signalRService';
 import { draftService } from '../services/draftService';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 import './Draft.css';
 
 // Lazy load modals since they're only needed when users interact
@@ -287,12 +288,16 @@ const Draft: React.FC<DraftProps> = ({
         console.log('🔄 Draft reset event received (Draft.tsx):', data);
         draftStateActions.resetDraftState();
         timerActions.stopTimer();
+        // Clear WebSocket draft state to ensure start button shows
+        setWebSocketDraftState(null);
         notificationActions.addNotification({
           type: 'turn',
           title: 'Draft Reset',
           message: `Draft was reset by ${data.ResetBy || 'Administrator'}`,
           duration: 5000
         });
+        // Dispatch to context to trigger refresh across app
+        dispatch({ type: 'DRAFT_RESET' });
         // Refresh available players when draft is reset
         fetchAvailablePlayersFromBackend();
       }
@@ -673,6 +678,10 @@ const Draft: React.FC<DraftProps> = ({
       // Reset new draft state too
       draftStateActions.resetDraftState();
       timerActions.stopTimer();
+      // Clear WebSocket draft state to ensure start button shows
+      setWebSocketDraftState(null);
+      // Dispatch to context to trigger refresh across app
+      dispatch({ type: 'DRAFT_RESET' });
       // Refresh available players after reset
       await fetchAvailablePlayersFromBackend();
       console.log('✅ Draft reset successfully');
@@ -1389,7 +1398,7 @@ const Draft: React.FC<DraftProps> = ({
                                   onClick={() => {
                                     const player: Player = {
                                       id: pick.playerId || 0,
-                                      name: pick.playerName,
+                                      name: cleanPlayerName(pick.playerName),
                                       position: pick.playerPosition,
                                       team: pick.playerTeam,
                                       league: pick.playerLeague as 'NFL' | 'NBA' | 'MLB',
@@ -1398,7 +1407,7 @@ const Draft: React.FC<DraftProps> = ({
                                     handlePlayerNameClick(player);
                                   }}
                                 >
-                                  {pick.playerName}
+                                  {cleanPlayerName(pick.playerName)}
                                 </span>
                                 <span className="player-meta">
                                   {pick.playerPosition} • {pick.playerTeam} • 

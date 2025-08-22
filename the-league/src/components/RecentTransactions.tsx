@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../config/api';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 import './RecentTransactions.css';
 
 interface User {
@@ -30,9 +31,10 @@ interface Transaction {
 
 interface RecentTransactionsProps {
   user: User | null;
+  refreshTrigger?: number; // Optional prop to trigger refresh when draft is reset
 }
 
-const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user }) => {
+const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTrigger }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user }) => {
               firstName: entry.firstName || entry.user?.firstName || '',
               lastName: entry.lastName || entry.user?.lastName || '',
               transactionType: entry.transactionType || entry.type || 'DRAFT',
-              playerName: entry.playerName || entry.player?.name || 'Unknown Player',
+              playerName: cleanPlayerName(entry.playerName || entry.player?.name || 'Unknown Player'),
               playerPosition: entry.playerPosition || entry.player?.position || '',
               playerTeam: entry.playerTeam || entry.player?.team || '',
               playerLeague: entry.playerLeague || entry.player?.league || 'NFL',
@@ -89,7 +91,7 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user }) => {
     };
 
     fetchTransactions();
-  }, [user?.league?.id]);
+  }, [user?.league?.id, refreshTrigger]); // Add refreshTrigger to dependencies
 
   const getTransactionIcon = (type: string) => {
     switch (type) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useDraftChat, DraftChatMessage, DRAFT_REACTIONS, ChatReaction } from '../hooks/useDraftChat';
+import chatService from '../services/chatService';
 import './DraftChatRoom.css';
 
 interface DraftChatRoomProps {
@@ -362,6 +363,8 @@ const DraftChatRoom: React.FC<DraftChatRoomProps> = ({
 }) => {
   const [inputMessage, setInputMessage] = useState('');
   const [showQuickReactions, setShowQuickReactions] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   const { chatState, actions, messageEndRef } = useDraftChat({
@@ -407,6 +410,23 @@ const DraftChatRoom: React.FC<DraftChatRoomProps> = ({
     actions.sendPickReaction('Latest Pick', emoji, 1);
     setShowQuickReactions(false);
   }, [actions]);
+
+  const handleClearMessages = useCallback(async () => {
+    if (!leagueId || !userId) return;
+    
+    setIsClearing(true);
+    try {
+      await chatService.clearAllMessages(leagueId, userId);
+      // Note: The draft chat uses a different state management system
+      // We'll need to implement clearing in the useDraftChat hook as well
+      setShowClearConfirm(false);
+    } catch (error) {
+      console.error('Error clearing draft messages:', error);
+      alert('Failed to clear messages. Please try again.');
+    } finally {
+      setIsClearing(false);
+    }
+  }, [leagueId, userId]);
   
   if (!isVisible) {
     return (
@@ -436,6 +456,15 @@ const DraftChatRoom: React.FC<DraftChatRoomProps> = ({
         </div>
         
         <div className="chat-controls">
+          <button
+            className="clear-btn"
+            onClick={() => setShowClearConfirm(true)}
+            disabled={chatState.messages.length === 0 || isClearing}
+            title="Clear Messages"
+          >
+            🗑️
+          </button>
+          
           <button
             className={`quick-reactions-btn ${showQuickReactions ? 'active' : ''}`}
             onClick={() => setShowQuickReactions(!showQuickReactions)}
@@ -534,6 +563,43 @@ const DraftChatRoom: React.FC<DraftChatRoomProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Clear Messages Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Clear Draft Chat</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowClearConfirm(false)}
+              >
+                ✖
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to clear all draft chat messages?</p>
+              <p className="warning-text">This will remove all messages from the draft chat for all users.</p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-btn modal-btn-cancel"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearing}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn modal-btn-danger"
+                onClick={handleClearMessages}
+                disabled={isClearing}
+              >
+                {isClearing ? 'Clearing...' : 'Clear Messages'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

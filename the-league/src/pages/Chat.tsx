@@ -39,6 +39,8 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
   });
   const [newMessage, setNewMessage] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+  const [isClearing, setIsClearing] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -145,6 +147,26 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
 
   const handleOnlineUsers = (users: OnlineUser[]) => {
     setOnlineUsers(users);
+  };
+
+  const handleClearMessages = async () => {
+    if (!leagueId || !userId) return;
+    
+    setIsClearing(true);
+    try {
+      await chatService.clearAllMessages(leagueId, userId);
+      setChatState(prev => ({ 
+        ...prev, 
+        messages: [],
+        unreadCount: 0
+      }));
+      setShowClearConfirm(false);
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+      alert('Failed to clear messages. Please try again.');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -307,9 +329,21 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
 
         <div className="chat-main">
           <div className="chat-header-main">
-            <div className="chat-title">
-              <span>#{leagueName.toLowerCase().replace(/\s+/g, '-')}</span>
-              <span className={`status-indicator ${chatState.isConnected ? 'live' : 'basic'}`}></span>
+            <div className="chat-title-section">
+              <div className="chat-title">
+                <span>#{leagueName.toLowerCase().replace(/\s+/g, '-')}</span>
+                <span className={`status-indicator ${chatState.isConnected ? 'live' : 'basic'}`}></span>
+              </div>
+              <div className="chat-controls">
+                <button 
+                  className="clear-chat-btn"
+                  onClick={() => setShowClearConfirm(true)}
+                  disabled={chatState.messages.length === 0 || isClearing}
+                  title="Clear all messages"
+                >
+                  🗑️ Clear Chat
+                </button>
+              </div>
             </div>
             <div className="chat-subtitle">
               {chatState.isConnected ? 'Live messaging' : 'Basic messaging'} • {onlineUsers.length} online
@@ -384,6 +418,43 @@ const Chat: React.FC<ChatProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {/* Clear Messages Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Clear All Messages</h3>
+              <button 
+                className="modal-close"
+                onClick={() => setShowClearConfirm(false)}
+              >
+                ✖
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to clear all chat messages?</p>
+              <p className="warning-text">This action cannot be undone and will remove all messages for all users in this league.</p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="modal-btn modal-btn-cancel"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearing}
+              >
+                Cancel
+              </button>
+              <button 
+                className="modal-btn modal-btn-danger"
+                onClick={handleClearMessages}
+                disabled={isClearing}
+              >
+                {isClearing ? 'Clearing...' : 'Clear All Messages'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

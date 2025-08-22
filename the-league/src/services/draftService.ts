@@ -213,7 +213,7 @@ class DraftService {
     // Fallback to synthetic player if not found (shouldn't happen)
     return {
       id: extractedPlayerId || `${draftPick.playerLeague}-${cleanPlayerName.toLowerCase().replace(/\s+/g, '-')}`, // Use extracted ID or generate one
-      name: draftPick.playerName, // Keep original name with prefixes for display
+      name: cleanPlayerName, // Use cleaned name without (AUTO) suffix
       position: draftPick.playerPosition,
       team: draftPick.playerTeam,
       league: draftPick.playerLeague as 'NFL' | 'MLB' | 'NBA',
