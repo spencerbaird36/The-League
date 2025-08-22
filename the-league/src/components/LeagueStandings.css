@@ -1,0 +1,244 @@
+.standings-card {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
+  margin-bottom: 20px;
+}
+
+.standings-header {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-white);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.standings-icon {
+  font-size: 1.2rem;
+}
+
+.standings-loading,
+.standings-error,
+.standings-empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-gray);
+  font-style: italic;
+}
+
+.standings-error {
+  color: #ff6b6b;
+}
+
+.standings-table-container {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.standings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.standings-table th {
+  background: rgba(218, 165, 32, 0.2);
+  color: var(--text-white);
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: left;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-light);
+}
+
+.standings-table th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.standings-table th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.standings-row {
+  transition: all 0.3s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.standings-row:hover {
+  background: rgba(218, 165, 32, 0.1);
+}
+
+.standings-row.current-user {
+  background: rgba(218, 165, 32, 0.15);
+  border: 1px solid rgba(218, 165, 32, 0.3);
+}
+
+.standings-row.current-user:hover {
+  background: rgba(218, 165, 32, 0.2);
+}
+
+.standings-table td {
+  padding: 12px 8px;
+  color: var(--text-cream);
+  font-size: 0.9rem;
+}
+
+.rank {
+  text-align: center;
+  width: 60px;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.rank-badge.top-rank {
+  background: var(--gradient-gold);
+  color: var(--text-dark);
+}
+
+.team-name {
+  min-width: 120px;
+}
+
+.team-info .name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-white);
+  line-height: 1.2;
+}
+
+.team-info .username {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-gray);
+  line-height: 1.2;
+}
+
+.record {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-align: center;
+  min-width: 80px;
+}
+
+.wins {
+  color: #4CAF50;
+}
+
+.losses {
+  color: #f44336;
+}
+
+.ties {
+  color: var(--text-gray);
+}
+
+.win-percentage {
+  text-align: center;
+  font-weight: 600;
+  color: var(--accent-gold);
+  min-width: 70px;
+}
+
+.points-for,
+.points-against {
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.points-for {
+  color: #4CAF50;
+}
+
+.points-against {
+  color: #ff9800;
+}
+
+.user-rank-summary {
+  margin-top: 15px;
+  padding: 12px;
+  background: rgba(218, 165, 32, 0.1);
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid rgba(218, 165, 32, 0.2);
+}
+
+.rank-text {
+  color: var(--accent-gold);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .standings-card {
+    padding: 20px 15px;
+  }
+  
+  .standings-header {
+    font-size: 1.2rem;
+  }
+  
+  .standings-table th,
+  .standings-table td {
+    padding: 8px 4px;
+    font-size: 0.8rem;
+  }
+  
+  .team-info .name {
+    font-size: 0.85rem;
+  }
+  
+  .team-info .username {
+    font-size: 0.7rem;
+  }
+  
+  .rank-badge {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .standings-table-container {
+    font-size: 0.75rem;
+  }
+  
+  .standings-table th,
+  .standings-table td {
+    padding: 6px 2px;
+  }
+  
+  .team-name {
+    min-width: 100px;
+  }
+  
+  .points-for,
+  .points-against,
+  .win-percentage {
+    min-width: 50px;
+  }
+}

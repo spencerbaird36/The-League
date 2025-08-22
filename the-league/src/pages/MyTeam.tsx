@@ -60,6 +60,11 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
   const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
+  
+  // Drag and drop state
+  const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
+  const [draggedFromPosition, setDraggedFromPosition] = useState<string | null>(null);
+  const [draggedFromIndex, setDraggedFromIndex] = useState<number | null>(null);
 
   // Fetch user's roster from backend
   useEffect(() => {
@@ -137,6 +142,38 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const handleClosePlayerInfo = () => {
     setIsPlayerInfoModalOpen(false);
     setSelectedPlayerForInfo(null);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (player: Player, position: string, index: number) => {
+    setDraggedPlayer(player);
+    setDraggedFromPosition(position);
+    setDraggedFromIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetPosition: string, targetIndex: number) => {
+    if (!draggedPlayer || !draggedFromPosition || draggedFromIndex === null) return;
+    
+    // For now, just log the move - you can implement the actual roster update logic here
+    console.log(`Moving ${draggedPlayer.name} from ${draggedFromPosition}[${draggedFromIndex}] to ${targetPosition}[${targetIndex}]`);
+    
+    // TODO: Implement actual roster update logic here
+    // This would involve updating the userRoster state and potentially making API calls
+    
+    // Clear drag state
+    setDraggedPlayer(null);
+    setDraggedFromPosition(null);
+    setDraggedFromIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPlayer(null);
+    setDraggedFromPosition(null);
+    setDraggedFromIndex(null);
   };
 
   // Separate players by league
@@ -242,11 +279,19 @@ const MyTeam: React.FC<MyTeamProps> = ({
             <tbody>
               {/* Starting lineup */}
               {roster.map((slot, index) => (
-                <tr key={`${leagueName}-${slot.position}-${index}`} className="starter-row">
+                <tr 
+                  key={`${leagueName}-${slot.position}-${index}`} 
+                  className={`starter-row ${slot.player ? 'draggable-row' : ''}`}
+                  draggable={!!slot.player}
+                  onDragStart={() => slot.player && handleDragStart(slot.player, slot.position, index)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(slot.position, index)}
+                  onDragEnd={handleDragEnd}
+                >
                   <td data-label="Position" className="roster-position">{slot.position}</td>
                   {slot.player ? (
                     <>
-                      <td data-label="Player" className="player-name">
+                      <td data-label="Player" className="my-team-player-name">
                         <span 
                           className="clickable-player-name"
                           onClick={() => handlePlayerNameClick(slot.player!)}
@@ -276,9 +321,17 @@ const MyTeam: React.FC<MyTeamProps> = ({
                     </td>
                   </tr>
                   {bench.map((player, index) => (
-                    <tr key={`${leagueName}-bench-${index}`} className="bench-row">
+                    <tr 
+                      key={`${leagueName}-bench-${index}`} 
+                      className="bench-row draggable-row"
+                      draggable={true}
+                      onDragStart={() => handleDragStart(player, 'BN', index)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop('BN', index)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <td data-label="Position" className="roster-position">BN</td>
-                      <td data-label="Player" className="player-name">
+                      <td data-label="Player" className="my-team-player-name">
                         <span 
                           className="clickable-player-name"
                           onClick={() => handlePlayerNameClick(player)}
@@ -326,11 +379,6 @@ const MyTeam: React.FC<MyTeamProps> = ({
     <div className="my-team-container">
       <div className="page-header my-team-header">
         <h1 className="page-title">My Team</h1>
-        {allDraftedPlayers.length > 0 && (
-          <p className="page-subtitle">
-            You have drafted {allDraftedPlayers.length} players across all leagues
-          </p>
-        )}
         
         <TimerDisplay
           isDrafting={isDrafting}

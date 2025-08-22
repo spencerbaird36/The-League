@@ -188,7 +188,8 @@
 .player-name {
   font-weight: 600;
   color: var(--text-white);
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-family: 'Poppins', sans-serif;
 }
 
 .clickable-player-name {
@@ -201,12 +202,52 @@
   display: inline-block;
   min-height: 24px;
   line-height: 1.2;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
 }
 
 .clickable-player-name:hover {
   color: var(--accent-gold);
   background: rgba(212, 175, 55, 0.15);
   transform: translateY(-1px);
+}
+
+.my-team-player-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-white);
+}
+
+/* Drag and Drop Styles */
+.draggable-row {
+  cursor: grab;
+  transition: all 0.3s ease;
+}
+
+.draggable-row:active {
+  cursor: grabbing;
+}
+
+.draggable-row:hover {
+  background: rgba(212, 175, 55, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+.draggable-row[draggable="true"]:hover::before {
+  content: "⋮⋮";
+  position: absolute;
+  left: 10px;
+  color: var(--accent-gold);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+tr.starter-row.draggable-row,
+tr.bench-row.draggable-row {
+  position: relative;
 }
 
 .position {

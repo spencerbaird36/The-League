@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Player } from '../types/Player';
-import { players } from '../data/players';
+import { apiRequest } from '../config/api';
 import Pagination from '../components/Pagination';
-import { useDraftOperations } from '../hooks/useDraftOperations';
 import { usePagination } from '../hooks/usePagination';
 import './FreeAgents.css';
 
@@ -28,8 +27,6 @@ interface FreeAgentsNewProps {
 }
 
 function FreeAgentsNew({ user }: FreeAgentsNewProps) {
-  const draftOperations = useDraftOperations(user);
-  
   // Filter states
   const [selectedLeague, setSelectedLeague] = useState<'ALL' | 'NFL' | 'MLB' | 'NBA'>('ALL');
   const [selectedPosition, setSelectedPosition] = useState<string>('ALL');
@@ -38,16 +35,80 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
   // UI states
   const [pickupMessage, setPickupMessage] = useState<string>('');
   const [localPickedUpPlayers, setLocalPickedUpPlayers] = useState<Set<string>>(new Set());
+  
+  // Backend data states
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDraftCompleted, setIsDraftCompleted] = useState<boolean>(false);
 
-  // Get available (undrafted) players - optimized with memoization
+  // Fetch draft status and available players from backend
+  useEffect(() => {
+    const fetchDataForFreeAgents = async () => {
+      if (!user?.league?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Fetch draft status first
+        console.log('Fetching draft status for league:', user.league.id);
+        const draftStatusResponse = await apiRequest(`/api/draft/league/${user.league.id}/status`);
+        
+        if (draftStatusResponse.ok) {
+          const draftData = await draftStatusResponse.json();
+          console.log('Draft status received:', draftData);
+          setIsDraftCompleted(draftData.isCompleted || false);
+        }
+        
+        // Fetch available players
+        console.log('Fetching available players for league:', user.league.id);
+        const playersResponse = await apiRequest(`/api/draft/league/${user.league.id}/available-players`);
+        
+        if (playersResponse.ok) {
+          const responseData = await playersResponse.json();
+          console.log('Available players response received:', responseData);
+          
+          // Extract the Players array from the response
+          const playersArray = responseData.Players || responseData.players || [];
+          console.log('Players array:', playersArray);
+          
+          // Transform backend data to match frontend Player interface
+          const transformedPlayers: Player[] = playersArray.map((player: any) => ({
+            id: player.id || player.Id,
+            name: player.name || player.Name,
+            position: player.position || player.Position,
+            team: player.team || player.Team,
+            league: player.league || player.League,
+            stats: player.stats || player.Stats
+          }));
+          
+          console.log('Transformed players:', transformedPlayers);
+          setAllPlayers(transformedPlayers);
+        } else {
+          console.error('Failed to fetch available players:', playersResponse.status, playersResponse.statusText);
+          setError('Failed to load available players');
+        }
+      } catch (err) {
+        console.error('Error fetching data for free agents:', err);
+        setError('Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDataForFreeAgents();
+  }, [user?.league?.id]);
+
+  // Get available (undrafted) players - now using backend data
   const availablePlayers = useMemo(() => {
-    const draftedPlayers = draftOperations?.allDraftedPlayers || [];
-    
-    return players.filter((player: Player) => 
-      !draftedPlayers?.some((drafted: Player) => drafted.id === player.id) &&
+    return allPlayers.filter((player: Player) => 
       !localPickedUpPlayers.has(player.id)
     );
-  }, [draftOperations.allDraftedPlayers, localPickedUpPlayers]);
+  }, [allPlayers, localPickedUpPlayers]);
 
   // Apply filters to available players
   const filteredPlayers = useMemo(() => {
@@ -74,7 +135,7 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
     }
 
     // Sort by name for consistent ordering
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+    return filtered.sort((a: Player, b: Player) => a.name.localeCompare(b.name));
   }, [availablePlayers, selectedLeague, selectedPosition, searchTerm]);
 
   // Pagination for filtered players
@@ -93,14 +154,13 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
     const positions = new Set<string>();
     const playersForPositions = selectedLeague === 'ALL' 
       ? availablePlayers 
-      : availablePlayers.filter(p => p.league === selectedLeague);
+      : availablePlayers.filter((p: Player) => p.league === selectedLeague);
     
-    playersForPositions.forEach(player => positions.add(player.position));
+    playersForPositions.forEach((player: Player) => positions.add(player.position));
     return Array.from(positions).sort();
   }, [availablePlayers, selectedLeague]);
 
-  // Check if draft is completed (free agency is only available after draft completion)
-  const isDraftCompleted = draftOperations.draftState?.isCompleted ?? false;
+  // Draft completion status is now managed in local state
 
   // Handle player pickup - simplified version
   const handlePickupPlayer = useCallback(async (player: Player) => {
@@ -143,6 +203,36 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
     );
   }
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="free-agents-container">
+        <div className="free-agents-loading">
+          <h2>Loading Available Players...</h2>
+          <p>Fetching the latest player data from your league.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="free-agents-container">
+        <div className="free-agents-error">
+          <h2>Error Loading Players</h2>
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="retry-button"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="free-agents-container">
       <header className="page-header free-agents-header">
@@ -164,72 +254,34 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
 
       {/* Filters Section */}
       <section className="filters-section">
-        <div className="filters-container">
-          {/* Search Bar */}
-          <div className="search-filter">
-            <input
-              type="text"
-              placeholder="Search players by name, team, or position..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-
+        <div className="filters-content">
           {/* League Filter */}
           <div className="league-filter">
-            <h4>League</h4>
+            <h4>League:</h4>
             <div className="league-buttons">
-              <button
-                className={selectedLeague === 'ALL' ? 'active' : ''}
-                onClick={() => {
-                  setSelectedLeague('ALL');
-                  setSelectedPosition('ALL'); // Reset position when changing league
-                }}
-              >
-                All Leagues
-              </button>
-              <button
-                className={selectedLeague === 'NFL' ? 'active' : ''}
-                onClick={() => {
-                  setSelectedLeague('NFL');
-                  setSelectedPosition('ALL');
-                }}
-              >
-                NFL
-              </button>
-              <button
-                className={selectedLeague === 'MLB' ? 'active' : ''}
-                onClick={() => {
-                  setSelectedLeague('MLB');
-                  setSelectedPosition('ALL');
-                }}
-              >
-                MLB
-              </button>
-              <button
-                className={selectedLeague === 'NBA' ? 'active' : ''}
-                onClick={() => {
-                  setSelectedLeague('NBA');
-                  setSelectedPosition('ALL');
-                }}
-              >
-                NBA
-              </button>
+              {(['ALL', 'NFL', 'MLB', 'NBA'] as const).map((league) => (
+                <button
+                  key={league}
+                  className={selectedLeague === league ? 'active' : ''}
+                  onClick={() => setSelectedLeague(league)}
+                >
+                  {league === 'ALL' ? 'All' : league}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Position Filter */}
           <div className="position-filter">
-            <h4>Position</h4>
-            <div className="position-buttons">
+            <h4>Position:</h4>
+            <div className="position-tabs">
               <button
                 className={selectedPosition === 'ALL' ? 'active' : ''}
                 onClick={() => setSelectedPosition('ALL')}
               >
-                All Positions
+                All
               </button>
-              {availablePositions.map(position => (
+              {availablePositions.map((position) => (
                 <button
                   key={position}
                   className={selectedPosition === position ? 'active' : ''}
@@ -243,16 +295,24 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
         </div>
       </section>
 
+      {/* Search Section */}
+      <section className="search-section">
+        <div className="search-container">
+          <input
+            type="text"
+            placeholder="Search players by name, team, or position..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+      </section>
+
       {/* Players Section */}
       <section className="players-section">
         <div className="section-header">
-          <h2>
-            Available Free Agents ({filteredPlayers.length})
-            {totalPages > 1 && (
-              <span style={{ fontSize: '0.8em', fontWeight: 400, color: 'var(--text-gray)' }}>
-                {' '}• Page {currentPage} of {totalPages}
-              </span>
-            )}
+          <h2 className="section-title">
+            Available Players ({filteredPlayers.length})
           </h2>
         </div>
 
@@ -260,12 +320,12 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
           {filteredPlayers.length === 0 ? (
             <div className="no-players">
               <div className="no-players-icon">🚫</div>
-              <h3>No free agents found</h3>
-              <p>
+              <h3 className="no-players-title">No Players Available</h3>
+              <p className="no-players-description">
                 {searchTerm.trim() 
-                  ? `No players match your search "${searchTerm}"`
-                  : availablePlayers.length === 0
-                    ? "All players have been drafted!"
+                  ? `No players match your search "${searchTerm}"` 
+                  : filteredPlayers.length === 0 
+                    ? "All players have been drafted!" 
                     : "Try adjusting your filters to see more players."
                 }
               </p>
@@ -283,7 +343,7 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedPlayers.map((player: Player) => (
+                  {(paginatedPlayers as Player[]).map((player: Player) => (
                     <tr key={player.id}>
                       <td data-label="Player">
                         <span className="player-name clickable-player-name">
@@ -320,7 +380,6 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={goToPage}
-                  className="free-agents-pagination"
                 />
               )}
             </div>

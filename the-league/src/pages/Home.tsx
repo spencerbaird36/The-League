@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import theLeagueLogo from '../assets/the_league.png';
+import UserDashboard from '../components/UserDashboard';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
 
@@ -899,30 +900,8 @@ const Home: React.FC<HomeProps> = ({
       );
     }
     
-    // Authenticated user with league - show simple dashboard
-    return (
-      <div className="league-selection-container">
-        <div className="league-selection-header">
-          <h1>Welcome to {user?.league?.name}!</h1>
-          <p>Your fantasy sports league is ready. Use the navigation to access features.</p>
-          
-          <div style={{ marginTop: '30px', display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/draft" style={{ textDecoration: 'none' }}>
-              <button className="league-action-btn">Draft</button>
-            </Link>
-            <Link to="/my-team" style={{ textDecoration: 'none' }}>
-              <button className="league-action-btn">My Team</button>
-            </Link>
-            <Link to="/free-agents" style={{ textDecoration: 'none' }}>
-              <button className="league-action-btn">Free Agents</button>
-            </Link>
-            <Link to="/standings" style={{ textDecoration: 'none' }}>
-              <button className="league-action-btn">Standings</button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    // Authenticated user with league - show dashboard
+    return <UserDashboard user={user} />;
   }
 
   // Unauthenticated user - show registration form
