@@ -176,6 +176,14 @@ const Navigation: React.FC<NavigationProps> = ({
           <OfflineIndicator />
           {isAuthenticated ? (
             <div className="auth-section">
+              <Link 
+                to="/league-settings" 
+                className={`settings-link ${isActive('/league-settings') ? 'active' : ''}`}
+                onClick={closeMobileMenu}
+                title="League Settings"
+              >
+                <span className="settings-icon">⚙️</span>
+              </Link>
               <span className="welcome-text">Welcome, {user?.firstName}!</span>
               <button onClick={handleLogout} className="auth-button logout-btn">
                 Logout

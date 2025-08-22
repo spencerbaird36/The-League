@@ -18,6 +18,7 @@ import Standings from './pages/Standings';
 import Schedule from './pages/Schedule';
 import TeamPage from './pages/TeamPage';
 import Chat from './pages/Chat';
+import LeagueSettings from './pages/LeagueSettings';
 
 interface League {
   id: number;
@@ -574,6 +575,20 @@ const AppContent: React.FC = () => {
     // User registered and logged in - they can navigate manually
   };
 
+  const updateLeagueName = (newName: string) => {
+    if (user?.league) {
+      const updatedUser = {
+        ...user,
+        league: {
+          ...user.league,
+          name: newName
+        }
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
+
   // Check for stored user on app start
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -722,6 +737,18 @@ const AppContent: React.FC = () => {
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to view teams.</div>
               ) : (
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please join or create a league to view teams.</div>
+              )
+            } 
+          />
+          <Route 
+            path="/league-settings" 
+            element={
+              isAuthenticated && user?.league ? (
+                <LeagueSettings user={user} onLeagueNameUpdate={updateLeagueName} />
+              ) : !isAuthenticated ? (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to access league settings.</div>
+              ) : (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please join or create a league to access league settings.</div>
               )
             } 
           />

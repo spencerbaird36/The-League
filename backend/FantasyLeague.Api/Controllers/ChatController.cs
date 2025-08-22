@@ -198,5 +198,40 @@ namespace FantasyLeague.Api.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        // DELETE: api/chat/league/{leagueId}/clear
+        [HttpDelete("league/{leagueId}/clear")]
+        public async Task<IActionResult> ClearAllMessages(int leagueId, [FromQuery] int userId)
+        {
+            // Verify user is in the league
+            var userInLeague = await _context.Users
+                .AnyAsync(u => u.Id == userId && u.LeagueId == leagueId);
+
+            if (!userInLeague)
+            {
+                return BadRequest("User is not a member of this league");
+            }
+
+            // Mark all messages in the league as deleted
+            var messages = await _context.ChatMessages
+                .Where(m => m.LeagueId == leagueId && !m.IsDeleted)
+                .ToListAsync();
+
+            foreach (var message in messages)
+            {
+                message.IsDeleted = true;
+                message.DeletedAt = DateTime.UtcNow;
+            }
+
+            // Also clear all read statuses for this league
+            var readStatuses = await _context.ChatReadStatuses
+                .Where(rs => rs.LeagueId == leagueId)
+                .ToListAsync();
+
+            _context.ChatReadStatuses.RemoveRange(readStatuses);
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
     }
 }

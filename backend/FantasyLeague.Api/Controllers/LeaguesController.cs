@@ -387,6 +387,54 @@ namespace FantasyLeague.Api.Controllers
             return Ok(members);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateLeague(int id, [FromBody] UpdateLeagueDto updateLeagueDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var league = await _context.Leagues.FirstOrDefaultAsync(l => l.Id == id && l.IsActive);
+            if (league == null)
+            {
+                return NotFound(new { Message = "League not found" });
+            }
+
+            // Update league properties
+            if (!string.IsNullOrWhiteSpace(updateLeagueDto.Name))
+            {
+                league.Name = updateLeagueDto.Name.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateLeagueDto.Description))
+            {
+                league.Description = updateLeagueDto.Description.Trim();
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+
+                var response = new
+                {
+                    Id = league.Id,
+                    Name = league.Name,
+                    Description = league.Description,
+                    MaxPlayers = league.MaxPlayers,
+                    JoinCode = league.JoinCode,
+                    CreatedAt = league.CreatedAt,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while updating the league", Error = ex.Message });
+            }
+        }
+
         [HttpGet("debug/users")]
         public async Task<IActionResult> DebugAllUsers()
         {
