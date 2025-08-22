@@ -398,34 +398,15 @@ const Draft: React.FC<DraftProps> = ({
     } finally {
       setIsLoadingAvailablePlayers(false);
     }
-  }, [user?.league?.id, isLoadingAvailablePlayers]);
+  }, [user?.league?.id]);
 
-  // Fetch available players when component mounts or draft state changes
+  // Fetch available players when component mounts
   useEffect(() => {
-    console.log('🔄 useEffect triggered for fetchAvailablePlayersFromBackend:', {
-      userLeagueId: user?.league?.id,
-      draftPicksLength: legacyDraftState?.draftPicks?.length
-    });
-    fetchAvailablePlayersFromBackend();
-  }, [user?.league?.id, legacyDraftState?.draftPicks?.length, fetchAvailablePlayersFromBackend]);
-
-  // TEMPORARY: Force API call for testing - BYPASS ALL CONDITIONS
-  useEffect(() => {
-    const testApiCall = async () => {
-      console.log('🧪 TESTING: BYPASS MODE - Force calling API with hardcoded league ID 1');
-      try {
-        const testPlayers = await draftService.fetchAvailablePlayersForDraft(1);
-        console.log('🧪 TESTING: SUCCESS! Got players:', testPlayers.length);
-        console.log('🧪 TESTING: Setting available players to state...');
-        setAvailablePlayers(testPlayers);
-      } catch (error) {
-        console.error('🧪 TESTING: Error:', error);
-      }
-    };
-    
-    // Run once immediately
-    testApiCall();
-  }, []);
+    console.log('🔄 Initial fetch of available players on mount');
+    if (user?.league?.id && !isLoadingAvailablePlayers) {
+      fetchAvailablePlayersFromBackend();
+    }
+  }, [user?.league?.id, fetchAvailablePlayersFromBackend]);
 
   const filteredPlayers = React.useMemo(() => {
     const filtered = availablePlayers.filter((player: Player) => {
@@ -1032,9 +1013,15 @@ const Draft: React.FC<DraftProps> = ({
                   Reset Draft
                 </button>
                 {!legacyDraftState?.isCompleted && (
-                  <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-                    Auto Draft
-                  </button>
+                  draftOperations.isAutoDrafting ? (
+                    <button onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
+                      Stop Auto Draft
+                    </button>
+                  ) : (
+                    <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                      Auto Draft
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -1053,7 +1040,10 @@ const Draft: React.FC<DraftProps> = ({
                 Draft in progress - Round {webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}, 
                 Pick {(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
               </p>
-              {draftStateActions.isMyTurn(user?.id || 0) && (
+              {draftOperations.isAutoDrafting && (
+                <p className="auto-draft-status">🤖 {draftOperations.autoDraftMessage}</p>
+              )}
+              {draftStateActions.isMyTurn(user?.id || 0) && !draftOperations.isAutoDrafting && (
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
               
@@ -1072,9 +1062,15 @@ const Draft: React.FC<DraftProps> = ({
                   Reset Draft
                 </button>
                 {!draftState?.isCompleted && (
-                  <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-                    Auto Draft
-                  </button>
+                  draftOperations.isAutoDrafting ? (
+                    <button onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
+                      Stop Auto Draft
+                    </button>
+                  ) : (
+                    <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                      Auto Draft
+                    </button>
+                  )
                 )}
               </div>
             </div>
