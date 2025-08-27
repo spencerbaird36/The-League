@@ -28,6 +28,55 @@ namespace FantasyLeague.Api.Hubs
             Console.WriteLine("✅ Static service provider initialized for ChatHub timer callbacks");
         }
 
+        // Helper method to calculate current user using snake draft logic
+        private static (int currentUserIndex, int currentUserId) GetCurrentDraftUser(List<int> draftOrder, int totalPicks)
+        {
+            var teamCount = draftOrder.Count;
+            
+            Console.WriteLine($"🐍 SNAKE DRAFT DEBUG - TotalPicks: {totalPicks}, TeamCount: {teamCount}");
+            Console.WriteLine($"🐍 DraftOrder: [{string.Join(", ", draftOrder)}]");
+            
+            // Create the full snake draft sequence
+            var snakeSequence = new List<int>();
+            var maxRounds = 34; // Total rounds in the draft
+            
+            for (int round = 0; round < maxRounds; round++)
+            {
+                if (round % 2 == 0)
+                {
+                    // Even rounds: forward order (0, 2, 4...)
+                    for (int i = 0; i < teamCount; i++)
+                    {
+                        snakeSequence.Add(draftOrder[i]);
+                    }
+                }
+                else
+                {
+                    // Odd rounds: reverse order (1, 3, 5...)
+                    for (int i = teamCount - 1; i >= 0; i--)
+                    {
+                        snakeSequence.Add(draftOrder[i]);
+                    }
+                }
+            }
+            
+            // Get current user from the sequence
+            if (totalPicks < snakeSequence.Count)
+            {
+                var currentUserId = snakeSequence[totalPicks];
+                var currentUserIndex = draftOrder.IndexOf(currentUserId);
+                
+                Console.WriteLine($"🐍 Pick #{totalPicks} → UserId: {currentUserId} (UserIndex: {currentUserIndex})");
+                Console.WriteLine($"🐍 Next few picks: [{string.Join(", ", snakeSequence.Skip(totalPicks).Take(5))}]");
+                
+                return (currentUserIndex, currentUserId);
+            }
+            
+            // Draft completed
+            Console.WriteLine($"🐍 Draft completed - total picks: {totalPicks}");
+            return (-1, 0);
+        }
+
         // Simple player class for auto-draft
         public class AutoDraftPlayer
         {
@@ -303,7 +352,6 @@ namespace FantasyLeague.Api.Hubs
             var startTime = DateTime.UtcNow;
             _timerStartTimes[leagueId] = startTime;
 
-            Console.WriteLine($"🕐 Starting draft timer for league {leagueId} with duration {timerDuration} seconds");
 
             var timer = new Timer(async _ =>
             {
@@ -312,14 +360,12 @@ namespace FantasyLeague.Api.Hubs
                     // Check if timer still exists (not removed by StopDraftTimer)
                     if (!_draftTimers.ContainsKey(leagueId))
                     {
-                        Console.WriteLine($"⚠️ Timer callback called but timer already removed for league {leagueId}");
                         return;
                     }
 
                     var elapsed = DateTime.UtcNow - startTime;
                     var remaining = Math.Max(0, timerDuration - (int)elapsed.TotalSeconds);
 
-                    Console.WriteLine($"⏰ Timer tick for league {leagueId}: {remaining} seconds remaining");
 
                     // Send timer tick to all clients using HubContext (prevents disposed object errors)
                     await _hubContext.Clients.Group($"League_{leagueId}").SendAsync("TimerTick", new
@@ -330,7 +376,6 @@ namespace FantasyLeague.Api.Hubs
 
                     if (remaining <= 0)
                     {
-                        Console.WriteLine($"⏰ Timer expired for league {leagueId}, triggering auto-draft");
                         
                         // Stop the timer
                         StopDraftTimer(leagueId);
@@ -350,7 +395,6 @@ namespace FantasyLeague.Api.Hubs
 
         private void StopDraftTimer(int leagueId)
         {
-            Console.WriteLine($"🛑 StopDraftTimer called for league {leagueId}");
             
             if (_draftTimers.TryRemove(leagueId, out var timer))
             {
@@ -370,14 +414,12 @@ namespace FantasyLeague.Api.Hubs
             }
             
             _timerStartTimes.TryRemove(leagueId, out _);
-            Console.WriteLine($"🏁 StopDraftTimer completed for league {leagueId}");
         }
 
         private async Task HandleAutoDraft(int leagueId)
         {
             try
             {
-                Console.WriteLine($"🤖 HandleAutoDraft called for league {leagueId}");
                 
                 if (_staticServiceProvider == null)
                 {
@@ -394,6 +436,7 @@ namespace FantasyLeague.Api.Hubs
                 Console.WriteLine($"✅ Database context created for auto-draft");
 
                 var draft = await context.Drafts
+                    .Include(d => d.DraftPicks)
                     .FirstOrDefaultAsync(d => d.LeagueId == leagueId && d.IsActive);
 
                 if (draft == null)
@@ -403,9 +446,9 @@ namespace FantasyLeague.Api.Hubs
                 }
 
                 var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
-                var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                var totalPicks = draft.DraftPicks?.Count ?? 0;
+                var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
 
-                Console.WriteLine($"🤖 Auto-drafting for user {currentUserId} in league {leagueId} (turn {draft.CurrentTurn})");
 
                 // Simple auto-draft logic - pick first available player
                 // In a real implementation, you'd want more sophisticated logic
@@ -413,7 +456,6 @@ namespace FantasyLeague.Api.Hubs
                 
                 // Re-fetch draft to check final state
                 var finalDraft = await context.Drafts.FirstOrDefaultAsync(d => d.LeagueId == leagueId);
-                Console.WriteLine($"✅ Auto-draft completed for league {leagueId}. Final draft state: IsActive={finalDraft?.IsActive}, IsCompleted={finalDraft?.IsCompleted}");
             }
             catch (Exception ex)
             {
@@ -436,28 +478,35 @@ namespace FantasyLeague.Api.Hubs
             var random = new Random();
             var selectedPlayer = availablePlayers[random.Next(availablePlayers.Count)];
 
-            Console.WriteLine($"🤖 Auto-drafting player: {selectedPlayer.Name} ({selectedPlayer.Position} - {selectedPlayer.Team}) for user {userId}");
 
             // Simulate the draft pick using existing logic
             var draft = await context.Drafts
+                .Include(d => d.DraftPicks)
                 .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId) && d.IsActive);
 
             if (draft != null)
             {
                 var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                var totalPicks = draft.DraftPicks?.Count ?? 0;
+                var teamCount = draftOrder.Count;
+                var currentRoundIndex = totalPicks / teamCount;
+                var currentPickInRound = totalPicks % teamCount;
+                var actualRound = currentRoundIndex + 1;
+                var roundPick = currentPickInRound + 1;
+                var pickNumber = totalPicks + 1;
                 
-                // Create the draft pick (store clean name, let WebSocket event include the playerId)
+                // Create the draft pick (store player ID with name for proper tracking)
                 var draftPick = new FantasyLeague.Api.Models.DraftPick
                 {
                     DraftId = draft.Id,
                     UserId = userId,
-                    PlayerName = selectedPlayer.Name + " (AUTO)",
+                    PlayerName = $"{selectedPlayer.Id}:{selectedPlayer.Name} (AUTO)",
                     PlayerPosition = selectedPlayer.Position,
                     PlayerTeam = selectedPlayer.Team,
                     PlayerLeague = selectedPlayer.League,
-                    Round = draft.CurrentRound,
-                    RoundPick = draft.CurrentTurn + 1,
-                    PickNumber = (draft.CurrentRound - 1) * draftOrder.Count + draft.CurrentTurn + 1,
+                    Round = actualRound,
+                    RoundPick = roundPick,
+                    PickNumber = pickNumber,
                     PickedAt = DateTime.UtcNow
                 };
 
@@ -469,7 +518,7 @@ namespace FantasyLeague.Api.Hubs
                     UserId = userId,
                     LeagueId = int.Parse(leagueId),
                     DraftId = draft.Id,
-                    PlayerName = selectedPlayer.Name + " (AUTO)",
+                    PlayerName = $"{selectedPlayer.Id}:{selectedPlayer.Name} (AUTO)",
                     PlayerPosition = selectedPlayer.Position,
                     PlayerTeam = selectedPlayer.Team,
                     PlayerLeague = selectedPlayer.League,
@@ -480,19 +529,29 @@ namespace FantasyLeague.Api.Hubs
                 context.UserRosters.Add(userRoster);
                 Console.WriteLine($"🎯 Added auto-drafted player {selectedPlayer.Name} to user {userId}'s roster");
 
-                // Advance to next turn
-                Console.WriteLine($"🎯 Before turn advancement: CurrentTurn={draft.CurrentTurn}, CurrentRound={draft.CurrentRound}, IsActive={draft.IsActive}");
-                draft.CurrentTurn++;
-                Console.WriteLine($"🎯 After turn advancement: CurrentTurn={draft.CurrentTurn}, CurrentRound={draft.CurrentRound}, DraftOrderCount={draftOrder.Count}");
+                // Update draft state for next pick using snake draft logic
+                var nextTotalPicks = totalPicks + 1; // After this pick
+                var nextRoundIndex = nextTotalPicks / teamCount;
+                var nextPickInRound = nextTotalPicks % teamCount;
                 
-                // Check if round is complete
-                if (draft.CurrentTurn >= draftOrder.Count)
+                // Calculate next picker index
+                int nextUserIndex;
+                if (nextRoundIndex % 2 == 0)
                 {
-                    Console.WriteLine($"🎯 Round complete, advancing to next round");
-                    draft.CurrentRound++;
-                    draft.CurrentTurn = 0;
-                    Console.WriteLine($"🎯 New round: CurrentRound={draft.CurrentRound}, CurrentTurn={draft.CurrentTurn}");
+                    // Even round: forward order
+                    nextUserIndex = nextPickInRound;
                 }
+                else
+                {
+                    // Odd round: reverse order
+                    nextUserIndex = teamCount - 1 - nextPickInRound;
+                }
+                
+                // Update draft state
+                draft.CurrentTurn = nextUserIndex;
+                draft.CurrentRound = nextRoundIndex + 1; // 1-based round
+                
+                Console.WriteLine($"🎯 Snake draft advancement: NextTotalPicks={nextTotalPicks}, NextRound={draft.CurrentRound}, NextUserIndex={nextUserIndex}");
 
                 // Check if draft is complete
                 const int maxRounds = 15;
@@ -524,7 +583,7 @@ namespace FantasyLeague.Api.Hubs
                     UserId = userId,
                     Username = username,
                     PlayerId = selectedPlayer.Id,
-                    PlayerName = selectedPlayer.Name + " (AUTO)",
+                    PlayerName = selectedPlayer.Name + " (AUTO)", // Keep (AUTO) suffix for display
                     Position = selectedPlayer.Position,
                     Team = selectedPlayer.Team,
                     League = selectedPlayer.League,
@@ -544,7 +603,7 @@ namespace FantasyLeague.Api.Hubs
                 else
                 {
                     // Start timer for next user's turn
-                    var nextUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                    var nextUserId = nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : 0;
                     
                     await _hubContext.Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
                     {
@@ -573,9 +632,10 @@ namespace FantasyLeague.Api.Hubs
                 if (draft != null && draft.IsActive && !draft.IsCompleted)
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
-                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                    var totalPicks = draft.DraftPicks?.Count ?? 0;
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
 
-                    Console.WriteLine($"📡 Sending current draft state - Turn: {draft.CurrentTurn}, User: {currentUserId}");
+                    Console.WriteLine($"📡 Sending current draft state - TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}, User: {currentUserId}");
 
                     // Send current state to the requesting client
                     await Clients.Caller.SendAsync("DraftStarted", new
@@ -600,12 +660,10 @@ namespace FantasyLeague.Api.Hubs
                     // Start timer if not already running
                     if (!_draftTimers.ContainsKey(int.Parse(leagueId)))
                     {
-                        Console.WriteLine($"🕐 No timer running, starting timer for league {leagueId}");
                         StartDraftTimer(int.Parse(leagueId), 15);
                     }
                     else
                     {
-                        Console.WriteLine($"⏰ Timer already running for league {leagueId}");
                     }
                 }
                 else
@@ -641,12 +699,13 @@ namespace FantasyLeague.Api.Hubs
                         await _context.SaveChangesAsync();
                     }
 
-                    // Get current turn user
+                    // Get current turn user using snake draft logic
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
-                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                    var totalPicks = draft.DraftPicks?.Count ?? 0;
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
 
                     Console.WriteLine($"📡 Sending DraftStarted event to League_{leagueId}");
-                    Console.WriteLine($"Current user ID: {currentUserId}, Turn: {draft.CurrentTurn}");
+                    Console.WriteLine($"Current user ID: {currentUserId}, TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}");
                     
                     await Clients.Group($"League_{leagueId}").SendAsync("DraftStarted", new
                     {
@@ -687,35 +746,60 @@ namespace FantasyLeague.Api.Hubs
             }
         }
 
-        public async Task MakeDraftPick(string leagueId, string playerId, string playerName, string position, string team, string league)
+        public async Task TestDraftPick(string leagueId, string playerName)
         {
+            Console.WriteLine($"🧪 TestDraftPick called for league {leagueId}, player: {playerName}");
+        }
+
+
+        public async Task MakeDraftPick(string leagueId, string playerId, string playerName, string position, string team, string league, bool isAutoDraft = false)
+        {
+            Console.WriteLine($"🎯🎯🎯 MakeDraftPick called for league {leagueId}, player: {playerName} ({playerId}), isAutoDraft: {isAutoDraft}");
+            Console.WriteLine($"🔍 Connection ID: {Context.ConnectionId}");
+            
             // Verify user is in the league and it's their turn
             if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
                 connection.LeagueId == int.Parse(leagueId))
             {
+                Console.WriteLine($"✅ Connection found: User {connection.UserId} ({connection.Username}) in league {connection.LeagueId}");
                 var draft = await _context.Drafts
+                    .Include(d => d.DraftPicks)
                     .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId) && d.IsActive);
 
                 if (draft != null)
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
-                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                    var totalPicks = draft.DraftPicks?.Count ?? 0;
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+
+                    Console.WriteLine($"🔍 Turn verification - TotalPicks: {totalPicks}, CurrentUserIndex: {currentUserIndex}, CurrentUserId: {currentUserId}");
+                    Console.WriteLine($"🔍 Draft order: [{string.Join(", ", draftOrder)}]");
+                    Console.WriteLine($"🔍 Requesting user: {connection.UserId} ({connection.Username})");
 
                     // Verify it's this user's turn
                     if (currentUserId == connection.UserId)
                     {
-                        // Create the draft pick
+                        // Calculate pick numbers using snake draft logic - get fresh count to avoid race conditions
+                        var currentPickCount = await _context.DraftPicks.CountAsync(dp => dp.DraftId == draft.Id);
+                        var teamCount = draftOrder.Count;
+                        var currentRoundIndex = currentPickCount / teamCount;
+                        var currentPickInRound = currentPickCount % teamCount;
+                        var actualRound = currentRoundIndex + 1;
+                        var roundPick = currentPickInRound + 1;
+                        var pickNumber = currentPickCount + 1;
+
+                        // Create the draft pick - store player ID with name for proper tracking
                         var draftPick = new FantasyLeague.Api.Models.DraftPick
                         {
                             DraftId = draft.Id,
                             UserId = connection.UserId,
-                            PlayerName = playerName,
+                            PlayerName = $"{playerId}:{playerName}", // Include player ID for proper tracking
                             PlayerPosition = position,
                             PlayerTeam = team,
                             PlayerLeague = league,
-                            Round = draft.CurrentRound,
-                            RoundPick = draft.CurrentTurn + 1,
-                            PickNumber = (draft.CurrentRound - 1) * draftOrder.Count + draft.CurrentTurn + 1,
+                            Round = actualRound,
+                            RoundPick = roundPick,
+                            PickNumber = pickNumber,
                             PickedAt = DateTime.UtcNow
                         };
 
@@ -727,7 +811,7 @@ namespace FantasyLeague.Api.Hubs
                             UserId = connection.UserId,
                             LeagueId = int.Parse(leagueId),
                             DraftId = draft.Id,
-                            PlayerName = playerName,
+                            PlayerName = $"{playerId}:{playerName}", // Include player ID for consistency
                             PlayerPosition = position,
                             PlayerTeam = team,
                             PlayerLeague = league,
@@ -738,15 +822,27 @@ namespace FantasyLeague.Api.Hubs
                         _context.UserRosters.Add(userRoster);
                         Console.WriteLine($"🎯 Added manually drafted player {playerName} to user {connection.UserId}'s roster");
 
-                        // Advance to next turn
-                        draft.CurrentTurn++;
+                        // Update draft state for next pick using snake draft logic
+                        var nextTotalPicks = currentPickCount + 1; // After this pick
+                        var nextRoundIndex = nextTotalPicks / teamCount;
+                        var nextPickInRound = nextTotalPicks % teamCount;
                         
-                        // Check if round is complete
-                        if (draft.CurrentTurn >= draftOrder.Count)
+                        // Calculate next picker index
+                        int nextUserIndex;
+                        if (nextRoundIndex % 2 == 0)
                         {
-                            draft.CurrentRound++;
-                            draft.CurrentTurn = 0;
+                            // Even round: forward order
+                            nextUserIndex = nextPickInRound;
                         }
+                        else
+                        {
+                            // Odd round: reverse order
+                            nextUserIndex = teamCount - 1 - nextPickInRound;
+                        }
+                        
+                        // Update draft state
+                        draft.CurrentTurn = nextUserIndex;
+                        draft.CurrentRound = nextRoundIndex + 1; // 1-based round
 
                         // Check if draft is complete (adjust max rounds as needed)
                         const int maxRounds = 15; // Adjust based on roster requirements
@@ -768,13 +864,14 @@ namespace FantasyLeague.Api.Hubs
                             UserId = connection.UserId,
                             Username = connection.Username,
                             PlayerId = playerId,
-                            PlayerName = playerName,
+                            PlayerName = playerName, // Send clean name to frontend
                             Position = position,
                             Team = team,
                             League = league,
                             Round = draftPick.Round,
                             Pick = draftPick.RoundPick,
-                            PickNumber = draftPick.PickNumber
+                            PickNumber = draftPick.PickNumber,
+                            IsAutoDraft = isAutoDraft
                         });
 
                         if (draft.IsCompleted)
@@ -787,7 +884,7 @@ namespace FantasyLeague.Api.Hubs
                         else
                         {
                             // Notify next user it's their turn
-                            var nextUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                            var nextUserId = nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : 0;
                             
                             await Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
                             {
@@ -801,7 +898,52 @@ namespace FantasyLeague.Api.Hubs
                             StartDraftTimer(int.Parse(leagueId), 15);
                         }
                     }
+                    else
+                    {
+                        // Not this user's turn - send error feedback
+                        var currentUserName = "Unknown";
+                        var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == currentUserId);
+                        if (currentUser != null)
+                        {
+                            currentUserName = $"{currentUser.FirstName} {currentUser.LastName}";
+                        }
+                        
+                        await Clients.Caller.SendAsync("DraftPickError", new
+                        {
+                            Error = "NOT_YOUR_TURN",
+                            Message = $"It's currently {currentUserName}'s turn to pick.",
+                            CurrentUserId = currentUserId,
+                            YourUserId = connection.UserId
+                        });
+                        
+                        Console.WriteLine($"❌ User {connection.UserId} ({connection.Username}) tried to pick when it's User {currentUserId}'s turn");
+                    }
                 }
+                else
+                {
+                    // No active draft found
+                    await Clients.Caller.SendAsync("DraftPickError", new
+                    {
+                        Error = "NO_ACTIVE_DRAFT",
+                        Message = "No active draft found for this league."
+                    });
+                }
+            }
+            else
+            {
+                // User not in league or connection not found
+                Console.WriteLine($"❌ Connection lookup failed for ConnectionId: {Context.ConnectionId}");
+                Console.WriteLine($"❌ Available connections: {_connections.Count}");
+                foreach (var kvp in _connections)
+                {
+                    Console.WriteLine($"  - {kvp.Key}: User {kvp.Value.UserId} in League {kvp.Value.LeagueId}");
+                }
+                
+                await Clients.Caller.SendAsync("DraftPickError", new
+                {
+                    Error = "INVALID_CONNECTION", 
+                    Message = "Invalid connection or user not in league."
+                });
             }
         }
 
@@ -831,7 +973,8 @@ namespace FantasyLeague.Api.Hubs
                 if (draft != null)
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
-                    var currentUserId = draftOrder.Count > draft.CurrentTurn ? draftOrder[draft.CurrentTurn] : 0;
+                    var totalPicks = draft.DraftPicks?.Count ?? 0;
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
 
                     await Clients.Group($"League_{leagueId}").SendAsync("DraftResumed", new
                     {
@@ -881,6 +1024,15 @@ namespace FantasyLeague.Api.Hubs
                         .ToListAsync();
                     
                     _context.DraftPicks.RemoveRange(existingPicks);
+                    
+                    // Also clear all user roster entries for this draft
+                    var existingRosters = await _context.UserRosters
+                        .Where(r => r.DraftId == draft.Id)
+                        .ToListAsync();
+                    
+                    _context.UserRosters.RemoveRange(existingRosters);
+                    Console.WriteLine($"🔄 Cleared {existingRosters.Count} user roster entries");
+                    
                     await _context.SaveChangesAsync();
                     
                     Console.WriteLine($"✅ Draft reset completed for league {leagueId}");
@@ -893,6 +1045,12 @@ namespace FantasyLeague.Api.Hubs
                     });
                 }
             }
+        }
+
+        public override async Task OnConnectedAsync()
+        {
+            Console.WriteLine($"🟢 SignalR connection established: {Context.ConnectionId}");
+            await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)

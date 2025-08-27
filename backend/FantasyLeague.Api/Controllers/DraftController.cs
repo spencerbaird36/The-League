@@ -18,6 +18,24 @@ namespace FantasyLeague.Api.Controllers
             _context = context;
         }
 
+        // Helper method to clean player names for frontend display
+        private static string CleanPlayerNameForDisplay(string playerName)
+        {
+            if (string.IsNullOrEmpty(playerName)) return playerName;
+            
+            // Remove ID prefix if present (e.g., "aaron-rodgers:Aaron Rodgers" -> "Aaron Rodgers")
+            var idPrefixMatch = playerName.Split(':', 2);
+            if (idPrefixMatch.Length == 2)
+            {
+                playerName = idPrefixMatch[1].Trim();
+            }
+            
+            // Remove "(AUTO)" suffix for auto-drafted players
+            playerName = playerName.Replace(" (AUTO)", "").Trim();
+            
+            return playerName;
+        }
+
         [HttpPost("create")]
         public async Task<IActionResult> CreateDraft([FromBody] CreateDraftDto createDraftDto)
         {
@@ -115,7 +133,7 @@ namespace FantasyLeague.Api.Controllers
                     UserId = dp.UserId,
                     UserFullName = dp.User.FirstName + " " + dp.User.LastName,
                     Username = dp.User.Username,
-                    PlayerName = dp.PlayerName,
+                    PlayerName = CleanPlayerNameForDisplay(dp.PlayerName),
                     PlayerPosition = dp.PlayerPosition,
                     PlayerTeam = dp.PlayerTeam,
                     PlayerLeague = dp.PlayerLeague,
@@ -164,7 +182,7 @@ namespace FantasyLeague.Api.Controllers
                     UserId = dp.UserId,
                     UserFullName = dp.User.FirstName + " " + dp.User.LastName,
                     Username = dp.User.Username,
-                    PlayerName = dp.PlayerName,
+                    PlayerName = CleanPlayerNameForDisplay(dp.PlayerName),
                     PlayerPosition = dp.PlayerPosition,
                     PlayerTeam = dp.PlayerTeam,
                     PlayerLeague = dp.PlayerLeague,
@@ -228,7 +246,7 @@ namespace FantasyLeague.Api.Controllers
                     UserId = dp.UserId,
                     UserFullName = dp.User.FirstName + " " + dp.User.LastName,
                     Username = dp.User.Username,
-                    PlayerName = dp.PlayerName,
+                    PlayerName = CleanPlayerNameForDisplay(dp.PlayerName),
                     PlayerPosition = dp.PlayerPosition,
                     PlayerTeam = dp.PlayerTeam,
                     PlayerLeague = dp.PlayerLeague,
@@ -271,13 +289,26 @@ namespace FantasyLeague.Api.Controllers
 
             var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
 
-            // Check if it's the correct user's turn
-            if (draft.CurrentTurn >= draftOrder.Count)
+            // Calculate current picker using snake draft logic
+            var totalPicks = draft.DraftPicks.Count;
+            var teamCount = draftOrder.Count;
+            var currentRoundIndex = totalPicks / teamCount; // 0-based round index
+            var currentPickInRound = totalPicks % teamCount; // 0-based pick in round
+            
+            // For snake draft: even rounds (0, 2, 4...) go forward, odd rounds (1, 3, 5...) go backward
+            int currentUserIndex;
+            if (currentRoundIndex % 2 == 0)
             {
-                return BadRequest(new { Message = "Invalid turn" });
+                // Even round (0, 2, 4...): forward order
+                currentUserIndex = currentPickInRound;
+            }
+            else
+            {
+                // Odd round (1, 3, 5...): reverse order
+                currentUserIndex = teamCount - 1 - currentPickInRound;
             }
 
-            var currentUserId = draftOrder[draft.CurrentTurn];
+            var currentUserId = draftOrder[currentUserIndex];
             if (currentUserId != draftPickDto.UserId)
             {
                 return BadRequest(new { Message = "It's not your turn to pick" });
@@ -293,9 +324,10 @@ namespace FantasyLeague.Api.Controllers
                 return BadRequest(new { Message = "Player has already been drafted" });
             }
 
-            // Calculate pick numbers
+            // Calculate pick numbers using snake draft logic
             var pickNumber = draft.DraftPicks.Count + 1;
-            var roundPick = (draft.CurrentTurn % draftOrder.Count) + 1;
+            var roundPick = currentPickInRound + 1; // 1-based pick in round
+            var actualRound = currentRoundIndex + 1; // 1-based round number
 
             var draftPick = new DraftPick
             {
@@ -306,7 +338,7 @@ namespace FantasyLeague.Api.Controllers
                 PlayerTeam = draftPickDto.PlayerTeam,
                 PlayerLeague = draftPickDto.PlayerLeague,
                 PickNumber = pickNumber,
-                Round = draft.CurrentRound,
+                Round = actualRound,
                 RoundPick = roundPick
             };
 
@@ -323,18 +355,32 @@ namespace FantasyLeague.Api.Controllers
                 PlayerTeam = draftPickDto.PlayerTeam,
                 PlayerLeague = draftPickDto.PlayerLeague,
                 PickNumber = pickNumber,
-                Round = draft.CurrentRound
+                Round = actualRound
             };
 
             _context.UserRosters.Add(userRoster);
 
-            // Advance to next turn
-            draft.CurrentTurn++;
-            if (draft.CurrentTurn >= draftOrder.Count)
+            // Update draft state for next pick using snake draft logic
+            var nextTotalPicks = totalPicks + 1; // After this pick
+            var nextRoundIndex = nextTotalPicks / teamCount;
+            var nextPickInRound = nextTotalPicks % teamCount;
+            
+            // Calculate next picker index
+            int nextUserIndex;
+            if (nextRoundIndex % 2 == 0)
             {
-                draft.CurrentTurn = 0;
-                draft.CurrentRound++;
+                // Even round: forward order
+                nextUserIndex = nextPickInRound;
             }
+            else
+            {
+                // Odd round: reverse order
+                nextUserIndex = teamCount - 1 - nextPickInRound;
+            }
+            
+            // Update draft state
+            draft.CurrentTurn = nextUserIndex;
+            draft.CurrentRound = nextRoundIndex + 1; // 1-based round
 
             // Check if draft should be completed (simplified - you can add more complex logic)
             var maxRounds = 15; // Adjust based on your league settings
@@ -368,7 +414,7 @@ namespace FantasyLeague.Api.Controllers
                     CurrentTurn = draft.CurrentTurn,
                     CurrentRound = draft.CurrentRound,
                     IsCompleted = draft.IsCompleted,
-                    NextUserId = draft.IsCompleted ? (int?)null : draftOrder[draft.CurrentTurn]
+                    NextUserId = draft.IsCompleted ? (int?)null : (nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : (int?)null)
                 }
             };
 

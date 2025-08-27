@@ -348,14 +348,21 @@ namespace FantasyLeague.Api.Controllers
         [HttpGet("{id}/members")]
         public async Task<IActionResult> GetLeagueMembers(int id)
         {
+            Console.WriteLine($"=== GET LEAGUE MEMBERS REQUEST ===");
+            Console.WriteLine($"Requested League ID: {id}");
+            Console.WriteLine($"Request Time: {DateTime.UtcNow}");
+            
             var league = await _context.Leagues
                 .Include(l => l.Users)
                 .FirstOrDefaultAsync(l => l.Id == id && l.IsActive);
 
             if (league == null)
             {
+                Console.WriteLine($"❌ League {id} not found or inactive");
                 return NotFound(new { Message = "League not found" });
             }
+            
+            Console.WriteLine($"✅ Found League: {league.Name} (ID: {league.Id})");
 
             var members = league.Users.Select(u => new
             {
@@ -366,12 +373,19 @@ namespace FantasyLeague.Api.Controllers
                 CreatedAt = u.CreatedAt
             }).ToList();
 
-            // Debug logging
+            // Debug logging and integrity check
             Console.WriteLine($"=== LEAGUE MEMBERS DEBUG ===");
-            Console.WriteLine($"League {id} has {members.Count} members:");
+            Console.WriteLine($"League {id} ({league.Name}) has {members.Count} members:");
             foreach (var member in members)
             {
                 Console.WriteLine($"  - {member.FirstName} {member.LastName} (ID: {member.Id}, Username: {member.Username})");
+                
+                // Verify the user's LeagueId in database matches the requested league
+                var userFromDb = await _context.Users.FirstOrDefaultAsync(u => u.Id == member.Id);
+                if (userFromDb?.LeagueId != id)
+                {
+                    Console.WriteLine($"    🚨 DATABASE INTEGRITY ISSUE: User {member.Id} has LeagueId={userFromDb?.LeagueId} but appears in League {id} members!");
+                }
             }
             
             // Check for Chloe Baird specifically
@@ -385,6 +399,44 @@ namespace FantasyLeague.Api.Controllers
             }
 
             return Ok(members);
+        }
+
+        [HttpGet("debug/all-leagues-with-members")]
+        public async Task<IActionResult> GetAllLeaguesWithMembers()
+        {
+            var leagues = await _context.Leagues
+                .Include(l => l.Users)
+                .Where(l => l.IsActive)
+                .ToListAsync();
+
+            var result = leagues.Select(league => new
+            {
+                Id = league.Id,
+                Name = league.Name,
+                JoinCode = league.JoinCode,
+                MemberCount = league.Users.Count,
+                Members = league.Users.Select(u => new
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Email = u.Email,
+                    LeagueId = u.LeagueId
+                }).ToList()
+            }).ToList();
+            
+            Console.WriteLine($"=== ALL LEAGUES DEBUG ===");
+            foreach (var league in result)
+            {
+                Console.WriteLine($"League: {league.Name} (ID: {league.Id}, Code: {league.JoinCode})");
+                foreach (var member in league.Members)
+                {
+                    Console.WriteLine($"  - {member.FirstName} {member.LastName} (ID: {member.Id}, LeagueId: {member.LeagueId})");
+                }
+            }
+
+            return Ok(result);
         }
 
         [HttpPut("{id}")]
