@@ -92,15 +92,23 @@ export const useDraftProgress = (
     
     for (let round = 1; round <= TOTAL_ROUNDS; round++) {
       const roundSlots: DraftSlot[] = [];
+      const roundIndex = round - 1; // Convert to 0-based
       
-      for (let pickInRound = 0; pickInRound < totalPlayers; pickInRound++) {
-        // Snake draft logic - reverse order on odd rounds
-        const userIndex = (round % 2 === 1) 
-          ? pickInRound 
-          : totalPlayers - 1 - pickInRound;
-          
-        const userId = draftOrder[userIndex];
-        const pickNumber = (round - 1) * totalPlayers + pickInRound + 1;
+      for (let columnIndex = 0; columnIndex < totalPlayers; columnIndex++) {
+        // Each column represents a consistent user position
+        const userId = draftOrder[columnIndex];
+        
+        // Calculate the pick number for this position using snake draft logic
+        let pickInRound: number;
+        if (roundIndex % 2 === 0) {
+          // Even rounds (0, 2, 4...): forward order
+          pickInRound = columnIndex;
+        } else {
+          // Odd rounds (1, 3, 5...): reverse order
+          pickInRound = totalPlayers - 1 - columnIndex;
+        }
+        
+        const pickNumber = roundIndex * totalPlayers + pickInRound + 1;
         
         // Find if this slot has been filled
         const existingPick = picks.find(pick => pick.pickNumber === pickNumber);
@@ -118,7 +126,7 @@ export const useDraftProgress = (
           pickNumber,
           userId,
           player,
-          isCurrentPick: pickNumber === currentTurn + 1,
+          isCurrentPick: pickNumber === picks.length + 1, // Next pick after all completed picks
           isUserPick: userId === currentUserId
         });
       }

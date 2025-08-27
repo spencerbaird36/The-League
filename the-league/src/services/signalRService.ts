@@ -21,6 +21,7 @@ class SignalRService {
   private draftCompletedCallbacks: ((data: any) => void)[] = [];
   private timerTickCallbacks: ((data: any) => void)[] = [];
   private draftResetCallbacks: ((data: any) => void)[] = [];
+  private draftPickErrorCallbacks: ((data: any) => void)[] = [];
 
   async connect(): Promise<void> {
     if (this.connection?.state === HubConnectionState.Connected) {
@@ -110,6 +111,11 @@ class SignalRService {
     this.connection.on('DraftReset', (data: any) => {
       console.log('Draft reset:', data);
       this.draftResetCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('DraftPickError', (data: any) => {
+      console.log('Draft pick error:', data);
+      this.draftPickErrorCallbacks.forEach(callback => callback(data));
     });
 
     this.connection.onreconnecting((error) => {
@@ -257,13 +263,19 @@ class SignalRService {
     }
 
     try {
-      if (isAutoDraft) {
-        console.log('Making auto-draft pick via WebSocket');
-        await this.connection.invoke('MakeAutoDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
-      } else {
-        console.log('Making manual draft pick via WebSocket');
-        await this.connection.invoke('MakeDraftPick', leagueId.toString(), playerId, playerName, position, team, league);
-      }
+      console.log(`Making ${isAutoDraft ? 'auto-draft' : 'manual'} pick via WebSocket`);
+      
+      console.log('🎯 Attempting to invoke MakeDraftPick with params:', {
+        leagueId: leagueId.toString(),
+        playerId,
+        playerName,
+        position,
+        team,
+        league,
+        isAutoDraft
+      });
+      
+      await this.connection.invoke('MakeDraftPick', leagueId.toString(), playerId, playerName, position, team, league, isAutoDraft);
       console.log('Draft pick made successfully');
     } catch (err) {
       console.error('Error making draft pick:', err);
@@ -413,6 +425,17 @@ class SignalRService {
     const index = this.draftResetCallbacks.indexOf(callback);
     if (index > -1) {
       this.draftResetCallbacks.splice(index, 1);
+    }
+  }
+
+  onDraftPickError(callback: (data: any) => void): void {
+    this.draftPickErrorCallbacks.push(callback);
+  }
+
+  offDraftPickError(callback: (data: any) => void): void {
+    const index = this.draftPickErrorCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.draftPickErrorCallbacks.splice(index, 1);
     }
   }
 }

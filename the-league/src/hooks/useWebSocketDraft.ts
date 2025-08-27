@@ -33,6 +33,7 @@ export interface WebSocketDraftEvents {
   onDraftCompleted: (data: any) => void;
   onAutoDraft: (data: any) => void;
   onDraftReset: (data: any) => void;
+  onDraftPickError: (data: any) => void;
 }
 
 export interface WebSocketDraftActions {
@@ -122,6 +123,11 @@ export const useWebSocketDraft = ({
     eventHandlersRef.current.onDraftReset(data);
   }, []);
 
+  const handleDraftPickError = useCallback((data: any) => {
+    console.log('❌ WebSocket: Draft Pick Error', data);
+    eventHandlersRef.current.onDraftPickError(data);
+  }, []);
+
   // Initialize WebSocket connection and event listeners
   useEffect(() => {
     if (!leagueId || !userId || isInitialized.current) return;
@@ -151,6 +157,9 @@ export const useWebSocketDraft = ({
         
         // Add DraftReset event handler
         signalRService.onDraftReset(handleDraftReset);
+        
+        // Add DraftPickError event handler
+        signalRService.onDraftPickError(handleDraftPickError);
         
         // Note: AutoDraft events are handled through PlayerDrafted with isAutoDraft flag
         
@@ -182,6 +191,9 @@ export const useWebSocketDraft = ({
         // Cleanup DraftReset event handler
         signalRService.offDraftReset(handleDraftReset);
         
+        // Cleanup DraftPickError event handler
+        signalRService.offDraftPickError(handleDraftPickError);
+        
         isInitialized.current = false;
       }
     };
@@ -196,7 +208,8 @@ export const useWebSocketDraft = ({
     handleDraftResumed,
     handleDraftCompleted,
     handleAutoDraft,
-    handleDraftReset
+    handleDraftReset,
+    handleDraftPickError
   ]);
 
   // Action implementations

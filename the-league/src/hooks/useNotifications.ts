@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 
 export interface DraftNotification {
   id: string;
@@ -19,7 +20,7 @@ export interface NotificationActions {
   clearAllNotifications: () => void;
   
   // Convenience methods for common notifications
-  notifyPlayerPicked: (playerName: string, position: string, team: string, isAutoDraft?: boolean) => void;
+  notifyPlayerPicked: (playerName: string, position: string, team: string, isAutoDraft?: boolean, drafterName?: string) => void;
   notifyYourTurn: () => void;
   notifyDraftStarted: () => void;
   notifyDraftPaused: () => void;
@@ -154,13 +155,19 @@ export const useNotifications = ({
     playerName: string, 
     position: string, 
     team: string, 
-    isAutoDraft: boolean = false
+    isAutoDraft: boolean = false,
+    drafterName?: string
   ) => {
+    const cleanName = cleanPlayerName(playerName);
+    const message = drafterName 
+      ? `${drafterName} drafted ${cleanName} (${position} - ${team})`
+      : `${cleanName} (${position} - ${team})`;
+      
     addNotification({
       type: 'pick',
       title: isAutoDraft ? 'Auto-Draft Pick' : 'Player Drafted',
-      message: `${playerName} (${position} - ${team})`,
-      playerName,
+      message,
+      playerName: cleanName,
       playerPosition: position,
       playerTeam: team,
       isAutoDraft,

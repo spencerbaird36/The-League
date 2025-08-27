@@ -203,7 +203,24 @@ export function useDraftOperations(user: User | null) {
       throw new Error('Cannot make draft pick - invalid state');
     }
 
-    const currentUserId = state.draftState.draftOrder[state.draftState.currentTurn];
+    // Calculate current user using snake draft logic (match backend implementation)
+    const draftOrder = state.draftState.draftOrder;
+    const teamCount = draftOrder.length;
+    const totalPicks = state.draftState.draftPicks?.length || 0;
+    
+    const currentRoundIndex = Math.floor(totalPicks / teamCount);
+    const currentPickInRound = totalPicks % teamCount;
+    
+    let currentUserIndex;
+    if (currentRoundIndex % 2 === 0) {
+      // Even round - forward order
+      currentUserIndex = currentPickInRound;
+    } else {
+      // Odd round - reverse order (snake)
+      currentUserIndex = teamCount - 1 - currentPickInRound;
+    }
+    
+    const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
     if (currentUserId !== user.id) {
       throw new Error('It is not your turn to draft');
     }
@@ -255,7 +272,24 @@ export function useDraftOperations(user: User | null) {
       throw new Error('Cannot perform auto-draft - invalid state');
     }
 
-    const currentUserId = state.draftState.draftOrder[state.draftState.currentTurn];
+    // Calculate current user using snake draft logic (match backend implementation)
+    const draftOrder = state.draftState.draftOrder;
+    const teamCount = draftOrder.length;
+    const totalPicks = state.draftState.draftPicks?.length || 0;
+    
+    const currentRoundIndex = Math.floor(totalPicks / teamCount);
+    const currentPickInRound = totalPicks % teamCount;
+    
+    let currentUserIndex;
+    if (currentRoundIndex % 2 === 0) {
+      // Even round - forward order
+      currentUserIndex = currentPickInRound;
+    } else {
+      // Odd round - reverse order (snake)
+      currentUserIndex = teamCount - 1 - currentPickInRound;
+    }
+    
+    const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
     console.log(`🤖 Timer expired - auto-drafting for user ${currentUserId}`);
 
     const availablePlayers = getAvailablePlayers();
@@ -418,7 +452,25 @@ export function useDraftOperations(user: User | null) {
         try {
           // Get current available players and team info
           const availablePlayers = getAvailablePlayers();
-          const currentUserId = currentDraftState.draftOrder[currentDraftState.currentTurn];
+          
+          // Calculate current user using snake draft logic (match backend implementation)
+          const draftOrder = currentDraftState.draftOrder;
+          const teamCount = draftOrder.length;
+          const totalPicks = currentDraftState.draftPicks?.length || 0;
+          
+          const currentRoundIndex = Math.floor(totalPicks / teamCount);
+          const currentPickInRound = totalPicks % teamCount;
+          
+          let currentUserIndex;
+          if (currentRoundIndex % 2 === 0) {
+            // Even round - forward order
+            currentUserIndex = currentPickInRound;
+          } else {
+            // Odd round - reverse order (snake)
+            currentUserIndex = teamCount - 1 - currentPickInRound;
+          }
+          
+          const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
           const neededPositions = getNeededPositions(currentUserId);
           
           // Select best available player for current team
@@ -582,7 +634,31 @@ export function useDraftOperations(user: User | null) {
   // Effect to detect when it becomes the current user's turn and play special sound
   useEffect(() => {
     if (user?.id && state.draftState?.isActive) {
-      const isCurrentUserTurn = state.draftState.draftOrder[state.draftState.currentTurn] === user.id;
+      // Calculate current user using simplified snake draft logic (match backend implementation)
+      const draftOrder = state.draftState.draftOrder;
+      const teamCount = draftOrder.length;
+      const totalPicks = state.draftState.draftPicks?.length || 0;
+      
+      // Create the full snake draft sequence
+      const snakeSequence: number[] = [];
+      const maxRounds = 34; // Total rounds in the draft
+      
+      for (let round = 0; round < maxRounds; round++) {
+        if (round % 2 === 0) {
+          // Even rounds: forward order (0, 2, 4...)
+          for (let i = 0; i < teamCount; i++) {
+            snakeSequence.push(draftOrder[i]);
+          }
+        } else {
+          // Odd rounds: reverse order (1, 3, 5...)
+          for (let i = teamCount - 1; i >= 0; i--) {
+            snakeSequence.push(draftOrder[i]);
+          }
+        }
+      }
+      
+      const currentUserId = totalPicks < snakeSequence.length ? snakeSequence[totalPicks] : 0;
+      const isCurrentUserTurn = currentUserId === user.id;
       
       // If it just became the user's turn (wasn't before, but is now)
       if (isCurrentUserTurn && !previousUserTurnRef.current) {
@@ -628,7 +704,31 @@ export function useDraftOperations(user: User | null) {
     getNeededPositions,
     isUserTurn: (userId: number) => {
       if (!state.draftState) return false;
-      const currentUserId = state.draftState.draftOrder[state.draftState.currentTurn];
+      
+      // Calculate current user using simplified snake draft logic (match backend implementation)
+      const draftOrder = state.draftState.draftOrder;
+      const teamCount = draftOrder.length;
+      const totalPicks = state.draftState.draftPicks?.length || 0;
+      
+      // Create the full snake draft sequence
+      const snakeSequence: number[] = [];
+      const maxRounds = 34; // Total rounds in the draft
+      
+      for (let round = 0; round < maxRounds; round++) {
+        if (round % 2 === 0) {
+          // Even rounds: forward order (0, 2, 4...)
+          for (let i = 0; i < teamCount; i++) {
+            snakeSequence.push(draftOrder[i]);
+          }
+        } else {
+          // Odd rounds: reverse order (1, 3, 5...)
+          for (let i = teamCount - 1; i >= 0; i--) {
+            snakeSequence.push(draftOrder[i]);
+          }
+        }
+      }
+      
+      const currentUserId = totalPicks < snakeSequence.length ? snakeSequence[totalPicks] : 0;
       return currentUserId === userId;
     },
     getUserRoster: (userId: number) => state.localRosters[userId] || [],

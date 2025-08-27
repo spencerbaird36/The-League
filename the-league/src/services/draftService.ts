@@ -179,19 +179,16 @@ class DraftService {
     if (idPrefixMatch) {
       extractedPlayerId = idPrefixMatch[1].trim();
       cleanPlayerName = idPrefixMatch[2].trim();
-      console.log(`🔍 Found ID prefix: "${extractedPlayerId}", extracted name: "${cleanPlayerName}"`);
     }
     
     // Then, remove "(AUTO)" suffix for auto-drafted players
     cleanPlayerName = cleanPlayerName.replace(/\s*\(AUTO\)\s*$/, '').trim();
     
-    console.log(`🔍 Converting draft pick to player: "${draftPick.playerName}" -> "${cleanPlayerName}"`);
     
     // If we extracted a player ID from the prefix, try to find by ID first
     if (extractedPlayerId) {
       const playerById = players.find((player: any) => player.id === extractedPlayerId);
       if (playerById) {
-        console.log(`✅ Found player by extracted ID: ${playerById.name} (${playerById.id})`);
         return playerById;
       }
     }
@@ -208,7 +205,6 @@ class DraftService {
       return actualPlayer;
     }
     
-    console.log(`❌ Could not find player: "${cleanPlayerName}" in ${draftPick.playerTeam} (${draftPick.playerLeague})`);
     
     // Fallback to synthetic player if not found (shouldn't happen)
     return {

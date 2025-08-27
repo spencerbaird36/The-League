@@ -1,18 +1,36 @@
 import React from 'react';
 import { DraftSlot } from '../hooks/useDraftProgress';
+import { LeagueMember } from '../context/DraftContext';
+import { cleanPlayerName } from '../utils/playerNameUtils';
 import './DraftBoard.css';
 
 interface DraftBoardProps {
   board: DraftSlot[][];
+  leagueMembers: LeagueMember[];
+  currentUser?: { id: number; username: string; firstName: string; lastName: string };
   onSlotClick?: (slot: DraftSlot) => void;
   className?: string;
 }
 
 const DraftBoard: React.FC<DraftBoardProps> = ({ 
   board, 
+  leagueMembers,
+  currentUser,
   onSlotClick,
   className = ''
 }) => {
+  // Helper function to get manager name for a given userId
+  const getManagerName = (userId: number): string => {
+    const member = leagueMembers.find(m => m.id === userId);
+    if (member) {
+      return `${member.firstName} ${member.lastName}`;
+    }
+    if (currentUser && userId === currentUser.id) {
+      return `${currentUser.firstName} ${currentUser.lastName}`;
+    }
+    return `Manager ${userId}`;
+  };
+
   if (board.length === 0) {
     return (
       <div className={`draft-board empty ${className}`}>
@@ -46,9 +64,9 @@ const DraftBoard: React.FC<DraftBoardProps> = ({
           {/* Round headers */}
           <div className="round-headers">
             <div className="corner-cell">Round</div>
-            {board[0]?.map((_, index) => (
+            {board[0]?.map((slot, index) => (
               <div key={index} className="team-header">
-                Team {index + 1}
+                {getManagerName(slot.userId)}
               </div>
             ))}
           </div>
@@ -80,7 +98,7 @@ const DraftBoard: React.FC<DraftBoardProps> = ({
                   <div className="slot-number">{slot.pickNumber}</div>
                   {slot.player ? (
                     <div className="slot-player">
-                      <div className="player-name">{slot.player.name}</div>
+                      <div className="player-name">{cleanPlayerName(slot.player.name)}</div>
                       <div className="player-info">
                         {slot.player.position} - {slot.player.team}
                       </div>

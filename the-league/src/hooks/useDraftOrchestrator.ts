@@ -104,38 +104,21 @@ export const useDraftOrchestrator = ({ user }: UseDraftOrchestratorProps) => {
     }, [draftActions, notificationActions, timerActions, user?.id, draftState.currentRound, draftState.currentTurn]),
 
     onPlayerDrafted: useCallback((data: any) => {
-      console.log('✅ Player drafted event received:', data);
-      console.log('🔍 Available keys in data:', Object.keys(data));
-      console.log('🔍 data object type:', typeof data);
-      console.log('🔍 data.playerId:', data.playerId);
-      console.log('🔍 data.PlayerId:', data.PlayerId);
-      console.log('🔍 JSON.stringify(data):', JSON.stringify(data));
+      console.log('✅ Player drafted event received');
       
-      // Try multiple property access patterns with explicit checks
+      // Extract player ID with fallback patterns
       let playerId = null;
-      
-      // Check exact property names with explicit existence tests
       if ('playerId' in data && data.playerId !== null && data.playerId !== undefined) {
         playerId = data.playerId;
-        console.log('🎯 Found playerId via data.playerId:', playerId);
       } else if ('PlayerId' in data && data.PlayerId !== null && data.PlayerId !== undefined) {
         playerId = data.PlayerId;
-        console.log('🎯 Found playerId via data.PlayerId:', playerId);
       } else {
-        // Iterate through all properties to find any containing player ID
+        // Search for any property containing player ID
         for (const [key, value] of Object.entries(data)) {
-          console.log(`🔍 Checking property: ${key} = ${value}`);
           if (key.toLowerCase().includes('player') && key.toLowerCase().includes('id') && value) {
             playerId = value;
-            console.log(`🎯 Found playerId via ${key}:`, playerId);
             break;
           }
-        }
-        
-        // If still not found, log all properties
-        if (!playerId) {
-          console.log('❌ No playerId found in any property!');
-          console.log('🔍 All properties:', Object.entries(data));
         }
       }
       
@@ -143,8 +126,6 @@ export const useDraftOrchestrator = ({ user }: UseDraftOrchestratorProps) => {
       const position = data.position || data.Position || 'Unknown';
       const team = data.team || data.Team || 'Unknown';
       const isAutoDraft = data.isAutoDraft || data.IsAutoDraft || false;
-      
-      console.log('🔍 Final playerId value:', playerId);
       
       // Create pick object
       const pick: DraftPick = {
@@ -164,11 +145,25 @@ export const useDraftOrchestrator = ({ user }: UseDraftOrchestratorProps) => {
       };
       
       draftActions.addPick(pick);
-      notificationActions.notifyPlayerPicked(playerName, position, team, isAutoDraft);
+      
+      // Extract drafter information for notification
+      const drafterId = data.userId || data.UserId;
+      let drafterDisplayName = 'Unknown Player';
+      if (drafterId && user && drafterId === user.id) {
+        drafterDisplayName = 'You';
+      } else if (data.username || data.Username) {
+        drafterDisplayName = data.username || data.Username;
+      } else if (data.userFullName || data.UserFullName) {
+        drafterDisplayName = data.userFullName || data.UserFullName;
+      } else if (drafterId) {
+        drafterDisplayName = `User ${drafterId}`;
+      }
+      
+      notificationActions.notifyPlayerPicked(playerName, position, team, isAutoDraft, drafterDisplayName);
       
       // Advance to next turn
       draftActions.advanceTurn();
-    }, [draftActions, notificationActions, draftState.currentPickNumber, draftState.currentRound]),
+    }, [draftActions, notificationActions, draftState.currentPickNumber, draftState.currentRound, user]),
 
     onDraftPaused: useCallback((data: any) => {
       console.log('⏸️ Draft paused event received:', data);
@@ -217,7 +212,21 @@ export const useDraftOrchestrator = ({ user }: UseDraftOrchestratorProps) => {
         message: `Draft was reset by ${data.ResetBy || 'Administrator'}`,
         duration: 5000
       });
-    }, [draftActions, timerActions, notificationActions])
+    }, [draftActions, timerActions, notificationActions]),
+
+    onDraftPickError: useCallback((data: any) => {
+      console.log('❌ Draft pick error event received:', data);
+      
+      // Show user-friendly error message based on error type
+      let errorMessage = 'Failed to make draft pick';
+      if (data.Error === 'NOT_YOUR_TURN') {
+        errorMessage = data.Message || "It's not your turn to draft";
+      } else if (data.Message) {
+        errorMessage = data.Message;
+      }
+      
+      notificationActions.notifyError(errorMessage);
+    }, [notificationActions])
   };
 
   // Initialize WebSocket
@@ -262,34 +271,11 @@ export const useDraftOrchestrator = ({ user }: UseDraftOrchestratorProps) => {
   // Get available players
   const getAvailablePlayersInternal = useCallback((): Player[] => {
     const draftedPlayerIds = new Set(draftState.picks
-      .map(pick => {
-        console.log(`🔍 Processing pick: ${pick.playerName}, playerId: ${pick.playerId}`);
-        return pick.playerId;
-      }) // Use playerId if available (for auto-drafted players)
-      .filter(id => {
-        const isValid = id != null && id !== undefined && id !== '';
-        console.log(`🔍 Filtering playerId: ${id}, isValid: ${isValid}`);
-        return isValid;
-      }) // Remove null/undefined values
+      .map(pick => pick.playerId)
+      .filter(id => id != null && id !== undefined && id !== '') // Remove null/undefined values
     );
     
-    console.log('🔍 Drafted player IDs for filtering:', Array.from(draftedPlayerIds));
-    console.log('🔍 Total picks:', draftState.picks.length);
-    console.log('🔍 Picks with valid playerId:', draftState.picks.filter(pick => pick.playerId && pick.playerId !== '').length);
-    console.log('🔍 All picks details:', draftState.picks.map(pick => ({ 
-      name: pick.playerName, 
-      playerId: pick.playerId,
-      hasPlayerId: !!pick.playerId 
-    })));
-    
-    const availablePlayers = players.filter(player => {
-      const isDrafted = draftedPlayerIds.has(player.id);
-      if (isDrafted) {
-        console.log(`🔍 Player ${player.name} (${player.id}) is drafted, filtering out`);
-      }
-      return !isDrafted;
-    });
-    console.log('🔍 Available players count:', availablePlayers.length, 'out of', players.length);
+    const availablePlayers = players.filter(player => !draftedPlayerIds.has(player.id));
     
     return availablePlayers;
   }, [draftState.picks]);

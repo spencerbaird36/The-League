@@ -664,6 +664,20 @@ const Home: React.FC<HomeProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match. Please try again.');
+      return;
+    }
+    
+    // Validate password length
+    if (formData.password.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+    
+    console.log('Submitting registration form with data:', formData);
+    
     try {
       const response = await apiRequest('/api/users/register', {
         method: 'POST',
@@ -699,14 +713,19 @@ const Home: React.FC<HomeProps> = ({
         console.error('Registration failed:', errorData);
         
         // Extract error messages from the response
-        let errorMessage = 'Registration failed. ';
+        let errorMessage = 'Registration failed:\n';
         if (errorData.message) {
           errorMessage += errorData.message;
         } else if (errorData.errors) {
           const errors = Object.values(errorData.errors).flat();
-          errorMessage += errors.join('. ');
+          errorMessage += errors.join('\n');
+        } else if (errorData.title) {
+          errorMessage += errorData.title;
+          if (errorData.detail) {
+            errorMessage += '\n' + errorData.detail;
+          }
         } else {
-          errorMessage += 'Please try again.';
+          errorMessage += 'Please check your information and try again.';
         }
         
         alert(errorMessage);
