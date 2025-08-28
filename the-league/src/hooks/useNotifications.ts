@@ -43,6 +43,7 @@ export const useNotifications = ({
   
   const [notifications, setNotifications] = useState<DraftNotification[]>([]);
   const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const recentNotifications = useRef<Map<string, number>>(new Map()); // Track recent notifications to prevent duplicates
 
   // Sound utility functions
   const playNotificationSound = useCallback((type: DraftNotification['type']) => {
@@ -158,10 +159,42 @@ export const useNotifications = ({
     isAutoDraft: boolean = false,
     drafterName?: string
   ) => {
+    console.log('🔔 NOTIFICATION: notifyPlayerPicked called with:', {
+      playerName,
+      position,
+      team,
+      isAutoDraft,
+      drafterName
+    });
+    
     const cleanName = cleanPlayerName(playerName);
+    
+    // Create a unique key for deduplication (player + timestamp within 2 seconds)
+    const now = Date.now();
+    const deduplicationKey = `${cleanName}-${position}-${team}`;
+    const lastNotificationTime = recentNotifications.current.get(deduplicationKey);
+    
+    // Prevent duplicate notifications within 2 seconds
+    if (lastNotificationTime && (now - lastNotificationTime) < 2000) {
+      console.log('🚫 Prevented duplicate notification for:', cleanName);
+      return;
+    }
+    
+    // Update the last notification time
+    recentNotifications.current.set(deduplicationKey, now);
+    
+    // Clean up old entries (older than 10 seconds)
+    recentNotifications.current.forEach((timestamp, key) => {
+      if (now - timestamp > 10000) {
+        recentNotifications.current.delete(key);
+      }
+    });
+    
     const message = drafterName 
       ? `${drafterName} drafted ${cleanName} (${position} - ${team})`
       : `${cleanName} (${position} - ${team})`;
+    
+    console.log('🔔 NOTIFICATION: About to add notification with message:', message);
       
     addNotification({
       type: 'pick',

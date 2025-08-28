@@ -84,8 +84,13 @@ class SignalRService {
     });
 
     this.connection.on('PlayerDrafted', (data: any) => {
-      console.log('Player drafted:', data);
-      this.playerDraftedCallbacks.forEach(callback => callback(data));
+      console.log('🏈 SIGNALR: Player drafted event received:', data);
+      console.log('🏈 SIGNALR: Player drafted callback count:', this.playerDraftedCallbacks.length);
+      this.playerDraftedCallbacks.forEach((callback, index) => {
+        console.log(`🏈 SIGNALR: Calling player drafted callback ${index}`);
+        callback(data);
+      });
+      console.log('🏈 SIGNALR: All player drafted callbacks executed');
     });
 
     this.connection.on('DraftPaused', (data: any) => {
@@ -335,6 +340,21 @@ class SignalRService {
       console.log('Draft reset via WebSocket');
     } catch (err) {
       console.error('Error resetting draft:', err);
+      throw err;
+    }
+  }
+
+  async completeAutoDraft(leagueId: number): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      throw new Error(`SignalR connection not ready. Current state: ${this.connection?.state || 'null'}`);
+    }
+
+    try {
+      console.log(`🏁 Starting complete auto-draft for league ${leagueId}`);
+      await this.connection.invoke('CompleteAutoDraft', leagueId.toString());
+      console.log('Complete auto-draft completed via WebSocket');
+    } catch (err) {
+      console.error('Error completing auto-draft:', err);
       throw err;
     }
   }
