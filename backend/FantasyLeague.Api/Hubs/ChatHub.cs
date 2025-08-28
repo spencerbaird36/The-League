@@ -751,6 +751,199 @@ namespace FantasyLeague.Api.Hubs
             Console.WriteLine($"🧪 TestDraftPick called for league {leagueId}, player: {playerName}");
         }
 
+        public async Task CompleteAutoDraft(string leagueId)
+        {
+            Console.WriteLine($"🏁 CompleteAutoDraft called for league {leagueId}");
+            
+            // Verify user is in the league
+            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
+                connection.LeagueId == int.Parse(leagueId))
+            {
+                Console.WriteLine($"✅ Connection found: User {connection.UserId} ({connection.Username}) in league {connection.LeagueId}");
+                
+                var draft = await _context.Drafts
+                    .Include(d => d.DraftPicks)
+                    .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId) && d.IsActive);
+
+                if (draft != null)
+                {
+                    var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                    var totalPicks = draft.DraftPicks?.Count ?? 0;
+                    var teamCount = draftOrder.Count;
+                    var maxRounds = 34; // Total rounds in draft
+                    var totalPicksNeeded = teamCount * maxRounds;
+                    
+                    Console.WriteLine($"🏁 Starting complete auto-draft: {totalPicks} picks completed, {totalPicksNeeded - totalPicks} picks remaining");
+                    
+                    // Get all available players
+                    var availablePlayers = new List<AutoDraftPlayer>
+                    {
+                        new AutoDraftPlayer { Id = "josh-allen", Name = "Josh Allen", Position = "QB", Team = "Buffalo Bills", League = "NFL" },
+                        new AutoDraftPlayer { Id = "aaron-judge", Name = "Aaron Judge", Position = "OF", Team = "New York Yankees", League = "MLB" },
+                        new AutoDraftPlayer { Id = "austin-ekeler", Name = "Austin Ekeler", Position = "RB", Team = "Los Angeles Chargers", League = "NFL" },
+                        new AutoDraftPlayer { Id = "tj-hockenson", Name = "T.J. Hockenson", Position = "TE", Team = "Detroit Lions", League = "NFL" },
+                        new AutoDraftPlayer { Id = "ronald-acuna-jr", Name = "Ronald Acuña Jr.", Position = "OF", Team = "Atlanta Braves", League = "MLB" },
+                        new AutoDraftPlayer { Id = "luka-doncic", Name = "Luka Dončić", Position = "PG", Team = "Dallas Mavericks", League = "NBA" },
+                        new AutoDraftPlayer { Id = "stefon-diggs", Name = "Stefon Diggs", Position = "WR", Team = "Buffalo Bills", League = "NFL" },
+                        new AutoDraftPlayer { Id = "george-kittle", Name = "George Kittle", Position = "TE", Team = "San Francisco 49ers", League = "NFL" },
+                        new AutoDraftPlayer { Id = "lamar-jackson", Name = "Lamar Jackson", Position = "QB", Team = "Baltimore Ravens", League = "NFL" },
+                        new AutoDraftPlayer { Id = "jayson-tatum", Name = "Jayson Tatum", Position = "SF", Team = "Boston Celtics", League = "NBA" },
+                        new AutoDraftPlayer { Id = "davante-adams", Name = "Davante Adams", Position = "WR", Team = "Las Vegas Raiders", League = "NFL" },
+                        new AutoDraftPlayer { Id = "shohei-ohtani", Name = "Shohei Ohtani", Position = "SP", Team = "Los Angeles Angels", League = "MLB" },
+                        new AutoDraftPlayer { Id = "jared-goff", Name = "Jared Goff", Position = "QB", Team = "Detroit Lions", League = "NFL" },
+                        new AutoDraftPlayer { Id = "nick-chubb", Name = "Nick Chubb", Position = "RB", Team = "Cleveland Browns", League = "NFL" },
+                        new AutoDraftPlayer { Id = "joe-burrow", Name = "Joe Burrow", Position = "QB", Team = "Cincinnati Bengals", League = "NFL" },
+                        new AutoDraftPlayer { Id = "harrison-butker", Name = "Harrison Butker", Position = "K", Team = "Kansas City Chiefs", League = "NFL" },
+                        new AutoDraftPlayer { Id = "mookie-betts", Name = "Mookie Betts", Position = "OF", Team = "Los Angeles Dodgers", League = "MLB" },
+                        new AutoDraftPlayer { Id = "justin-tucker", Name = "Justin Tucker", Position = "K", Team = "Baltimore Ravens", League = "NFL" },
+                        new AutoDraftPlayer { Id = "sam-laporta", Name = "Sam LaPorta", Position = "TE", Team = "Detroit Lions", League = "NFL" },
+                        new AutoDraftPlayer { Id = "amon-ra-st-brown", Name = "Amon-Ra St. Brown", Position = "WR", Team = "Detroit Lions", League = "NFL" },
+                        new AutoDraftPlayer { Id = "christian-mccaffrey", Name = "Christian McCaffrey", Position = "RB", Team = "San Francisco 49ers", League = "NFL" },
+                        new AutoDraftPlayer { Id = "mike-trout", Name = "Mike Trout", Position = "OF", Team = "Los Angeles Angels", League = "MLB" },
+                        new AutoDraftPlayer { Id = "tyler-bass", Name = "Tyler Bass", Position = "K", Team = "Buffalo Bills", League = "NFL" },
+                        new AutoDraftPlayer { Id = "justin-jefferson", Name = "Justin Jefferson", Position = "WR", Team = "Minnesota Vikings", League = "NFL" },
+                        new AutoDraftPlayer { Id = "tua-tagovailoa", Name = "Tua Tagovailoa", Position = "QB", Team = "Miami Dolphins", League = "NFL" },
+                        new AutoDraftPlayer { Id = "derrick-henry", Name = "Derrick Henry", Position = "RB", Team = "Baltimore Ravens", League = "NFL" },
+                        new AutoDraftPlayer { Id = "tyreek-hill", Name = "Tyreek Hill", Position = "WR", Team = "Miami Dolphins", League = "NFL" },
+                        new AutoDraftPlayer { Id = "cooper-kupp", Name = "Cooper Kupp", Position = "WR", Team = "Los Angeles Rams", League = "NFL" },
+                        new AutoDraftPlayer { Id = "travis-kelce", Name = "Travis Kelce", Position = "TE", Team = "Kansas City Chiefs", League = "NFL" },
+                        new AutoDraftPlayer { Id = "tarik-skubal", Name = "Tarik Skubal", Position = "SP", Team = "Detroit Tigers", League = "MLB" },
+                        new AutoDraftPlayer { Id = "anthony-davis", Name = "Anthony Davis", Position = "C", Team = "Los Angeles Lakers", League = "NBA" },
+                        new AutoDraftPlayer { Id = "giannis-antetokounmpo", Name = "Giannis Antetokounmpo", Position = "PF", Team = "Milwaukee Bucks", League = "NBA" },
+                        new AutoDraftPlayer { Id = "nikola-jokic", Name = "Nikola Jokić", Position = "C", Team = "Denver Nuggets", League = "NBA" },
+                        new AutoDraftPlayer { Id = "stephen-curry", Name = "Stephen Curry", Position = "PG", Team = "Golden State Warriors", League = "NBA" },
+                        new AutoDraftPlayer { Id = "lebron-james", Name = "LeBron James", Position = "SF", Team = "Los Angeles Lakers", League = "NBA" },
+                        new AutoDraftPlayer { Id = "kevin-durant", Name = "Kevin Durant", Position = "PF", Team = "Phoenix Suns", League = "NBA" },
+                        new AutoDraftPlayer { Id = "francisco-lindor", Name = "Francisco Lindor", Position = "SS", Team = "New York Mets", League = "MLB" }
+                    };
+                    
+                    // Filter out already drafted players
+                    var draftedPlayerNames = draft.DraftPicks?.Select(dp => dp.PlayerName?.Split(':').FirstOrDefault()).ToHashSet() ?? new HashSet<string>();
+                    var availablePlayersList = availablePlayers.Where(p => !draftedPlayerNames.Contains(p.Id)).ToList();
+                    
+                    var picksToMake = totalPicksNeeded - totalPicks;
+                    Console.WriteLine($"🏁 Will make {picksToMake} picks to complete the draft");
+                    
+                    // Create snake draft sequence for remaining picks
+                    var snakeSequence = new List<int>();
+                    for (int round = 0; round < maxRounds; round++)
+                    {
+                        if (round % 2 == 0)
+                        {
+                            // Even rounds: forward order
+                            for (int i = 0; i < teamCount; i++)
+                            {
+                                snakeSequence.Add(draftOrder[i]);
+                            }
+                        }
+                        else
+                        {
+                            // Odd rounds: reverse order
+                            for (int i = teamCount - 1; i >= 0; i--)
+                            {
+                                snakeSequence.Add(draftOrder[i]);
+                            }
+                        }
+                    }
+                    
+                    var allDraftPicks = new List<FantasyLeague.Api.Models.DraftPick>();
+                    var allUserRosters = new List<FantasyLeague.Api.Models.UserRoster>();
+                    var random = new Random();
+                    
+                    // Make all remaining picks instantly
+                    for (int pickIndex = totalPicks; pickIndex < totalPicksNeeded && availablePlayersList.Count > 0; pickIndex++)
+                    {
+                        var currentUserId = snakeSequence[pickIndex];
+                        
+                        // Select random available player
+                        var selectedPlayerIndex = random.Next(availablePlayersList.Count);
+                        var selectedPlayer = availablePlayersList[selectedPlayerIndex];
+                        availablePlayersList.RemoveAt(selectedPlayerIndex);
+                        
+                        var currentRoundIndex = pickIndex / teamCount;
+                        var currentPickInRound = pickIndex % teamCount;
+                        var actualRound = currentRoundIndex + 1;
+                        var roundPick = currentPickInRound + 1;
+                        var pickNumber = pickIndex + 1;
+                        
+                        // Create the draft pick
+                        var draftPick = new FantasyLeague.Api.Models.DraftPick
+                        {
+                            DraftId = draft.Id,
+                            UserId = currentUserId,
+                            PlayerName = $"{selectedPlayer.Id}:{selectedPlayer.Name} (AUTO)",
+                            PlayerPosition = selectedPlayer.Position,
+                            PlayerTeam = selectedPlayer.Team,
+                            PlayerLeague = selectedPlayer.League,
+                            Round = actualRound,
+                            RoundPick = roundPick,
+                            PickNumber = pickNumber,
+                            PickedAt = DateTime.UtcNow
+                        };
+                        
+                        allDraftPicks.Add(draftPick);
+                        
+                        // Create user roster entry
+                        var userRoster = new FantasyLeague.Api.Models.UserRoster
+                        {
+                            UserId = currentUserId,
+                            LeagueId = int.Parse(leagueId),
+                            DraftId = draft.Id,
+                            PlayerName = $"{selectedPlayer.Id}:{selectedPlayer.Name} (AUTO)",
+                            PlayerPosition = selectedPlayer.Position,
+                            PlayerTeam = selectedPlayer.Team,
+                            PlayerLeague = selectedPlayer.League,
+                            PickNumber = pickNumber,
+                            Round = actualRound,
+                            DraftedAt = DateTime.UtcNow
+                        };
+                        
+                        allUserRosters.Add(userRoster);
+                    }
+                    
+                    // Save all picks to database in bulk
+                    _context.DraftPicks.AddRange(allDraftPicks);
+                    _context.UserRosters.AddRange(allUserRosters);
+                    
+                    // Mark draft as completed
+                    draft.IsCompleted = true;
+                    draft.CompletedAt = DateTime.UtcNow;
+                    draft.IsActive = false;
+                    
+                    await _context.SaveChangesAsync();
+                    
+                    Console.WriteLine($"🏁 Complete auto-draft finished: Added {allDraftPicks.Count} picks, draft completed");
+                    
+                    // Send completion event to all clients
+                    await Clients.Group($"League_{leagueId}").SendAsync("DraftCompleted", new
+                    {
+                        Message = $"Draft completed! {allDraftPicks.Count} players auto-drafted.",
+                        TotalPicks = totalPicksNeeded,
+                        CompletedAt = DateTime.UtcNow
+                    });
+                    
+                    // Stop any existing timers
+                    StopDraftTimer(int.Parse(leagueId));
+                }
+                else
+                {
+                    await Clients.Caller.SendAsync("DraftPickError", new
+                    {
+                        Error = "DRAFT_NOT_FOUND",
+                        Message = "No active draft found for this league."
+                    });
+                }
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("DraftPickError", new
+                {
+                    Error = "UNAUTHORIZED",
+                    Message = "You are not authorized to complete auto-draft for this league."
+                });
+            }
+        }
+
 
         public async Task MakeDraftPick(string leagueId, string playerId, string playerName, string position, string team, string league, bool isAutoDraft = false)
         {

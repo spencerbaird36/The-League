@@ -1,6 +1,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useDraft } from '../context/DraftContext';
 import { draftService } from '../services/draftService';
+import signalRService from '../services/signalRService';
 import { Player } from '../types/Player';
 import { players } from '../data/players';
 
@@ -419,170 +420,58 @@ export function useDraftOperations(user: User | null) {
     }
   }, [state.draftState, dispatch]);
 
-  // Reset draft
+  // Reset draft using SignalR for real-time updates
   const resetDraft = useCallback(async (draftId: number): Promise<void> => {
+    if (!user?.league?.id) {
+      throw new Error('No league ID available');
+    }
+
     try {
-      const resetDraftState = await draftService.resetDraft(draftId);
-      dispatch({ type: 'SET_DRAFT_STATE', payload: resetDraftState });
+      // Use SignalR reset instead of REST API for better real-time sync
+      await signalRService.resetDraft(user.league.id);
+      console.log('✅ Draft reset request sent via SignalR');
+      
+      // Clear local state immediately (SignalR event will trigger full refresh)
       dispatch({ type: 'CLEAR_LOCAL_ROSTERS' });
       dispatch({ type: 'RESET_TIMER', payload: { duration: 15 } });
-      console.log('✅ Draft reset successfully');
+      
+      // Fetch fresh draft state after reset
+      setTimeout(() => {
+        fetchDraftState();
+      }, 500); // Small delay to ensure backend reset completes
+      
     } catch (error) {
       console.error('Error resetting draft:', error);
       throw error;
     }
-  }, [dispatch]);
+  }, [dispatch, user?.league?.id, fetchDraftState]);
 
   // Start continuous auto-drafting for all teams
   const startAutoDraftingForAllTeams = useCallback(async (): Promise<void> => {
-    if (!state.draftState) {
-      throw new Error('Cannot start auto-drafting - no draft state');
+    if (!state.draftState || !user?.league?.id) {
+      throw new Error('Cannot start auto-drafting - no draft state or league');
     }
 
     dispatch({ type: 'SET_AUTO_DRAFTING', payload: true });
-    dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-drafting started for all teams...' });
+    dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Completing auto-draft for all teams...' });
     
-    console.log('🤖 Starting continuous auto-drafting simulation for all teams');
+    console.log('🏁 Starting instant complete auto-draft for all teams');
     
-    // Start the auto-draft simulation loop
-    const autoDraftSimulation = async () => {
-      let currentDraftState = state.draftState;
+    try {
+      // Call the backend to instantly complete the entire draft
+      await signalRService.completeAutoDraft(user.league.id);
       
-      while (currentDraftState && !currentDraftState.isCompleted && state.isAutoDrafting) {
-        try {
-          // Get current available players and team info
-          const availablePlayers = getAvailablePlayers();
-          
-          // Calculate current user using snake draft logic (match backend implementation)
-          const draftOrder = currentDraftState.draftOrder;
-          const teamCount = draftOrder.length;
-          const totalPicks = currentDraftState.draftPicks?.length || 0;
-          
-          const currentRoundIndex = Math.floor(totalPicks / teamCount);
-          const currentPickInRound = totalPicks % teamCount;
-          
-          let currentUserIndex;
-          if (currentRoundIndex % 2 === 0) {
-            // Even round - forward order
-            currentUserIndex = currentPickInRound;
-          } else {
-            // Odd round - reverse order (snake)
-            currentUserIndex = teamCount - 1 - currentPickInRound;
-          }
-          
-          const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
-          const neededPositions = getNeededPositions(currentUserId);
-          
-          // Select best available player for current team
-          const selectedPlayer = draftService.selectBestAvailablePlayer(
-            availablePlayers,
-            neededPositions,
-            getAllDraftedPlayers()
-          );
-
-          if (!selectedPlayer) {
-            console.warn('🤖 No available players for auto-draft - stopping simulation');
-            break;
-          }
-
-          console.log(`🤖 Auto-drafting ${selectedPlayer.name} for user ${currentUserId} (${selectedPlayer.position}, ${selectedPlayer.team})`);
-          
-          // Make the draft pick
-          const pickRequest = draftService.playerToDraftPickRequest(currentUserId, selectedPlayer);
-          const pickResponse = await draftService.makeDraftPick(currentDraftState.id, pickRequest);
-
-          // Create the draft pick object
-          const draftPick = {
-            id: pickResponse.id,
-            userId: pickResponse.userId,
-            userFullName: pickResponse.userFullName,
-            username: pickResponse.username,
-            playerName: pickResponse.playerName,
-            playerPosition: pickResponse.playerPosition,
-            playerTeam: pickResponse.playerTeam,
-            playerLeague: pickResponse.playerLeague,
-            pickNumber: pickResponse.pickNumber,
-            round: pickResponse.round,
-            roundPick: pickResponse.roundPick,
-            pickedAt: pickResponse.pickedAt,
-          };
-
-          // Update local state with the pick
-          dispatch({
-            type: 'MAKE_DRAFT_PICK',
-            payload: {
-              userId: currentUserId,
-              player: selectedPlayer,
-              draftPick,
-            },
-          });
-
-          // Update the current draft state with the response data
-          if (currentDraftState) {
-            currentDraftState = {
-              ...currentDraftState,
-              currentTurn: pickResponse.draft.currentTurn,
-              currentRound: pickResponse.draft.currentRound,
-              isCompleted: pickResponse.draft.isCompleted,
-              draftPicks: [...currentDraftState.draftPicks, draftPick]
-            };
-            dispatch({ type: 'SET_DRAFT_STATE', payload: currentDraftState });
-          }
-
-          // Update status message
-          const remainingPicks = (state.leagueMembers.length * 34) - (currentDraftState?.draftPicks?.length || 0);
-          dispatch({ 
-            type: 'SET_AUTO_DRAFT_MESSAGE', 
-            payload: `Auto-drafted ${selectedPlayer.name} (${selectedPlayer.position}) - ${remainingPicks} picks remaining` 
-          });
-
-          // Check if draft is completed
-          if (currentDraftState?.isCompleted) {
-            console.log('🎉 Auto-draft simulation completed - draft is finished!');
-            dispatch({ type: 'SET_AUTO_DRAFTING', payload: false });
-            dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-draft completed! Draft is finished.' });
-            break;
-          }
-
-          // Wait 3 seconds before next pick (unless auto-draft is stopped)
-          await new Promise(resolve => {
-            setTimeout(() => {
-              // Check if auto-draft is still active before continuing
-              if (state.isAutoDrafting) {
-                resolve(void 0);
-              } else {
-                console.log('🛑 Auto-draft stopped by user');
-                resolve(void 0);
-              }
-            }, 3000);
-          });
-
-        } catch (error) {
-          console.error('Error during auto-draft simulation:', error);
-          dispatch({ type: 'SET_AUTO_DRAFTING', payload: false });
-          dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-draft failed - stopping simulation' });
-          break;
-        }
-      }
-
-      // Clean up if simulation ends
-      if (currentDraftState?.isCompleted) {
-        dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Draft completed successfully!' });
-      } else if (!state.isAutoDrafting) {
-        // Resume normal draft timer for whoever's turn it is
-        dispatch({ type: 'START_TIMER', payload: { duration: 15 } });
-        dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-draft stopped - resuming normal draft' });
-        console.log('⏰ Auto-draft stopped - resuming normal timer for current turn');
-      } else {
-        dispatch({ type: 'SET_AUTO_DRAFTING', payload: false });
-        dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-draft simulation stopped' });
-      }
-    };
-
-    // Start the simulation
-    autoDraftSimulation();
+      // The backend will send DraftCompleted event when done
+      console.log('🏁 Complete auto-draft request sent to backend');
+      
+    } catch (error) {
+      console.error('Error during complete auto-draft:', error);
+      dispatch({ type: 'SET_AUTO_DRAFTING', payload: false });
+      dispatch({ type: 'SET_AUTO_DRAFT_MESSAGE', payload: 'Auto-draft failed - please try again' });
+      throw error;
+    }
     
-  }, [state.draftState, state.isAutoDrafting, state.leagueMembers, getAvailablePlayers, getNeededPositions, getAllDraftedPlayers, dispatch]);
+  }, [state.draftState, user?.league?.id, dispatch]);
 
   // Stop auto-drafting and resume normal draft process
   const stopAutoDrafting = useCallback((): void => {

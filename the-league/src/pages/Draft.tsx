@@ -201,7 +201,7 @@ const Draft: React.FC<DraftProps> = ({
           }
         }
         
-        // Add to notifications with drafter information
+        // Add notification for player pick
         notificationActions.notifyPlayerPicked(playerName, position, team, isAutoDraft, drafterDisplayName);
         
         // Update legacy rosters for backward compatibility
@@ -248,7 +248,14 @@ const Draft: React.FC<DraftProps> = ({
           isActive: false
         });
         timerActions.stopTimer();
+        
+        // Stop auto-drafting state and show completion message
+        draftOperations.stopAutoDrafting();
+        
         notificationActions.notifyDraftCompleted();
+        
+        // Refresh draft state to get all the new picks
+        draftOperations.fetchDraftState();
       },
       onTimerTick: (data) => {
         const timeRemaining = data.TimeRemaining ?? data.timeRemaining;
@@ -571,17 +578,7 @@ const Draft: React.FC<DraftProps> = ({
         console.log('❌ Using REST API fallback (Phase 1)');
         await draftOperations.makeDraftPick(player);
         
-        // Manual notifications for REST API fallback
-        notificationActions.notifyPlayerPicked(
-          player.name, 
-          player.position, 
-          player.team, 
-          false,
-          'You'
-        );
-        
-        // Legacy compatibility
-        addDraftToast(player.name, player.position, player.team, false);
+        // Notifications handled by WebSocket onPlayerDrafted event
         draftPlayer(player, false);
         
         // Advance turn manually in new state
@@ -787,17 +784,7 @@ const Draft: React.FC<DraftProps> = ({
           // Fallback to REST API with auto-draft flag
           await draftOperations.makeDraftPick(randomPlayer);
           
-          // Manual notification for auto-draft
-          notificationActions.notifyPlayerPicked(
-            randomPlayer.name, 
-            randomPlayer.position, 
-            randomPlayer.team, 
-            true, // isAutoDraft
-            'You'
-          );
-          
-          // Legacy compatibility
-          addDraftToast(randomPlayer.name, randomPlayer.position, randomPlayer.team, true);
+          // Notifications handled by WebSocket onPlayerDrafted event
           draftPlayer(randomPlayer, true);
           
           // Advance turn manually
@@ -993,6 +980,11 @@ const Draft: React.FC<DraftProps> = ({
             <div className="draft-completed">
               <p>✅ Draft has been completed!</p>
               <p>All teams have finished selecting their players.</p>
+              <div className="draft-management-buttons">
+                <button onClick={handleResetDraft} className="draft-control-btn reset">
+                  Reset Draft
+                </button>
+              </div>
             </div>
           )}
           
