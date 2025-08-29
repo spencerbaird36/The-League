@@ -1,4 +1,9 @@
 .league-settings-container {
+  --primary-navy: #2c3e50;
+  --primary-navy-rgb: 44, 62, 80;
+  --secondary-navy: #34495e;
+  --accent-gold: #f4d03f;
+  
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
@@ -48,6 +53,33 @@
 .settings-section:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(76, 175, 80, 0.3);
+}
+
+/* Override scoring settings styles for dark theme integration */
+.settings-section .scoring-settings-section {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-section .category-content {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.settings-section .readonly-settings .setting-display {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: var(--accent-gold);
+  color: white;
+}
+
+.settings-section .readonly-settings .setting-display .setting-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-section .readonly-settings .setting-display .setting-value {
+  color: white;
 }
 
 .settings-section.coming-soon {

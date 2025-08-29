@@ -23,6 +23,8 @@ namespace FantasyLeague.Api.Data
         public DbSet<ChatReadStatus> ChatReadStatuses { get; set; }
         public DbSet<Player> Players { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
+        public DbSet<ScoringSettings> ScoringSettings { get; set; }
+        public DbSet<PlayerWeeklyStats> PlayerWeeklyStats { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -517,6 +519,94 @@ namespace FantasyLeague.Api.Data
                 // Create index for efficient querying
                 entity.HasIndex(e => new { e.LeagueId, e.CreatedAt });
                 entity.HasIndex(e => e.Type);
+            });
+
+            // Configure ScoringSettings entity
+            modelBuilder.Entity<ScoringSettings>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Sport)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.IsActive)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+                
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany(l => l.ScoringSettings)
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Create unique index for league-sport combination (only one active per league-sport)
+                entity.HasIndex(e => new { e.LeagueId, e.Sport })
+                    .HasFilter("\"IsActive\" = true")
+                    .IsUnique();
+            });
+
+            // Configure PlayerWeeklyStats entity
+            modelBuilder.Entity<PlayerWeeklyStats>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.PlayerId)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.PlayerName)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.Position)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Team)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.League)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.GameStatus)
+                    .HasMaxLength(20)
+                    .HasDefaultValue("Scheduled");
+                    
+                entity.Property(e => e.Opponent)
+                    .HasMaxLength(20);
+                    
+                entity.Property(e => e.DataSource)
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create unique index for player-season-week combination
+                entity.HasIndex(e => new { e.PlayerId, e.Season, e.Week })
+                    .IsUnique();
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.League, e.Season, e.Week });
+                entity.HasIndex(e => new { e.PlayerName, e.Season, e.Week });
+                entity.HasIndex(e => e.Position);
+                entity.HasIndex(e => e.Team);
             });
         }
     }

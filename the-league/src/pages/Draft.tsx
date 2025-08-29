@@ -16,13 +16,13 @@ import { useDraftProgress } from '../hooks/useDraftProgress';
 import DraftBoard from '../components/DraftBoard';
 import PlayerRecommendations from '../components/PlayerRecommendations';
 import DraftProgressBar from '../components/DraftProgressBar';
+import FloatingDraftTimer from '../components/FloatingDraftTimer';
 // Phase 4 Redesign: Real-time collaboration and management tools
 import DraftChatRoom from '../components/DraftChatRoom';
 import CommissionerControls from '../components/CommissionerControls';
 import { DraftAction } from '../components/CommissionerControls';
 import signalRService from '../services/signalRService';
 import { draftService } from '../services/draftService';
-import { cleanPlayerName } from '../utils/playerNameUtils';
 import './Draft.css';
 
 // Lazy load modals since they're only needed when users interact
@@ -46,9 +46,6 @@ interface User {
 }
 
 interface DraftProps {
-  draftedNFL: Player[];
-  draftedMLB: Player[];
-  draftedNBA: Player[];
   draftPlayer: (player: Player, isAutoDraft?: boolean) => void;
   addDraftToast: (playerName: string, playerPosition: string, playerTeam: string, isAutoDraft?: boolean) => void;
   user: User | null;
@@ -64,9 +61,6 @@ interface DraftProps {
 }
 
 const Draft: React.FC<DraftProps> = ({
-  draftedNFL,
-  draftedMLB,
-  draftedNBA,
   draftPlayer,
   addDraftToast,
   user,
@@ -322,6 +316,10 @@ const Draft: React.FC<DraftProps> = ({
     timeRemaining: 15,
     isActive: false
   });
+
+  // Floating timer visibility state
+  const [showFloatingTimer, setShowFloatingTimer] = useState(false);
+  const timerSectionRef = useRef<HTMLDivElement>(null);
   
   // Functions to update filters
   const setSelectedLeague = (league: 'ALL' | 'NFL' | 'MLB' | 'NBA') => {
@@ -342,6 +340,34 @@ const Draft: React.FC<DraftProps> = ({
     setDraftTimer(timerState.timeRemaining);
     setDraftTimerActive(timerState.isActive);
   }, [draftState.currentPlayerId, user?.id, timerState.timeRemaining, timerState.isActive, draftStateActions]);
+
+  // Scroll detection for floating timer visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!timerSectionRef.current || !draftState.isActive) {
+        setShowFloatingTimer(false);
+        return;
+      }
+
+      const timerRect = timerSectionRef.current.getBoundingClientRect();
+      const isTimerVisible = timerRect.top >= 0 && timerRect.bottom <= window.innerHeight;
+      
+      // Show floating timer when main timer is out of view and draft is active
+      setShowFloatingTimer(!isTimerVisible && draftState.isActive);
+    };
+
+    // Initial check
+    handleScroll();
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [draftState.isActive]);
   
   const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
   const [isDraftConfirmModalOpen, setIsDraftConfirmModalOpen] = useState<boolean>(false);
@@ -752,6 +778,19 @@ const Draft: React.FC<DraftProps> = ({
     }
   }, [draftState, draftStateActions, notificationActions]);
 
+  // Get current player name for floating timer
+  const getCurrentPlayerName = useCallback(() => {
+    const currentPlayerId = draftState.currentPlayerId;
+    if (!currentPlayerId) return 'Unknown Player';
+    
+    const member = state.leagueMembers.find(m => m.id === currentPlayerId);
+    if (member) {
+      return `${member.firstName} ${member.lastName}`;
+    }
+    
+    return 'Unknown Player';
+  }, [draftState.currentPlayerId, state.leagueMembers]);
+
   // Phase 1 Redesign: Enhanced auto-draft with new systems
   const handleAutoDraft = useCallback(async () => {
     const currentPlayerId = draftState.currentPlayerId || (webSocketDraftState?.CurrentUserId);
@@ -835,13 +874,14 @@ const Draft: React.FC<DraftProps> = ({
       {notifications.length > 0 && (
         <div className="notifications-container" style={{
           position: 'fixed',
-          top: '20px',
+          top: '20px', // Back to normal position since timer is on left side
           right: '20px',
           zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          transition: 'top 0.3s ease' // Smooth transition when repositioning
         }}>
           {notifications.map(notification => (
             <div
@@ -880,7 +920,7 @@ const Draft: React.FC<DraftProps> = ({
         
         {/* Phase 1 Redesign: Updated Timer Section */}
         {(draftState.isActive || timerState.isActive || webSocketDraftState) && (
-          <div className="draft-timer-section">
+          <div className="draft-timer-section" ref={timerSectionRef}>
             <div className="timer-container">
               <div className="timer-display">
                 <span className="timer-label">Time Remaining:</span>
@@ -1037,23 +1077,7 @@ const Draft: React.FC<DraftProps> = ({
       {/* Draft Main Content Area */}
       <section className="draft-main-content">
         
-        {/* Phase 2 Redesign: Draft Board Visualization */}
-        {isDraftCreated && legacyDraftState && (
-          <DraftBoard
-            board={draftProgress.getDraftBoard()}
-            leagueMembers={state.leagueMembers}
-            currentUser={user ? {
-              id: user.id,
-              username: user.username,
-              firstName: user.firstName,
-              lastName: user.lastName
-            } : undefined}
-            onSlotClick={handleDraftSlotClick}
-            className="main-draft-board"
-          />
-        )}
-        
-        {/* Show Available Players and Filters only when draft is not completed */}
+        {/* Show content only when draft is not completed */}
         {!draftState.isCompleted && !legacyDraftState?.isCompleted ? (
           <>
             {/* Phase 2 Redesign: Player Recommendations */}
@@ -1088,7 +1112,7 @@ const Draft: React.FC<DraftProps> = ({
               onDraftAction={handleCommissionerAction}
             />
             
-            {/* Filters Section - moved above available players */}
+            {/* Filters Section - positioned above both draft board and available players */}
             <section className="filters-section">
               <div className="filters-header">
                 <h3>Filters</h3>
@@ -1191,150 +1215,111 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             </section>
 
-            {/* Available Players Section - side by side with drafted players */}
-            <section className="available-players-section">
-              <div className="available-players">
-                <h2>
-                  Available Players ({filteredPlayers.length})
-                  {!draftState.isActive && !timerState.isActive ? (
-                    <span className="draft-status"> - Draft Not Started</span>
-                  ) : timerState.isPaused || draftState.isPaused ? (
-                    <span className="draft-status paused"> - Draft Paused</span>
-                  ) : null}
-                </h2>
-
-                <div className="table-container">
-                  {filteredPlayers.length === 0 ? (
-                    <div className="empty-state">
-                      <p>No available players</p>
-                      <p>Try adjusting your filters or wait for more players to become available.</p>
-                    </div>
-                  ) : (
-                    <VirtualScrollTable
-                      data={filteredPlayers}
-                      columns={[
-                        {
-                          key: 'name',
-                          header: 'Player',
-                          width: '40%',
-                          render: (player: Player, index: number) => (
-                            <span 
-                              className="player-name clickable-player-name"
-                              onClick={() => handlePlayerNameClick(player)}
-                            >
-                              {player.name}
-                            </span>
-                          )
-                        },
-                        {
-                          key: 'position',
-                          header: 'Pos',
-                          width: '12%',
-                          render: (player: Player, index: number) => (
-                            <span className="position">{player.position}</span>
-                          )
-                        },
-                        {
-                          key: 'team',
-                          header: 'Team',
-                          width: '16%',
-                          render: (player: Player, index: number) => (
-                            <span className="team">{player.team}</span>
-                          )
-                        },
-                        {
-                          key: 'league',
-                          header: 'League',
-                          width: '12%',
-                          render: (player: Player, index: number) => (
-                            <span className={`league-badge ${player.league.toLowerCase()}`}>
-                              {player.league}
-                            </span>
-                          )
-                        },
-                        {
-                          key: 'action',
-                          header: 'Action',
-                          width: '20%',
-                          render: (player: Player, index: number) => (
-                            <button
-                              className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
-                              onClick={() => handleDraftClick(player)}
-                              disabled={!isDraftActive || isPickInProgress}
-                            >
-                              {isPickInProgress ? 'Drafting...' : 'Draft'}
-                            </button>
-                          )
-                        }
-                      ]}
-                      itemHeight={60}
-                      containerHeight={500}
-                      className="draft-virtual-table"
-                      getRowKey={(player: Player) => player.id}
-                    />
-                  )}
-                </div>
+            {/* New Layout: Draft Board and Available Players Side by Side */}
+            <section className="draft-content-grid">
+              {/* Phase 2 Redesign: Draft Board Visualization */}
+              <div className="draft-board-container">
+                {isDraftCreated && legacyDraftState && (
+                  <DraftBoard
+                    board={draftProgress.getDraftBoard()}
+                    leagueMembers={state.leagueMembers}
+                    currentUser={user ? {
+                      id: user.id,
+                      username: user.username,
+                      firstName: user.firstName,
+                      lastName: user.lastName
+                    } : undefined}
+                    onSlotClick={handleDraftSlotClick}
+                    className="main-draft-board"
+                  />
+                )}
               </div>
 
-              {/* Drafted Players Sidebar - now inside available-players-section */}
-              <aside className="drafted-players-sidebar">
-                <div className="sidebar-header">
-                  <h3>Drafted Players</h3>
+              {/* Available Players Section */}
+              <div className="available-players-container">
+                <div className="available-players">
+                  <h2>
+                    Available Players ({filteredPlayers.length})
+                    {!draftState.isActive && !timerState.isActive ? (
+                      <span className="draft-status"> - Draft Not Started</span>
+                    ) : timerState.isPaused || draftState.isPaused ? (
+                      <span className="draft-status paused"> - Draft Paused</span>
+                    ) : null}
+                  </h2>
+
+                  <div className="table-container">
+                    {filteredPlayers.length === 0 ? (
+                      <div className="empty-state">
+                        <p>No available players</p>
+                        <p>Try adjusting your filters or wait for more players to become available.</p>
+                      </div>
+                    ) : (
+                      <VirtualScrollTable
+                        data={filteredPlayers}
+                        columns={[
+                          {
+                            key: 'name',
+                            header: 'Player',
+                            width: '40%',
+                            render: (player: Player, index: number) => (
+                              <span 
+                                className="player-name clickable-player-name"
+                                onClick={() => handlePlayerNameClick(player)}
+                              >
+                                {player.name}
+                              </span>
+                            )
+                          },
+                          {
+                            key: 'position',
+                            header: 'Pos',
+                            width: '12%',
+                            render: (player: Player, index: number) => (
+                              <span className="position">{player.position}</span>
+                            )
+                          },
+                          {
+                            key: 'team',
+                            header: 'Team',
+                            width: '16%',
+                            render: (player: Player, index: number) => (
+                              <span className="team">{player.team}</span>
+                            )
+                          },
+                          {
+                            key: 'league',
+                            header: 'League',
+                            width: '12%',
+                            render: (player: Player, index: number) => (
+                              <span className={`league-badge ${player.league.toLowerCase()}`}>
+                                {player.league}
+                              </span>
+                            )
+                          },
+                          {
+                            key: 'action',
+                            header: 'Action',
+                            width: '20%',
+                            render: (player: Player, index: number) => (
+                              <button
+                                className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}
+                                onClick={() => handleDraftClick(player)}
+                                disabled={!isDraftActive || isPickInProgress}
+                              >
+                                {isPickInProgress ? 'Drafting...' : 'Draft'}
+                              </button>
+                            )
+                          }
+                        ]}
+                        itemHeight={60}
+                        containerHeight={500}
+                        className="draft-virtual-table"
+                        getRowKey={(player: Player) => player.id}
+                      />
+                    )}
+                  </div>
                 </div>
-                {isDraftCreated && legacyDraftState && legacyDraftState.draftPicks && (
-                  <div className="total-picks-container">
-                    <span className="total-picks">{legacyDraftState.draftPicks.length} total picks</span>
-                  </div>
-                )}
-                
-                {isDraftCreated && legacyDraftState && legacyDraftState.draftPicks && legacyDraftState.draftPicks.length > 0 ? (
-                  <div className="drafted-players-container">
-                    {legacyDraftState.draftPicks
-                      .sort((a: any, b: any) => b.pickNumber - a.pickNumber) // Sort newest first (most recent at top)
-                      .map((pick: any) => {
-                        const member = state.leagueMembers.find(m => m.id === pick.userId);
-                        const memberName = member ? `${member.firstName} ${member.lastName}` : (user && pick.userId === user.id ? 'You' : `User ${pick.userId}`);
-                        
-                        return (
-                          <div key={pick.id} className="drafted-player-card">
-                            <div className="pick-number">#{pick.pickNumber}</div>
-                            <div className="pick-details">
-                              <div className="player-info">
-                                <span 
-                                  className="player-name clickable-player-name"
-                                  onClick={() => {
-                                    const player: Player = {
-                                      id: pick.playerId || 0,
-                                      name: cleanPlayerName(pick.playerName),
-                                      position: pick.playerPosition,
-                                      team: pick.playerTeam,
-                                      league: pick.playerLeague as 'NFL' | 'NBA' | 'MLB',
-                                      stats: {}
-                                    };
-                                    handlePlayerNameClick(player);
-                                  }}
-                                >
-                                  {cleanPlayerName(pick.playerName)}
-                                </span>
-                                <span className="player-meta">
-                                  {pick.playerPosition} • {pick.playerTeam} • 
-                                  <span className={`league-badge ${pick.playerLeague.toLowerCase()}`}>
-                                    {pick.playerLeague}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="drafted-by">{memberName}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                ) : (
-                  <div className="no-drafts-message">
-                    No players drafted yet
-                  </div>
-                )}
-              </aside>
+              </div>
             </section>
           </>
         ) : (
@@ -1378,6 +1363,20 @@ const Draft: React.FC<DraftProps> = ({
           />
         </Suspense>
       )}
+
+      {/* Floating Draft Timer - shows when main timer is out of view */}
+      <FloatingDraftTimer
+        timeRemaining={webSocketTimer.timeRemaining}
+        isActive={webSocketTimer.isActive}
+        isPaused={timerState.isPaused || isPaused}
+        isMyTurn={draftStateActions.isMyTurn(user?.id || 0)}
+        currentPlayerName={getCurrentPlayerName()}
+        onExtendTime={() => {
+          const currentTime = draftState.timeRemaining;
+          draftStateActions.setTimeRemaining(currentTime + 30);
+        }}
+        isVisible={showFloatingTimer}
+      />
     </div>
   );
 };

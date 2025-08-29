@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../config/api';
+import ScoringSettingsSection from '../components/ScoringSettingsSection';
 import './LeagueSettings.css';
 
 interface User {
@@ -217,20 +218,14 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
           </div>
         </div>
 
-        <div className="settings-section coming-soon">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span className="section-icon">🏆</span>
-              Scoring & Rules
-            </h2>
-            <p className="section-description">
-              Configure league scoring system and game rules
-            </p>
-          </div>
-          <div className="coming-soon-banner">
-            <span className="banner-icon">🚧</span>
-            <span>Coming Soon</span>
-          </div>
+        {/* Scoring Settings Section */}
+        <div className="settings-section">
+          <ScoringSettingsSection 
+            leagueId={user.league.id}
+            onSave={(settings) => {
+              console.log('Scoring settings saved:', settings);
+            }}
+          />
         </div>
 
         <div className="settings-section coming-soon">

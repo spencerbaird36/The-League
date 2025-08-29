@@ -31,5 +31,8 @@ namespace FantasyLeague.Api.Models
         
         // Navigation property for team stats in this league
         public ICollection<TeamStats> TeamStats { get; set; } = new List<TeamStats>();
+        
+        // Navigation property for scoring settings
+        public ICollection<ScoringSettings> ScoringSettings { get; set; } = new List<ScoringSettings>();
     }
 }

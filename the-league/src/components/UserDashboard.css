@@ -31,6 +31,29 @@
   flex: 1;
 }
 
+.logo-container {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.dashboard-main-logo {
+  max-width: clamp(200px, 25vw, 350px);
+  height: auto;
+  animation: logoFloat 6s ease-in-out infinite;
+  filter: drop-shadow(0 8px 32px rgba(218, 165, 32, 0.4));
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dashboard-main-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 12px 48px rgba(218, 165, 32, 0.6));
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
 .welcome-title {
   font-family: 'Poppins', sans-serif;
   font-size: clamp(2.5rem, 6vw, 4rem);
@@ -42,11 +65,7 @@
   margin-bottom: 16px;
   letter-spacing: -1px;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  text-align: center;
 }
 
 .welcome-subtitle {
@@ -74,34 +93,6 @@
   font-family: 'Poppins', sans-serif;
 }
 
-.league-logo {
-  max-width: clamp(120px, 15vw, 200px);
-  height: auto;
-  animation: logoGlow 2s ease-in-out infinite alternate;
-  filter: drop-shadow(0 0 10px rgba(218, 165, 32, 0.5));
-  border: none;
-  outline: none;
-  background: transparent;
-}
-
-.league-logo.left {
-  animation-delay: 0s;
-}
-
-.league-logo.right {
-  animation-delay: 0.5s;
-}
-
-@keyframes logoGlow {
-  0% {
-    filter: drop-shadow(0 0 10px rgba(218, 165, 32, 0.3));
-    transform: scale(1);
-  }
-  100% {
-    filter: drop-shadow(0 0 20px rgba(218, 165, 32, 0.7));
-    transform: scale(1.05);
-  }
-}
 
 .league-code {
   font-size: 0.9rem;
@@ -314,6 +305,10 @@
     padding: 25px 20px;
   }
   
+  .dashboard-main-logo {
+    max-width: clamp(160px, 30vw, 250px);
+  }
+  
   .welcome-title {
     font-size: 2rem;
   }
@@ -325,6 +320,14 @@
 }
 
 @media (max-width: 480px) {
+  .dashboard-main-logo {
+    max-width: clamp(140px, 35vw, 200px);
+  }
+  
+  .logo-container {
+    margin-bottom: 20px;
+  }
+  
   .welcome-title {
     font-size: 1.8rem;
   }

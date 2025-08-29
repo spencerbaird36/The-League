@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import theLeagueLogo from '../assets/the_league.png';
 import UserDashboard from '../components/UserDashboard';
 import './MyTeam.css';
@@ -930,12 +929,12 @@ const Home: React.FC<HomeProps> = ({
         <div className="main-logo">
           <img src={theLeagueLogo} alt="The League" className="the-league-logo" />
         </div>
+        <p className="subtitle">Join the Ultimate Fantasy Sports Experience</p>
         <div className="sports-icons">
           <img src="https://1000logos.net/wp-content/uploads/2017/05/NFL-logo-500x338.png" alt="NFL Logo" className="league-logo" />
           <img src="https://loodibee.com/wp-content/uploads/Major_League_Baseball_MLB_transparent_logo.png" alt="MLB Logo" className="league-logo" />
           <img src="https://loodibee.com/wp-content/uploads/nba-logo-transparent.png" alt="NBA Logo" className="league-logo" />
         </div>
-        <p className="subtitle">Join the Ultimate Fantasy Sports Experience</p>
       </div>
 
       <div className="signup-container">

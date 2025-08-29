@@ -629,9 +629,6 @@ const AppContent: React.FC = () => {
             element={
               isAuthenticated && user?.league ? (
                 <Draft 
-                  draftedNFL={draftedNFL}
-                  draftedMLB={draftedMLB}
-                  draftedNBA={draftedNBA}
                   draftPlayer={draftPlayer}
                   addDraftToast={addDraftToast}
                   isDrafting={isDrafting}

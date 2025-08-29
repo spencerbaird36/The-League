@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import theLeagueLogo from '../assets/the_league.png';
 import LeagueStandings from './LeagueStandings';
 import RecentTransactions from './RecentTransactions';
@@ -33,10 +32,11 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user }) => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
+        <div className="logo-container">
+          <img src={theLeagueLogo} alt="The League" className="dashboard-main-logo" />
+        </div>
         <h1 className="welcome-title">
-          <img src={theLeagueLogo} alt="The League" className="league-logo left" />
           Welcome to <span className="league-name">{user.league.name}</span>
-          <img src={theLeagueLogo} alt="The League" className="league-logo right" />
         </h1>
         <p className="welcome-subtitle">
           {user.firstName}, here's your league overview

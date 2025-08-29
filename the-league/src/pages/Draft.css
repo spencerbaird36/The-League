@@ -1229,11 +1229,9 @@
   box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
 }
 
-/* Available Players Section - Side by side layout */
+/* Available Players Section - Full width layout */
 .available-players-section {
-  display: grid;
-  grid-template-columns: 1fr 350px;
-  gap: 30px;
+  display: block;
   height: calc(75vh);
 }
 
@@ -1264,84 +1262,14 @@
   flex-shrink: 0;
 }
 
-/* Drafted Players Sidebar Title - Match Available Players styling */
-.available-players-section .drafted-players-sidebar .sidebar-header h3 {
-  font-family: 'Poppins', sans-serif;
-  color: var(--text-cream);
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-  font-weight: 600;
-  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
-  margin: 0 0 20px 0;
-}
 
 .available-players-section .table-container {
   flex: 1;
   min-height: 0;
 }
 
-/* Ensure drafted players sidebar works properly in the new layout */
-.available-players-section .drafted-players-sidebar {
-  background: linear-gradient(135deg, 
-    rgba(30, 58, 95, 0.95) 0%, 
-    rgba(42, 74, 107, 0.9) 100%
-  );
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 24px;
-  border: 2px solid var(--border-light);
-  box-shadow: var(--shadow-deep);
-  height: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
 
-/* Sidebar header styling to match available players */
-.available-players-section .drafted-players-sidebar .sidebar-header {
-  flex-shrink: 0;
-  margin-bottom: 0;
-}
 
-/* Total picks container - positioned below title */
-.available-players-section .drafted-players-sidebar .total-picks-container {
-  flex-shrink: 0;
-  margin-bottom: 16px;
-  text-align: center;
-}
-
-/* Total picks styling */
-.available-players-section .drafted-players-sidebar .total-picks {
-  font-size: 0.85rem;
-  color: var(--accent-gold);
-  background: rgba(212, 175, 55, 0.15);
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-weight: 600;
-  display: inline-block;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
-}
-
-.available-players-section .drafted-players-sidebar .total-picks:hover {
-  background: rgba(212, 175, 55, 0.2);
-  border-color: rgba(212, 175, 55, 0.4);
-  transform: translateY(-1px);
-}
-
-/* Drafted players container to match table container behavior */
-.available-players-section .drafted-players-sidebar .drafted-players-container {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent-gold) transparent;
-  padding-right: 5px;
-  min-height: 0;
-}
 
 /* Left Sidebar - Filters */
 .draft-sidebar {
@@ -1737,15 +1665,6 @@
   flex-direction: column;
 }
 
-.available-players::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--gradient-gold);
-}
 
 .available-players h2 {
   font-family: 'Poppins', sans-serif;
@@ -2241,18 +2160,9 @@ tbody tr:hover td {
   font-size: 0.9rem;
 }
 
-/* Responsive Design for New Layout */
-@media (max-width: 1400px) {
-  .available-players-section {
-    grid-template-columns: 1fr 320px;
-    gap: 25px;
-  }
-}
-
+/* Responsive Design for Full Width Layout */
 @media (max-width: 1200px) {
   .available-players-section {
-    grid-template-columns: 1fr 280px;
-    gap: 20px;
     height: calc(70vh);
   }
   
@@ -2267,23 +2177,14 @@ tbody tr:hover td {
 
 @media (max-width: 968px) {
   .available-players-section {
-    grid-template-columns: 1fr;
-    gap: 20px;
     height: auto;
   }
   
   .available-players-section .available-players {
-    height: 50vh;
+    height: 60vh;
     min-height: 400px;
   }
   
-  .available-players-section .drafted-players-sidebar {
-    position: static;
-    order: 2;
-    height: 50vh;
-    min-height: 400px;
-    max-height: none;
-  }
   
   .filters-content {
     grid-template-columns: 1fr;
@@ -2302,86 +2203,9 @@ tbody tr:hover td {
   }
 }
 
+/* Legacy mobile styles - optimized for new layout */
 @media (max-width: 768px) {
-  .draft-container {
-    padding: 20px 15px;
-  }
-  
-  .draft-header h1 {
-    font-size: 2.5rem;
-  }
-  
-  .timer-container {
-    min-width: 280px;
-    padding: 20px 30px;
-  }
-  
-  .begin-draft-btn,
-  .start-draft-btn,
-  .auto-draft-btn,
-  .stop-auto-draft-btn,
-  .draft-control-btn {
-    padding: 14px 28px;
-    font-size: 0.9rem;
-    min-width: 120px;
-  }
-  
-  .pause-btn {
-    padding: 8px 16px;
-    font-size: 0.85rem;
-  }
-  
-  /* Filters section mobile styles - more compact */
-  .filters-section {
-    padding: 16px 20px;
-  }
-  
-  .filters-content {
-    gap: 16px;
-  }
-  
-  .filters-section .league-filter h4,
-  .filters-section .position-filter h4 {
-    font-size: 0.85rem;
-  }
-  
-  .filters-section .league-buttons {
-    gap: 6px;
-  }
-  
-  .filters-section .league-buttons button {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-  }
-  
-  .filters-section .position-tabs {
-    gap: 4px;
-  }
-  
-  .filters-section .position-tabs button {
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    min-width: 35px;
-  }
-  
-  .available-players-section .available-players {
-    padding: 25px 20px;
-    height: 45vh;
-    min-height: 350px;
-  }
-  
-  .available-players-section .drafted-players-sidebar {
-    padding: 20px;
-    height: 45vh;
-    min-height: 350px;
-  }
-  
-  .available-players-section .available-players h2,
-  .available-players-section .drafted-players-sidebar .sidebar-header h3 {
-    font-size: 1.3rem;
-    margin-bottom: 16px;
-  }
-
+  /* League members section mobile optimizations */
   .league-members-section {
     padding: 16px;
     margin-bottom: 20px;
@@ -2416,72 +2240,30 @@ tbody tr:hover td {
     font-size: 0.65rem;
   }
   
+  /* Table optimizations for mobile */
   table {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
   
   th,
   td {
-    padding: 12px 8px;
+    padding: 14px 10px;
   }
   
-  .team {
+  /* Hide team column on smaller screens */
+  th:nth-child(3),
+  td:nth-child(3) {
     display: none;
   }
   
   .stats {
-    min-width: 100px;
+    min-width: 80px;
   }
 }
 
+/* Legacy small mobile optimizations */
 @media (max-width: 480px) {
-  .draft-container {
-    padding: 15px 10px;
-  }
-  
-  /* Filters section small mobile styles - very compact */
-  .filters-section {
-    padding: 12px 15px;
-  }
-  
-  .filters-content {
-    gap: 12px;
-  }
-  
-  .filters-section .league-filter h4,
-  .filters-section .position-filter h4 {
-    font-size: 0.8rem;
-  }
-  
-  .filters-section .league-buttons button {
-    padding: 6px 10px;
-    font-size: 0.7rem;
-  }
-  
-  .filters-section .position-tabs button {
-    padding: 4px 6px;
-    font-size: 0.65rem;
-    min-width: 30px;
-  }
-  
-  .available-players-section .available-players {
-    padding: 20px 15px;
-    height: 40vh;
-    min-height: 300px;
-  }
-  
-  .available-players-section .drafted-players-sidebar {
-    padding: 15px;
-    height: 40vh;
-    min-height: 300px;
-  }
-  
-  .available-players-section .available-players h2,
-  .available-players-section .drafted-players-sidebar .sidebar-header h3 {
-    font-size: 1.1rem;
-    margin-bottom: 12px;
-  }
-
+  /* League members section small mobile */
   .league-members-section {
     padding: 12px;
     margin-bottom: 16px;
@@ -2520,21 +2302,12 @@ tbody tr:hover td {
     font-size: 0.6rem;
   }
   
+  /* Hide stats column on small mobile */
   .stats {
     display: none;
   }
   
-  .draft-btn,
-  .remove-btn {
-    padding: 8px 14px;
-    font-size: 0.75rem;
-  }
-  
-  .league-filter button {
-    padding: 10px 16px;
-    font-size: 0.75rem;
-  }
-  
+  /* Legacy position filter styles */
   .position-filter {
     padding: 15px;
   }
@@ -2543,34 +2316,6 @@ tbody tr:hover td {
     padding: 6px 12px;
     font-size: 0.75rem;
     min-width: 40px;
-  }
-  
-  .timer-container {
-    min-width: 260px;
-    padding: 18px 25px;
-  }
-  
-  .timer-value {
-    font-size: 1.8rem;
-  }
-  
-  .timer-label {
-    font-size: 1rem;
-  }
-  
-  .begin-draft-btn,
-  .start-draft-btn,
-  .auto-draft-btn,
-  .stop-auto-draft-btn,
-  .draft-control-btn {
-    padding: 12px 24px;
-    font-size: 0.85rem;
-    min-width: 100px;
-  }
-  
-  .pause-btn {
-    padding: 7px 14px;
-    font-size: 0.8rem;
   }
 }
 
@@ -2898,6 +2643,435 @@ tbody tr:hover td {
     font-size: 0.9rem;
   }
 }
+/* New Layout: Draft Board and Available Players Side by Side */
+.draft-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.draft-board-container {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  height: calc(75vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.available-players-container {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.95) 0%, 
+    rgba(42, 74, 107, 0.9) 100%
+  );
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 24px;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-deep);
+  height: calc(75vh);
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.available-players-container .available-players {
+  background: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.available-players-container .available-players h2 {
+  font-family: 'Poppins', sans-serif;
+  color: var(--text-cream);
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(30, 58, 95, 0.5);
+  flex-shrink: 0;
+}
+
+.available-players-container .table-container {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Enhanced Mobile-First Responsive Design */
+
+/* Tablet and Medium Desktop */
+@media (max-width: 1200px) {
+  .draft-content-grid {
+    gap: 20px;
+  }
+  
+  .draft-board-container,
+  .available-players-container {
+    height: calc(70vh);
+  }
+}
+
+/* Small Desktop and Large Tablets */
+@media (max-width: 968px) {
+  .draft-content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .draft-board-container,
+  .available-players-container {
+    height: calc(55vh);
+    min-height: 400px;
+  }
+  
+  /* Make filters more touch-friendly */
+  .filters-section .league-buttons button,
+  .filters-section .position-tabs button {
+    min-height: 44px; /* iOS touch target recommendation */
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Tablets and Large Mobile */
+@media (max-width: 768px) {
+  .draft-container {
+    padding: 15px 10px;
+  }
+  
+  .draft-content-grid {
+    gap: 15px;
+  }
+  
+  .draft-board-container,
+  .available-players-container {
+    padding: 16px;
+    height: calc(50vh);
+    min-height: 350px;
+    border-radius: 16px;
+  }
+  
+  .available-players-container .available-players h2 {
+    font-size: 1.3rem;
+    margin-bottom: 16px;
+  }
+  
+  /* Enhanced touch targets for mobile */
+  .draft-btn,
+  .remove-btn {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+  
+  /* Improved filters layout for tablets */
+  .filters-section {
+    padding: 16px 20px;
+    border-radius: 12px;
+  }
+  
+  .filters-content {
+    gap: 20px;
+  }
+  
+  .filters-section .league-buttons {
+    gap: 10px;
+    justify-content: center;
+  }
+  
+  .filters-section .position-tabs {
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .filters-section .league-buttons button {
+    min-height: 48px;
+    padding: 12px 18px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  
+  .filters-section .position-tabs button {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    min-width: 44px;
+  }
+  
+  /* Better timer section for mobile */
+  .timer-container {
+    min-width: 280px;
+    padding: 20px 30px;
+    border-radius: 16px;
+  }
+  
+  .timer-value {
+    font-size: 2.2rem;
+  }
+  
+  /* Improved button spacing */
+  .draft-management-buttons {
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .begin-draft-btn,
+  .start-draft-btn,
+  .auto-draft-btn,
+  .stop-auto-draft-btn,
+  .draft-control-btn {
+    min-height: 48px;
+    padding: 14px 28px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+    min-width: 140px;
+  }
+}
+
+/* Mobile Devices */
+@media (max-width: 480px) {
+  .draft-container {
+    padding: 10px 8px;
+  }
+  
+  .draft-header h1 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+  
+  .draft-header p {
+    font-size: 1rem;
+    margin-bottom: 20px;
+  }
+  
+  .draft-content-grid {
+    gap: 12px;
+  }
+  
+  .draft-board-container,
+  .available-players-container {
+    padding: 12px;
+    height: calc(45vh);
+    min-height: 320px;
+    border-radius: 12px;
+  }
+  
+  .available-players-container .available-players h2 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+  
+  /* Mobile-optimized filters */
+  .filters-section {
+    padding: 12px 16px;
+    margin-bottom: 15px;
+  }
+  
+  .filters-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    text-align: center;
+  }
+  
+  .filters-section .league-filter,
+  .filters-section .position-filter {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .filters-section .league-filter h4,
+  .filters-section .position-filter h4 {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+  
+  .filters-section .league-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 280px;
+  }
+  
+  .filters-section .league-buttons button {
+    min-height: 52px;
+    padding: 14px 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 8px;
+  }
+  
+  .filters-section .position-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+    gap: 6px;
+    width: 100%;
+    max-width: 320px;
+  }
+  
+  .filters-section .position-tabs button {
+    min-height: 48px;
+    padding: 12px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    min-width: 44px;
+  }
+  
+  /* Mobile-first draft buttons */
+  .draft-btn,
+  .remove-btn {
+    min-height: 48px;
+    padding: 14px 18px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    font-weight: 700;
+  }
+  
+  /* Compact timer for mobile */
+  .timer-container {
+    min-width: 260px;
+    padding: 16px 24px;
+    border-radius: 12px;
+  }
+  
+  .timer-value {
+    font-size: 1.8rem;
+  }
+  
+  .timer-label {
+    font-size: 0.9rem;
+  }
+  
+  /* Mobile action buttons */
+  .begin-draft-btn,
+  .start-draft-btn,
+  .auto-draft-btn,
+  .stop-auto-draft-btn,
+  .draft-control-btn {
+    min-height: 52px;
+    padding: 16px 24px;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    min-width: 120px;
+    font-weight: 700;
+  }
+  
+  .pause-btn {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+  
+  /* Improve mobile table interaction */
+  .virtual-table-cell {
+    padding: 16px 12px !important;
+  }
+  
+  /* Better mobile notifications */
+  .notifications-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  
+  .notification {
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    font-size: 0.85rem !important;
+  }
+}
+
+/* Extra Small Mobile */
+@media (max-width: 360px) {
+  .draft-container {
+    padding: 8px 6px;
+  }
+  
+  .draft-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .filters-section .league-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-width: 240px;
+  }
+  
+  .filters-section .league-buttons button {
+    min-height: 48px;
+    padding: 12px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .filters-section .position-tabs {
+    grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+    max-width: 280px;
+  }
+  
+  .filters-section .position-tabs button {
+    min-height: 44px;
+    padding: 10px 6px;
+    font-size: 0.7rem;
+    min-width: 40px;
+  }
+  
+  .draft-board-container,
+  .available-players-container {
+    padding: 10px;
+    height: calc(42vh);
+    min-height: 300px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .draft-btn:hover,
+  .remove-btn:hover,
+  .filters-section .league-buttons button:hover,
+  .filters-section .position-tabs button:hover {
+    transform: none;
+  }
+  
+  /* Add active states for better touch feedback */
+  .draft-btn:active,
+  .filters-section .league-buttons button:active,
+  .filters-section .position-tabs button:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+  
+  /* Ensure minimum touch targets */
+  button,
+  .clickable-player-name {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* Virtual scroll table styling for draft page */
 .draft-virtual-table {
   height: 100%;
