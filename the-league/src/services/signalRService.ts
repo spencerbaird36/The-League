@@ -22,6 +22,11 @@ class SignalRService {
   private timerTickCallbacks: ((data: any) => void)[] = [];
   private draftResetCallbacks: ((data: any) => void)[] = [];
   private draftPickErrorCallbacks: ((data: any) => void)[] = [];
+  
+  // Trade event callbacks
+  private tradeProposalReceivedCallbacks: ((data: any) => void)[] = [];
+  private tradeProposalAcceptedCallbacks: ((data: any) => void)[] = [];
+  private tradeProposalRejectedCallbacks: ((data: any) => void)[] = [];
 
   async connect(): Promise<void> {
     if (this.connection?.state === HubConnectionState.Connected) {
@@ -121,6 +126,22 @@ class SignalRService {
     this.connection.on('DraftPickError', (data: any) => {
       console.log('Draft pick error:', data);
       this.draftPickErrorCallbacks.forEach(callback => callback(data));
+    });
+
+    // Trade event listeners
+    this.connection.on('TradeProposalReceived', (data: any) => {
+      console.log('🤝 SIGNALR: Trade proposal received:', data);
+      this.tradeProposalReceivedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('TradeProposalAccepted', (data: any) => {
+      console.log('✅ SIGNALR: Trade proposal accepted:', data);
+      this.tradeProposalAcceptedCallbacks.forEach(callback => callback(data));
+    });
+
+    this.connection.on('TradeProposalRejected', (data: any) => {
+      console.log('❌ SIGNALR: Trade proposal rejected:', data);
+      this.tradeProposalRejectedCallbacks.forEach(callback => callback(data));
     });
 
     this.connection.onreconnecting((error) => {
@@ -452,10 +473,45 @@ class SignalRService {
     this.draftPickErrorCallbacks.push(callback);
   }
 
+  // Trade event callback registration
+  onTradeProposalReceived(callback: (data: any) => void): void {
+    this.tradeProposalReceivedCallbacks.push(callback);
+  }
+
+  onTradeProposalAccepted(callback: (data: any) => void): void {
+    this.tradeProposalAcceptedCallbacks.push(callback);
+  }
+
+  onTradeProposalRejected(callback: (data: any) => void): void {
+    this.tradeProposalRejectedCallbacks.push(callback);
+  }
+
   offDraftPickError(callback: (data: any) => void): void {
     const index = this.draftPickErrorCallbacks.indexOf(callback);
     if (index > -1) {
       this.draftPickErrorCallbacks.splice(index, 1);
+    }
+  }
+
+  // Trade event callback removal
+  offTradeProposalReceived(callback: (data: any) => void): void {
+    const index = this.tradeProposalReceivedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.tradeProposalReceivedCallbacks.splice(index, 1);
+    }
+  }
+
+  offTradeProposalAccepted(callback: (data: any) => void): void {
+    const index = this.tradeProposalAcceptedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.tradeProposalAcceptedCallbacks.splice(index, 1);
+    }
+  }
+
+  offTradeProposalRejected(callback: (data: any) => void): void {
+    const index = this.tradeProposalRejectedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.tradeProposalRejectedCallbacks.splice(index, 1);
     }
   }
 }

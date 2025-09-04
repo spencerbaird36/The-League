@@ -21,7 +21,7 @@ interface Transaction {
   firstName: string;
   lastName: string;
   transactionType: 'DRAFT' | 'ADD' | 'DROP' | 'TRADE' | 'WAIVER';
-  playerName: string;
+  playerName: string | null;
   playerPosition: string;
   playerTeam: string;
   playerLeague: string;
@@ -57,18 +57,26 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
           const transactionsData = await response.json();
           console.log('Transactions data received:', transactionsData);
           
-          // Transform the data to match our interface
+          // Transform the data to match our interface and filter for only completed trades
           let transformedTransactions: Transaction[] = [];
           
           if (Array.isArray(transactionsData)) {
-            transformedTransactions = transactionsData.slice(0, 10).map((entry: any, index: number) => ({
+            // Filter for TRADE transactions (completed/accepted trades) and free agent activity
+            const relevantTransactions = transactionsData.filter((entry: any) => {
+              const transactionType = entry.type || entry.Type || entry.transactionType;
+              return transactionType === 'Trade' || transactionType === 'TRADE' || 
+                     transactionType === 'FreeAgentPickup' || transactionType === 'ADD' ||
+                     transactionType === 'Drop' || transactionType === 'DROP';
+            });
+            
+            transformedTransactions = relevantTransactions.slice(0, 10).map((entry: any, index: number) => ({
               id: entry.id || index,
               userId: entry.userId || entry.user?.id,
               username: entry.username || entry.user?.username || 'Unknown',
               firstName: entry.firstName || entry.user?.firstName || '',
               lastName: entry.lastName || entry.user?.lastName || '',
               transactionType: entry.transactionType || entry.type || 'DRAFT',
-              playerName: cleanPlayerName(entry.playerName || entry.player?.name || 'Unknown Player'),
+              playerName: entry.playerName ? cleanPlayerName(entry.playerName) : (entry.player?.name ? cleanPlayerName(entry.player.name) : null),
               playerPosition: entry.playerPosition || entry.player?.position || '',
               playerTeam: entry.playerTeam || entry.player?.team || '',
               playerLeague: entry.playerLeague || entry.player?.league || 'NFL',
@@ -105,22 +113,43 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
   };
 
   const getTransactionText = (transaction: Transaction) => {
-    const playerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
     const userDisplay = transaction.userId === user?.id ? 'You' : `${transaction.firstName} ${transaction.lastName}`;
     
     switch (transaction.transactionType) {
       case 'DRAFT':
-        return `${userDisplay} drafted ${playerInfo}`;
+        if (transaction.playerName) {
+          const draftPlayerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
+          return `${userDisplay} drafted ${draftPlayerInfo}`;
+        }
+        return `${userDisplay} drafted a player`;
       case 'ADD':
-        return `${userDisplay} added ${playerInfo}`;
+        if (transaction.playerName) {
+          const addPlayerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
+          return `${userDisplay} added ${addPlayerInfo}`;
+        }
+        return `${userDisplay} added a player`;
       case 'DROP':
-        return `${userDisplay} dropped ${playerInfo}`;
+        if (transaction.playerName) {
+          const dropPlayerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
+          return `${userDisplay} dropped ${dropPlayerInfo}`;
+        }
+        return `${userDisplay} dropped a player`;
       case 'TRADE':
-        return `${userDisplay} traded ${playerInfo}`;
+        // For trades, use the full description from the backend since it contains the complete trade details
+        return transaction.details || `Trade completed`;
       case 'WAIVER':
-        return `${userDisplay} claimed ${playerInfo} off waivers`;
+        if (transaction.playerName) {
+          const waiverPlayerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
+          return `${userDisplay} claimed ${waiverPlayerInfo} off waivers`;
+        }
+        return `${userDisplay} claimed a player off waivers`;
       default:
-        return `${userDisplay} made a transaction with ${playerInfo}`;
+        if (transaction.playerName) {
+          const playerInfo = `${transaction.playerName} (${transaction.playerPosition}, ${transaction.playerTeam})`;
+          return `${userDisplay} made a transaction with ${playerInfo}`;
+        } else {
+          return transaction.details || `${userDisplay} made a transaction`;
+        }
     }
   };
 
@@ -153,7 +182,7 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
   if (isLoading) {
     return (
       <div className="transactions-card">
-        <h3 className="transactions-header">Recent Transactions</h3>
+        <h3 className="transactions-header">Recent Activity</h3>
         <div className="transactions-loading">Loading transactions...</div>
       </div>
     );
@@ -162,7 +191,7 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
   if (error) {
     return (
       <div className="transactions-card">
-        <h3 className="transactions-header">Recent Transactions</h3>
+        <h3 className="transactions-header">Recent Activity</h3>
         <div className="transactions-error">{error}</div>
       </div>
     );
@@ -173,9 +202,9 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
       <div className="transactions-card">
         <h3 className="transactions-header">
           <span className="transactions-icon">📈</span>
-          Recent Transactions
+          Recent Activity
         </h3>
-        <div className="transactions-empty">No recent transactions in your league.</div>
+        <div className="transactions-empty">No recent activity in your league.</div>
       </div>
     );
   }
@@ -222,7 +251,7 @@ const RecentTransactions: React.FC<RecentTransactionsProps> = ({ user, refreshTr
       
       <div className="transactions-footer">
         <button className="view-all-transactions">
-          View All Transactions →
+          View All Activity →
         </button>
       </div>
     </div>

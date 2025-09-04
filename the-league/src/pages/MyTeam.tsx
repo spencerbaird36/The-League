@@ -6,8 +6,10 @@ import './MyTeam.css';
 import { apiRequest } from '../config/api';
 import { cleanPlayerName } from '../utils/playerNameUtils';
 
-// Lazy load modal since it's only needed when users click on players
+// Lazy load modals since they're only needed when users click on them
 const PlayerInfoModal = lazy(() => import('../components/PlayerInfoModal'));
+const TradeProposalModal = lazy(() => import('../components/TradeProposalModal'));
+const TradeNotifications = lazy(() => import('../components/TradeNotifications'));
 
 interface User {
   id: number;
@@ -61,6 +63,8 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isPlayerInfoModalOpen, setIsPlayerInfoModalOpen] = useState<boolean>(false);
   const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
+  const [isTradeModalOpen, setIsTradeModalOpen] = useState<boolean>(false);
+  const [tradeNotificationRefresh, setTradeNotificationRefresh] = useState<number>(0);
   
   // Drag and drop state
   const [draggedPlayer, setDraggedPlayer] = useState<Player | null>(null);
@@ -143,6 +147,15 @@ const MyTeam: React.FC<MyTeamProps> = ({
   const handleClosePlayerInfo = () => {
     setIsPlayerInfoModalOpen(false);
     setSelectedPlayerForInfo(null);
+  };
+
+  // Trade modal handlers
+  const handleOpenTradeModal = () => {
+    setIsTradeModalOpen(true);
+  };
+
+  const handleCloseTradeModal = () => {
+    setIsTradeModalOpen(false);
   };
 
   // Drag and drop handlers
@@ -379,7 +392,32 @@ const MyTeam: React.FC<MyTeamProps> = ({
   return (
     <div className="my-team-container">
       <div className="page-header my-team-header">
-        <h1 className="page-title">My Team</h1>
+        <div className="header-top">
+          <h1 className="page-title">My Team</h1>
+          <div className="header-actions">
+            {user?.league && (
+              <Suspense fallback={<div>Loading...</div>}>
+                <TradeNotifications 
+                  user={user} 
+                  onTradeUpdate={() => {
+                    // Refresh roster data when a trade is accepted
+                    window.location.reload();
+                  }}
+                  refreshTrigger={tradeNotificationRefresh}
+                />
+              </Suspense>
+            )}
+            {user?.league && allDraftedPlayers.length > 0 && (
+              <button 
+                className="propose-trade-btn"
+                onClick={handleOpenTradeModal}
+                aria-label="Propose a trade with another team"
+              >
+                🤝 Propose Trade
+              </button>
+            )}
+          </div>
+        </div>
         
         <TimerDisplay
           isDrafting={isDrafting}
@@ -405,6 +443,22 @@ const MyTeam: React.FC<MyTeamProps> = ({
             isOpen={isPlayerInfoModalOpen}
             onClose={handleClosePlayerInfo}
             player={selectedPlayerForInfo}
+          />
+        </Suspense>
+      )}
+
+      {/* Trade Proposal Modal */}
+      {isTradeModalOpen && user?.league && (
+        <Suspense fallback={<LazyLoadFallback type="modal" />}>
+          <TradeProposalModal
+            isOpen={isTradeModalOpen}
+            onClose={handleCloseTradeModal}
+            user={user}
+            userRoster={allDraftedPlayers}
+            onTradeProposed={() => {
+              // Trigger TradeNotifications to refresh
+              setTradeNotificationRefresh(prev => prev + 1);
+            }}
           />
         </Suspense>
       )}
