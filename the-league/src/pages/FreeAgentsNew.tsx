@@ -61,7 +61,7 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
         if (draftStatusResponse.ok) {
           const draftData = await draftStatusResponse.json();
           console.log('Draft status received:', draftData);
-          setIsDraftCompleted(draftData.IsCompleted || false);
+          setIsDraftCompleted(draftData.IsCompleted || draftData.isCompleted || false);
         }
         
         // Fetch available players
@@ -162,7 +162,7 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
 
   // Draft completion status is now managed in local state
 
-  // Handle player pickup - simplified version
+  // Handle player pickup
   const handlePickupPlayer = useCallback(async (player: Player) => {
     if (!user?.league?.id || !user?.id) {
       setPickupMessage('Error: User or league not found');
@@ -177,14 +177,35 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
     setPickupMessage(`Attempting to pick up ${player.name}...`);
 
     try {
-      // For now, just simulate the pickup
-      setPickupMessage(`Successfully picked up ${player.name}!`);
-      setLocalPickedUpPlayers(prev => {
-        const newSet = new Set(prev);
-        newSet.add(player.id);
-        return newSet;
+      const response = await apiRequest('/api/teams/pickup-player', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          leagueId: user.league.id,
+          playerId: player.id,
+          playerName: player.name,
+          playerPosition: player.position,
+          playerTeam: player.team,
+          playerLeague: player.league
+        }),
       });
-      setTimeout(() => setPickupMessage(''), 3000);
+
+      if (response.ok) {
+        const result = await response.json();
+        setPickupMessage(`Successfully picked up ${player.name}!`);
+        setLocalPickedUpPlayers(prev => {
+          const newSet = new Set(prev);
+          newSet.add(player.id);
+          return newSet;
+        });
+        setTimeout(() => setPickupMessage(''), 3000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setPickupMessage(errorData.message || `Error picking up ${player.name}. Please try again.`);
+      }
     } catch (error) {
       console.error('Error picking up player:', error);
       setPickupMessage(`Error picking up ${player.name}. Please try again.`);
