@@ -56,12 +56,12 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
         
         // Fetch draft status first
         console.log('Fetching draft status for league:', user.league.id);
-        const draftStatusResponse = await apiRequest(`/api/draft/league/${user.league.id}/status`);
+        const draftStatusResponse = await apiRequest(`/api/draft/league/${user.league.id}`);
         
         if (draftStatusResponse.ok) {
           const draftData = await draftStatusResponse.json();
           console.log('Draft status received:', draftData);
-          setIsDraftCompleted(draftData.isCompleted || false);
+          setIsDraftCompleted(draftData.IsCompleted || false);
         }
         
         // Fetch available players
