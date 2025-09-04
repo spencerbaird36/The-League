@@ -25,6 +25,9 @@ namespace FantasyLeague.Api.Data
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<ScoringSettings> ScoringSettings { get; set; }
         public DbSet<PlayerWeeklyStats> PlayerWeeklyStats { get; set; }
+        public DbSet<TradeProposal> TradeProposals { get; set; }
+        public DbSet<TradePlayer> TradePlayers { get; set; }
+        public DbSet<TradeNotification> TradeNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -607,6 +610,154 @@ namespace FantasyLeague.Api.Data
                 entity.HasIndex(e => new { e.PlayerName, e.Season, e.Week });
                 entity.HasIndex(e => e.Position);
                 entity.HasIndex(e => e.Team);
+            });
+
+            // Configure TradeProposal entity
+            modelBuilder.Entity<TradeProposal>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasMaxLength(20)
+                    .HasDefaultValue("pending");
+                    
+                entity.Property(e => e.Message)
+                    .HasMaxLength(500);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.ExpiresAt)
+                    .IsRequired();
+                
+                // Configure relationship with League
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with ProposingUser
+                entity.HasOne(e => e.ProposingUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProposingUserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Configure relationship with TargetUser
+                entity.HasOne(e => e.TargetUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.TargetUserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.LeagueId, e.Status });
+                entity.HasIndex(e => new { e.ProposingUserId, e.Status });
+                entity.HasIndex(e => new { e.TargetUserId, e.Status });
+                entity.HasIndex(e => e.ExpiresAt);
+            });
+
+            // Configure TradePlayer entity
+            modelBuilder.Entity<TradePlayer>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.TradeType)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.PlayerName)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.PlayerPosition)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.PlayerTeam)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.PlayerLeague)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with TradeProposal
+                entity.HasOne(e => e.TradeProposal)
+                    .WithMany()
+                    .HasForeignKey(e => e.TradeProposalId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with UserRoster
+                entity.HasOne(e => e.UserRoster)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserRosterId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.TradeProposalId, e.TradeType });
+                entity.HasIndex(e => e.UserId);
+            });
+
+            // Configure TradeNotification entity
+            modelBuilder.Entity<TradeNotification>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(255);
+                    
+                entity.Property(e => e.IsRead)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Configure relationship with TradeProposal
+                entity.HasOne(e => e.TradeProposal)
+                    .WithMany(tp => tp.Notifications)
+                    .HasForeignKey(e => e.TradeProposalId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.UserId, e.IsRead });
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => e.TradeProposalId);
             });
         }
     }
