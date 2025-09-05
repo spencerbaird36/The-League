@@ -7,6 +7,7 @@ interface User {
   username: string;
   firstName: string;
   lastName: string;
+  teamLogo?: string;
   league?: {
     id: number;
     name: string;
@@ -14,28 +15,29 @@ interface User {
 }
 
 interface Matchup {
-  id: number;
+  id: string;
   week: number;
-  season: number;
+  season?: number;
   homeTeamId: number;
   awayTeamId: number;
-  homeTeam: {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-  };
-  awayTeam: {
-    id: number;
-    username: string;
-    firstName: string;
-    lastName: string;
-  };
+  homeTeamName: string;
+  awayTeamName: string;
   homeScore?: number;
   awayScore?: number;
-  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
-  startDate: string;
-  leagueType?: string;
+  status: 'upcoming' | 'in_progress' | 'completed' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+  date: string;
+  league: string;
+}
+
+interface ScheduleResponse {
+  league: string;
+  season: number;
+  weeks: {
+    week: number;
+    startDate: string;
+    endDate: string;
+    matchups: Matchup[];
+  }[];
 }
 
 interface UpcomingMatchupsProps {
@@ -70,58 +72,57 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
             const response = await apiRequest(`/api/schedule/league/${user.league.id}/sport/${sport}/year/${currentYear}`);
             
             if (response.ok) {
-              const scheduleData = await response.json();
+              const scheduleData: ScheduleResponse = await response.json();
               console.log(`${sport} schedule data received:`, scheduleData);
               
-              if (Array.isArray(scheduleData)) {
-                const sportMatchups = scheduleData
-                  .filter((match: any) => {
-                    // Only include matchups involving the current user
-                    return match.homeTeamId === user.id || match.awayTeamId === user.id;
-                  })
-                  .filter((match: any) => {
-                    // Only include upcoming or in-progress matchups
-                    const matchDate = new Date(match.startDate || match.date);
-                    const now = new Date();
-                    return match.status === 'SCHEDULED' || match.status === 'IN_PROGRESS' || matchDate >= now;
-                  })
-                  .slice(0, 2) // Limit to 2 per sport
-                  .map((match: any, index: number) => ({
-                    id: match.id || `${sport}-${index}`,
-                    week: match.week || 1,
-                    season: match.season || currentYear,
-                    homeTeamId: match.homeTeamId,
-                    awayTeamId: match.awayTeamId,
-                    homeTeam: match.homeTeam || {
-                      id: match.homeTeamId,
-                      username: match.homeTeamId === user.id ? user.username : 'Unknown',
-                      firstName: match.homeTeamId === user.id ? user.firstName : 'Unknown',
-                      lastName: match.homeTeamId === user.id ? user.lastName : 'User'
-                    },
-                    awayTeam: match.awayTeam || {
-                      id: match.awayTeamId,
-                      username: match.awayTeamId === user.id ? user.username : 'Unknown',
-                      firstName: match.awayTeamId === user.id ? user.firstName : 'Unknown',
-                      lastName: match.awayTeamId === user.id ? user.lastName : 'User'
-                    },
-                    homeScore: match.homeScore,
-                    awayScore: match.awayScore,
-                    status: match.status || 'SCHEDULED',
-                    startDate: match.startDate || match.date || new Date().toISOString(),
-                    leagueType: sport
-                  }));
-                
-                allMatchups.push(...sportMatchups);
+              // Flatten all matchups from all weeks
+              const sportMatchups: Matchup[] = [];
+              
+              for (const week of scheduleData.weeks) {
+                for (const matchup of week.matchups) {
+                  // Only include matchups involving the current user
+                  if (matchup.homeTeamId === user.id || matchup.awayTeamId === user.id) {
+                    sportMatchups.push({
+                      ...matchup,
+                      season: scheduleData.season,
+                      league: sport
+                    });
+                  }
+                }
               }
+              
+              // Find the most current matchup for this sport
+              // First, try to find upcoming or in-progress matchups
+              const now = new Date();
+              
+              let currentMatchup = sportMatchups.find(matchup => {
+                const matchDate = new Date(matchup.date);
+                return (matchup.status === 'upcoming' || matchup.status === 'in_progress' || 
+                        matchup.status === 'SCHEDULED' || matchup.status === 'IN_PROGRESS') &&
+                       matchDate >= now;
+              });
+              
+              // If no upcoming matchups, get the first scheduled matchup even if it's in the past
+              // This ensures we show matchups even when the league hasn't started yet
+              if (!currentMatchup && sportMatchups.length > 0) {
+                currentMatchup = sportMatchups.find(matchup => 
+                  matchup.status === 'upcoming' || matchup.status === 'SCHEDULED'
+                ) || sportMatchups[0]; // Fallback to first matchup
+              }
+              
+              if (currentMatchup) {
+                allMatchups.push(currentMatchup);
+              }
+              
             }
           } catch (sportError) {
             console.log(`No ${sport} schedule found or error fetching:`, sportError);
           }
         }
         
-        // Sort by start date and take first 5
-        allMatchups.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-        setMatchups(allMatchups.slice(0, 5));
+        // Sort by week number to show them in chronological order
+        allMatchups.sort((a, b) => a.week - b.week);
+        setMatchups(allMatchups);
         
       } catch (err) {
         console.error('Error fetching upcoming matchups:', err);
@@ -132,7 +133,7 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
     };
 
     fetchUpcomingMatchups();
-  }, [user?.id, user?.league?.id, user?.username, user?.firstName, user?.lastName]);
+  }, [user?.id, user?.league?.id]);
 
   const formatMatchupDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -141,7 +142,8 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
 
     if (diffInDays === 0) return 'Today';
     if (diffInDays === 1) return 'Tomorrow';
-    if (diffInDays < 7) return `In ${diffInDays} days`;
+    if (diffInDays < 7 && diffInDays > 0) return `In ${diffInDays} days`;
+    if (diffInDays < 0 && diffInDays > -7) return `${Math.abs(diffInDays)} days ago`;
     
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
@@ -152,15 +154,17 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
 
   const getOpponent = (matchup: Matchup) => {
     if (matchup.homeTeamId === user?.id) {
+      // User is home team
       return {
-        team: matchup.awayTeam,
+        name: matchup.awayTeamName,
         isHome: true,
         userScore: matchup.homeScore,
         opponentScore: matchup.awayScore
       };
     } else {
+      // User is away team
       return {
-        team: matchup.homeTeam,
+        name: matchup.homeTeamName,
         isHome: false,
         userScore: matchup.awayScore,
         opponentScore: matchup.homeScore
@@ -169,21 +173,47 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'SCHEDULED': return '📅';
-      case 'IN_PROGRESS': return '⚡';
-      case 'COMPLETED': return '✅';
+    switch (status.toLowerCase()) {
+      case 'scheduled':
+      case 'upcoming': return '📅';
+      case 'in_progress':
+      case 'in-progress': return '⚡';
+      case 'completed': return '✅';
       default: return '📋';
     }
   };
 
-  const getLeagueIcon = (leagueType?: string) => {
-    switch (leagueType) {
+  const getLeagueIcon = (league: string) => {
+    switch (league) {
       case 'NFL': return '🏈';
       case 'MLB': return '⚾';
       case 'NBA': return '🏀';
       default: return '🏆';
     }
+  };
+
+  // Team logo mapping
+  const TEAM_LOGOS = [
+    { id: 'football', emoji: '🏈', name: 'Football' },
+    { id: 'basketball', emoji: '🏀', name: 'Basketball' },
+    { id: 'baseball', emoji: '⚾', name: 'Baseball' },
+    { id: 'soccer', emoji: '⚽', name: 'Soccer' },
+    { id: 'hockey', emoji: '🏒', name: 'Hockey' },
+    { id: 'tennis', emoji: '🎾', name: 'Tennis' },
+    { id: 'golf', emoji: '⛳', name: 'Golf' },
+    { id: 'trophy', emoji: '🏆', name: 'Trophy' },
+    { id: 'medal', emoji: '🥇', name: 'Gold Medal' },
+    { id: 'star', emoji: '⭐', name: 'Star' },
+    { id: 'fire', emoji: '🔥', name: 'Fire' },
+    { id: 'lightning', emoji: '⚡', name: 'Lightning' }
+  ];
+
+  const getUserLogo = () => {
+    if (user?.teamLogo) {
+      const logo = TEAM_LOGOS.find(logo => logo.id === user.teamLogo);
+      return logo?.emoji;
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -232,25 +262,26 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
               <div className="matchup-header-row">
                 <div className="matchup-week">
                   <span className="week-text">Week {matchup.week}</span>
-                  {matchup.leagueType && (
-                    <span className="league-badge">
-                      {getLeagueIcon(matchup.leagueType)} {matchup.leagueType}
-                    </span>
-                  )}
+                  <span className="league-badge">
+                    {getLeagueIcon(matchup.league)} {matchup.league}
+                  </span>
                 </div>
                 <div className="matchup-status">
                   <span className="status-icon">{getStatusIcon(matchup.status)}</span>
-                  <span className="status-text">{matchup.status.replace('_', ' ')}</span>
+                  <span className="status-text">{matchup.status.replace('_', ' ').replace('-', ' ')}</span>
                 </div>
               </div>
               
               <div className="matchup-teams">
                 <div className="team-section user-team">
                   <div className="team-info">
-                    <span className="team-name">You</span>
+                    <div className="team-name-row">
+                      {getUserLogo() && <span className="team-logo">{getUserLogo()}</span>}
+                      <span className="team-name">You</span>
+                    </div>
                     <span className="team-username">@{user?.username}</span>
                   </div>
-                  {opponent.userScore !== undefined && (
+                  {opponent.userScore !== undefined && opponent.userScore !== null && (
                     <div className="team-score">{opponent.userScore.toFixed(1)}</div>
                   )}
                 </div>
@@ -258,16 +289,15 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
                 <div className="matchup-vs">
                   <span className="vs-text">vs</span>
                   <div className="home-away-indicator">
-                    {opponent.isHome ? '@' : 'vs'}
+                    {opponent.isHome ? 'HOME' : 'AWAY'}
                   </div>
                 </div>
                 
                 <div className="team-section opponent-team">
                   <div className="team-info">
-                    <span className="team-name">{opponent.team.firstName} {opponent.team.lastName}</span>
-                    <span className="team-username">@{opponent.team.username}</span>
+                    <span className="team-name">{opponent.name}</span>
                   </div>
-                  {opponent.opponentScore !== undefined && (
+                  {opponent.opponentScore !== undefined && opponent.opponentScore !== null && (
                     <div className="team-score">{opponent.opponentScore.toFixed(1)}</div>
                   )}
                 </div>
@@ -275,9 +305,9 @@ const UpcomingMatchups: React.FC<UpcomingMatchupsProps> = ({ user }) => {
               
               <div className="matchup-footer">
                 <div className="matchup-date">
-                  {formatMatchupDate(matchup.startDate)}
+                  {formatMatchupDate(matchup.date)}
                 </div>
-                {matchup.status === 'SCHEDULED' && (
+                {(matchup.status === 'upcoming' || matchup.status === 'SCHEDULED') && (
                   <button className="view-matchup-btn">
                     View Details
                   </button>

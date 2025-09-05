@@ -25,6 +25,9 @@ namespace FantasyLeague.Api.Models
         [StringLength(50)]
         public string LastName { get; set; } = string.Empty;
         
+        [StringLength(100)]
+        public string? TeamLogo { get; set; }
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public DateTime? LastLoginAt { get; set; }

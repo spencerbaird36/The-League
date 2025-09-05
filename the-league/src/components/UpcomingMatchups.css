@@ -134,6 +134,26 @@
   text-align: left;
 }
 
+.team-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-team .team-name-row {
+  justify-content: flex-end;
+}
+
+.opponent-team .team-name-row {
+  justify-content: flex-start;
+}
+
+.team-logo {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+
 .team-info .team-name {
   display: block;
   font-weight: 700;

@@ -442,6 +442,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
+  teamLogo?: string;
   createdAt: string;
   lastLoginAt?: string;
   league?: League;

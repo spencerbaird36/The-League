@@ -9,8 +9,12 @@ import './UserDashboard.css';
 interface User {
   id: number;
   username: string;
+  email: string;
   firstName: string;
   lastName: string;
+  teamLogo?: string;
+  createdAt: string;
+  lastLoginAt?: string;
   league?: {
     id: number;
     name: string;

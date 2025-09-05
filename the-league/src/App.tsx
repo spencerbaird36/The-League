@@ -609,6 +609,7 @@ const AppContent: React.FC = () => {
         user={user} 
         login={login} 
         logout={logout} 
+        onUserUpdate={registerAndLogin}
       />
         <Routes>
           <Route path="/" element={

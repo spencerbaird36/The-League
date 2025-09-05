@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDraft } from '../context/DraftContext';
 import OfflineIndicator from './OfflineIndicator';
+import MyAccount from './MyAccount';
 import './Navigation.css';
 
 interface League {
@@ -16,6 +17,7 @@ interface User {
   email: string;
   firstName: string;
   lastName: string;
+  teamLogo?: string;
   createdAt: string;
   lastLoginAt?: string;
   league?: League;
@@ -26,18 +28,21 @@ interface NavigationProps {
   user: User | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  onUserUpdate?: (updatedUser: User) => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
   isAuthenticated, 
   user, 
   login, 
-  logout 
+  logout,
+  onUserUpdate
 }) => {
   const location = useLocation();
   const { state: draftState } = useDraft();
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -88,6 +93,36 @@ const Navigation: React.FC<NavigationProps> = ({
   // Determine draft navigation text based on draft completion status
   const isDraftCompleted = draftState?.draftState?.isCompleted ?? false;
   const draftNavText = isDraftCompleted ? 'Draft Recap' : 'Draft Now';
+
+  // Team logo mapping
+  const TEAM_LOGOS = [
+    { id: 'football', emoji: '🏈', name: 'Football' },
+    { id: 'basketball', emoji: '🏀', name: 'Basketball' },
+    { id: 'baseball', emoji: '⚾', name: 'Baseball' },
+    { id: 'soccer', emoji: '⚽', name: 'Soccer' },
+    { id: 'hockey', emoji: '🏒', name: 'Hockey' },
+    { id: 'tennis', emoji: '🎾', name: 'Tennis' },
+    { id: 'golf', emoji: '⛳', name: 'Golf' },
+    { id: 'trophy', emoji: '🏆', name: 'Trophy' },
+    { id: 'medal', emoji: '🥇', name: 'Gold Medal' },
+    { id: 'star', emoji: '⭐', name: 'Star' },
+    { id: 'fire', emoji: '🔥', name: 'Fire' },
+    { id: 'lightning', emoji: '⚡', name: 'Lightning' }
+  ];
+
+  const getUserLogo = () => {
+    if (user?.teamLogo) {
+      const logo = TEAM_LOGOS.find(logo => logo.id === user.teamLogo);
+      return logo?.emoji;
+    }
+    return null;
+  };
+
+  const handleUserUpdate = (updatedUser: User) => {
+    if (onUserUpdate) {
+      onUserUpdate(updatedUser);
+    }
+  };
 
   return (
     <nav className="navigation">
@@ -184,7 +219,14 @@ const Navigation: React.FC<NavigationProps> = ({
               >
                 <span className="settings-icon">⚙️</span>
               </Link>
-              <span className="welcome-text">Welcome, {user?.firstName}!</span>
+              <button 
+                className="welcome-text clickable"
+                onClick={() => setIsAccountModalOpen(true)}
+                title="My Account"
+              >
+                {getUserLogo() && <span className="nav-user-logo">{getUserLogo()}</span>}
+                Welcome, {user?.firstName}!
+              </button>
               <button onClick={handleLogout} className="auth-button logout-btn">
                 Logout
               </button>
@@ -233,6 +275,15 @@ const Navigation: React.FC<NavigationProps> = ({
           )}
         </div>
       </div>
+
+      {isAuthenticated && user && (
+        <MyAccount
+          user={user}
+          isOpen={isAccountModalOpen}
+          onClose={() => setIsAccountModalOpen(false)}
+          onUserUpdate={handleUserUpdate}
+        />
+      )}
     </nav>
   );
 };
