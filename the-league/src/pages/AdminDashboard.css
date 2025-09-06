@@ -1,0 +1,534 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: var(--background-primary);
+  padding: 24px;
+}
+
+.admin-header {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.admin-header h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}
+
+.admin-header p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+}
+
+.back-button {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background: var(--surface-hover);
+  transform: translateY(-2px);
+}
+
+.error-message {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  color: #f44336;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message button {
+  background: none;
+  border: none;
+  color: #f44336;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  background: var(--surface-glass);
+  padding: 8px;
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+}
+
+.admin-tabs button {
+  flex: 1;
+  padding: 16px 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.admin-tabs button.active {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: var(--shadow-premium);
+}
+
+.admin-tabs button:hover:not(.active) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.admin-content {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid var(--border-light);
+  padding: 32px;
+  box-shadow: var(--shadow-premium);
+}
+
+/* DASHBOARD STYLES */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background: var(--surface-elevated);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  text-align: center;
+}
+
+.stat-card h3 {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-number {
+  font-size: 3rem;
+  font-weight: bold;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.stat-detail {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.dashboard-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.dashboard-section {
+  background: var(--surface-elevated);
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.dashboard-section h3 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.league-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.league-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-glass);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.league-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.league-count {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-glass);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+}
+
+.recent-date {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* LEAGUES STYLES */
+.section-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.section-header h2 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.section-header p {
+  color: var(--text-secondary);
+}
+
+.leagues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.league-card {
+  background: var(--surface-elevated);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  padding: 24px;
+  transition: transform 0.2s ease;
+}
+
+.league-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-premium);
+}
+
+.league-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.league-header h3 {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.status {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status.active {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4CAF50;
+}
+
+.status.inactive {
+  background: rgba(158, 158, 158, 0.2);
+  color: #9e9e9e;
+}
+
+.league-details {
+  margin-bottom: 16px;
+}
+
+.league-details p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.league-details strong {
+  color: var(--text-primary);
+}
+
+.league-members h4 {
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.member-item {
+  padding: 8px 12px;
+  background: var(--surface-glass);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.league-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.delete-button {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  color: #f44336;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+  background: rgba(244, 67, 54, 0.2);
+  transform: translateY(-2px);
+}
+
+.delete-button.small {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+}
+
+/* TABLE STYLES */
+.users-table, .players-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-elevated);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr 80px 120px 80px;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--surface-glass);
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.players-table .table-header {
+  grid-template-columns: 1.5fr 80px 120px 80px 80px 80px 80px 80px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr 80px 120px 80px;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.players-table .table-row {
+  grid-template-columns: 1.5fr 80px 120px 80px 80px 80px 80px 80px;
+}
+
+.table-row:hover {
+  background: var(--surface-hover);
+}
+
+.table-row span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.league-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.league-filter label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.league-filter select {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* MODAL STYLES */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.confirmation-modal {
+  background: var(--surface-elevated);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-premium);
+}
+
+.confirmation-modal h3 {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.confirmation-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.confirmation-modal .warning {
+  color: #f44336;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancel-button {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background: var(--surface-hover);
+}
+
+/* LOADING SPINNER */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--border-light);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .admin-dashboard {
+    padding: 16px;
+  }
+  
+  .admin-tabs {
+    flex-direction: column;
+  }
+  
+  .admin-content {
+    padding: 20px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-sections {
+    grid-template-columns: 1fr;
+  }
+  
+  .leagues-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-header, .table-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .table-header span, .table-row span {
+    padding: 4px 0;
+  }
+}

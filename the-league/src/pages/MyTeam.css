@@ -105,11 +105,11 @@
   margin: 0 auto;
 }
 
-.teams-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 40px;
-  max-width: 1400px;
+.teams-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1600px;
   margin: 0 auto;
   z-index: 1;
   position: relative;
@@ -267,6 +267,7 @@
 .draggable-row {
   cursor: grab;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .draggable-row:active {
@@ -279,18 +280,42 @@
   box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
 }
 
-.draggable-row[draggable="true"]:hover::before {
-  content: "⋮⋮";
-  position: absolute;
-  left: 10px;
-  color: var(--accent-gold);
-  font-weight: bold;
-  font-size: 1.2rem;
-}
-
+/* Remove the problematic hover pseudo-element */
 tr.starter-row.draggable-row,
 tr.bench-row.draggable-row {
   position: relative;
+}
+
+/* Add drag indicator that doesn't affect layout */
+.draggable-row:hover .position-badge::after {
+  content: "⋮⋮";
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-gold);
+  font-weight: bold;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+/* Valid drop target styling */
+.team-card .roster-table tr.drop-valid {
+  background: rgba(76, 175, 80, 0.1);
+  border: 2px dashed #4CAF50;
+}
+
+.team-card .roster-table tr.drop-invalid {
+  background: rgba(244, 67, 54, 0.1);
+  border: 2px dashed #f44336;
+  cursor: not-allowed;
+}
+
+/* Enhanced dragging state */
+.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  z-index: 1000;
 }
 
 .position {
@@ -540,4 +565,374 @@ tr.bench-row.draggable-row {
     min-width: 45px;
     font-size: 0.75rem;
   }
+}
+
+/* New Team Card Styles */
+.team-card {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-premium);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-deep);
+}
+
+.team-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.8) 0%, 
+    rgba(42, 74, 107, 0.7) 100%
+  );
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.team-card-header:hover {
+  background: linear-gradient(135deg, 
+    rgba(30, 58, 95, 0.9) 0%, 
+    rgba(42, 74, 107, 0.8) 100%
+  );
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.team-icon {
+  font-size: 1.8rem;
+}
+
+.team-title h3 {
+  color: var(--text-white);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.player-count {
+  background: var(--accent-gold);
+  color: var(--primary-navy);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.team-summary {
+  color: var(--text-gray);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 42px;
+}
+
+.expand-icon {
+  color: var(--accent-gold);
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: transform 0.3s ease;
+}
+
+.team-card-content {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+.team-card .team-table-container {
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  overflow-x: auto;
+}
+
+.team-card .roster-table {
+  width: 100%;
+  min-width: 800px;
+  font-size: 0.85rem;
+}
+
+.team-card .roster-table th {
+  background: var(--surface-dark);
+  color: var(--text-cream);
+  padding: 12px 8px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.team-card .roster-table th:first-child {
+  width: 60px;
+}
+
+.team-card .roster-table th:nth-child(2) {
+  width: 180px;
+  text-align: left;
+}
+
+.team-card .roster-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+
+.position-cell {
+  width: 60px;
+  text-align: center;
+}
+
+.position-badge {
+  display: inline-block;
+  background: var(--accent-gold);
+  color: var(--primary-navy);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 32px;
+}
+
+.position-badge.bench {
+  background: #ffa726;
+  color: white;
+}
+
+.player-cell {
+  width: 180px;
+  text-align: left;
+  padding-left: 16px;
+}
+
+.player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.player-info .clickable-player-name {
+  color: var(--text-white);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.player-info .clickable-player-name:hover {
+  color: var(--accent-gold);
+}
+
+.player-team {
+  color: var(--text-gray);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-cell {
+  color: var(--text-cream);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+.empty-cell {
+  color: var(--text-gray);
+  font-style: italic;
+  opacity: 0.6;
+  text-align: left;
+  padding-left: 16px;
+}
+
+.team-card .bench-divider {
+  background: rgba(255, 167, 38, 0.1);
+  border-top: 2px solid #ffa726;
+}
+
+.team-card .bench-header {
+  text-align: center;
+  padding: 10px;
+  font-weight: 600;
+  color: #ffa726;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+}
+
+.team-card .bench-row {
+  background: rgba(255, 167, 38, 0.05);
+  border-left: 3px solid #ffa726;
+}
+
+.team-card .bench-row:hover {
+  background: rgba(255, 167, 38, 0.1);
+}
+
+/* Responsive Design for Team Cards */
+@media (max-width: 768px) {
+  .team-card-header {
+    padding: 16px 20px;
+  }
+  
+  .team-title h3 {
+    font-size: 1.3rem;
+  }
+  
+  .team-icon {
+    font-size: 1.5rem;
+  }
+  
+  .team-summary {
+    margin-left: 32px;
+    font-size: 0.8rem;
+  }
+  
+  .team-card .roster-table {
+    min-width: 600px;
+  }
+  
+  .team-card .roster-table th,
+  .team-card .roster-table td {
+    padding: 8px 4px;
+    font-size: 0.75rem;
+  }
+  
+  .player-cell {
+    width: 150px;
+  }
+  
+  .position-badge {
+    padding: 2px 6px;
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .teams-container {
+    gap: 16px;
+  }
+  
+  .team-card-header {
+    padding: 14px 16px;
+  }
+  
+  .team-title {
+    gap: 8px;
+  }
+  
+  .team-title h3 {
+    font-size: 1.1rem;
+  }
+  
+  .player-count {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+  }
+  
+  .team-summary {
+    margin-left: 28px;
+    font-size: 0.75rem;
+  }
+  
+  .team-card .team-table-container {
+    padding: 0;
+  }
+  
+  .team-card .roster-table {
+    min-width: 500px;
+  }
+  
+  .player-cell {
+    width: 120px;
+  }
+  
+  .stat-cell {
+    min-width: 40px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Drag and Drop Styles */
+.draggable-row {
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.draggable-row:active {
+  cursor: grabbing;
+}
+
+.valid-drop-zone {
+  background: rgba(76, 175, 80, 0.1) !important;
+  border: 2px dashed #4CAF50 !important;
+  animation: pulse-green 2s infinite;
+}
+
+.being-dragged {
+  opacity: 0.5 !important;
+  transform: scale(0.95);
+  border: 2px solid rgba(212, 175, 55, 0.5) !important;
+}
+
+@keyframes pulse-green {
+  0%, 100% {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: #4CAF50;
+  }
+  50% {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: #66BB6A;
+  }
+}
+
+/* Enhance position badge for valid drop zones */
+.valid-drop-zone .position-badge {
+  background: linear-gradient(135deg, #4CAF50, #45a049) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  transform: scale(1.05);
+}
+
+/* Make drag zones more visible on hover */
+.roster-table tr:hover.valid-drop-zone {
+  background: rgba(76, 175, 80, 0.15) !important;
 }

@@ -19,6 +19,7 @@ import Schedule from './pages/Schedule';
 import TeamPage from './pages/TeamPage';
 import Chat from './pages/Chat';
 import LeagueSettings from './pages/LeagueSettings';
+import AdminDashboard from './pages/AdminDashboard';
 
 interface League {
   id: number;
@@ -747,6 +748,16 @@ const AppContent: React.FC = () => {
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to access league settings.</div>
               ) : (
                 <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please join or create a league to access league settings.</div>
+              )
+            } 
+          />
+          <Route 
+            path="/admin-dashboard" 
+            element={
+              isAuthenticated && user ? (
+                <AdminDashboard user={user} />
+              ) : (
+                <div style={{padding: '50px', textAlign: 'center', color: 'white'}}>Please log in to access the admin dashboard.</div>
               )
             } 
           />

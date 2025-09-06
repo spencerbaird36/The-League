@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import theLeagueLogo from '../assets/the_league.png';
 import LeagueStandings from './LeagueStandings';
 import RecentTransactions from './RecentTransactions';
 import UpcomingMatchups from './UpcomingMatchups';
 import { useDraft } from '../context/DraftContext';
+import { adminService } from '../services/adminService';
 import './UserDashboard.css';
 
 interface User {
@@ -28,10 +30,13 @@ interface UserDashboardProps {
 
 const UserDashboard: React.FC<UserDashboardProps> = ({ user }) => {
   const { state } = useDraft();
+  const navigate = useNavigate();
   
   if (!user || !user.league) {
     return null;
   }
+
+  const isAdmin = adminService.isAdmin(user.email);
 
   return (
     <div className="dashboard-container">
@@ -45,6 +50,18 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user }) => {
         <p className="welcome-subtitle">
           {user.firstName}, here's your league overview
         </p>
+        
+        {isAdmin && (
+          <div className="admin-access">
+            <button 
+              className="admin-button"
+              onClick={() => navigate('/admin-dashboard')}
+              title="Access master admin dashboard"
+            >
+              🛠️ Admin Dashboard
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="dashboard-simple-grid">
