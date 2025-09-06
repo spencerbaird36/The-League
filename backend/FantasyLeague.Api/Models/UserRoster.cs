@@ -43,5 +43,7 @@ namespace FantasyLeague.Api.Models
         public int Round { get; set; }
         
         public DateTime DraftedAt { get; set; } = DateTime.UtcNow;
+        
+        public string? LineupPosition { get; set; } = null; // Position in lineup (QB, RB, BN, etc.) - null means on bench
     }
 }
