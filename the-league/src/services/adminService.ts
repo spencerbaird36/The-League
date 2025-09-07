@@ -1,6 +1,6 @@
-import { API_BASE_WITH_PATH } from '../config/api';
+import { API_BASE_URL } from '../config/api';
 
-const API_BASE_WITH_PATH = `${API_BASE_WITH_PATH}/api`;
+const API_BASE_WITH_PATH = `${API_BASE_URL}/api`;
 
 export interface AdminUser {
   id: number;
