@@ -402,4 +402,4 @@ MigrationBackup/
 .ionide/
 
 # Claude Code files
-.claude/
+.claude/# Heroku deployment fix
