@@ -45,17 +45,13 @@ namespace FantasyLeague.Api.Controllers
                         LastName = l.CreatedBy.LastName
                     },
                     UserCount = l.Users.Count,
-                    DraftCount = 0,
                     Users = l.Users.Select(u => new
                     {
                         Id = u.Id,
                         Username = u.Username,
                         Email = u.Email,
                         FirstName = u.FirstName,
-                        LastName = u.LastName,
-                        IsActive = u.IsActive,
-                        LastLoginAt = u.LastLoginAt,
-                        CreatedAt = u.CreatedAt
+                        LastName = u.LastName
                     }).ToList()
                 })
                 .ToListAsync();
@@ -75,25 +71,26 @@ namespace FantasyLeague.Api.Controllers
                 return NotFound(new { Message = "League not found" });
             }
 
-            try
+            // Check if league has users
+            if (league.Users != null && league.Users.Any())
             {
-
-                // Remove league association from users
+                // Remove users from league before deleting
                 foreach (var user in league.Users)
                 {
                     user.LeagueId = null;
                 }
+            }
 
-                // Remove the league
+            // Also check for any related data that might prevent deletion
+            try
+            {
                 _context.Leagues.Remove(league);
-
                 await _context.SaveChangesAsync();
-
-                return Ok(new { Message = $"League '{league.Name}' and all associated data deleted successfully" });
+                return Ok(new { Message = "League deleted successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "Failed to delete league", Error = ex.Message });
+                return BadRequest(new { Message = "Cannot delete league: " + ex.Message });
             }
         }
 
@@ -103,7 +100,6 @@ namespace FantasyLeague.Api.Controllers
         {
             var users = await _context.Users
                 .Include(u => u.League)
-                .Include(u => u.TeamStats)
                 .OrderByDescending(u => u.CreatedAt)
                 .Select(u => new
                 {
@@ -114,22 +110,10 @@ namespace FantasyLeague.Api.Controllers
                     LastName = u.LastName,
                     IsActive = u.IsActive,
                     CreatedAt = u.CreatedAt,
-                    LastLoginAt = u.LastLoginAt,
-                    TeamLogo = u.TeamLogo,
                     League = u.League != null ? new
                     {
                         Id = u.League.Id,
-                        Name = u.League.Name,
-                        JoinCode = u.League.JoinCode
-                    } : null,
-                    TeamStats = u.TeamStats != null ? new
-                    {
-                        Wins = u.TeamStats.Wins,
-                        Losses = u.TeamStats.Losses,
-                        Ties = u.TeamStats.Ties,
-                        PointsFor = u.TeamStats.PointsFor,
-                        PointsAgainst = u.TeamStats.PointsAgainst,
-                        WinPercentage = u.TeamStats.WinPercentage
+                        Name = u.League.Name
                     } : null
                 })
                 .ToListAsync();
@@ -140,145 +124,16 @@ namespace FantasyLeague.Api.Controllers
         [HttpDelete("users/{targetUserId}")]
         public async Task<IActionResult> DeleteUser(int targetUserId, [FromQuery] int userId)
         {
-            if (targetUserId == userId)
-            {
-                return BadRequest(new { Message = "Cannot delete your own admin account" });
-            }
-
-            var user = await _context.Users
-                .Include(u => u.TeamStats)
-                .FirstOrDefaultAsync(u => u.Id == targetUserId);
-
+            var user = await _context.Users.FindAsync(targetUserId);
             if (user == null)
             {
                 return NotFound(new { Message = "User not found" });
             }
 
-            try
-            {
-                // Remove team stats
-                if (user.TeamStats != null)
-                {
-                    _context.TeamStats.Remove(user.TeamStats);
-                }
-
-                // Remove user
-                _context.Users.Remove(user);
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { Message = $"User '{user.Username}' and all associated data deleted successfully" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Failed to delete user", Error = ex.Message });
-            }
-        }
-
-        // PLAYERS MANAGEMENT
-        [HttpGet("players")]
-        public async Task<IActionResult> GetAllPlayers([FromQuery] int userId, [FromQuery] string? league = null)
-        {
-            var query = _context.Players.AsQueryable();
-
-            if (!string.IsNullOrEmpty(league))
-            {
-                query = query.Where(p => p.League.ToLower() == league.ToLower());
-            }
-
-            var players = await query
-                .OrderBy(p => p.League)
-                .ThenBy(p => p.Team)
-                .ThenBy(p => p.Name)
-                .Select(p => new
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Position = p.Position,
-                    Team = p.Team,
-                    League = p.League
-                })
-                .ToListAsync();
-
-            return Ok(players);
-        }
-
-        [HttpPost("players")]
-        public async Task<IActionResult> CreatePlayer([FromQuery] int userId, [FromBody] CreatePlayerDto createDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var player = new Player
-            {
-                Name = createDto.Name,
-                Position = createDto.Position,
-                Team = createDto.Team,
-                League = createDto.League
-            };
-
-            _context.Players.Add(player);
+            _context.Users.Remove(user);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetPlayerById), new { playerId = player.Id, userId }, player);
-        }
-
-        [HttpGet("players/{playerId}")]
-        public async Task<IActionResult> GetPlayerById(int playerId, [FromQuery] int userId)
-        {
-            var player = await _context.Players.FindAsync(playerId);
-            if (player == null)
-            {
-                return NotFound(new { Message = "Player not found" });
-            }
-
-            return Ok(player);
-        }
-
-        [HttpPut("players/{playerId}")]
-        public async Task<IActionResult> UpdatePlayer(int playerId, [FromQuery] int userId, [FromBody] UpdatePlayerDto updateDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var player = await _context.Players.FindAsync(playerId);
-            if (player == null)
-            {
-                return NotFound(new { Message = "Player not found" });
-            }
-
-            // Update only provided fields
-            if (!string.IsNullOrEmpty(updateDto.Name))
-                player.Name = updateDto.Name;
-            if (!string.IsNullOrEmpty(updateDto.Position))
-                player.Position = updateDto.Position;
-            if (!string.IsNullOrEmpty(updateDto.Team))
-                player.Team = updateDto.Team;
-            if (!string.IsNullOrEmpty(updateDto.League))
-                player.League = updateDto.League;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(player);
-        }
-
-        [HttpDelete("players/{playerId}")]
-        public async Task<IActionResult> DeletePlayer(int playerId, [FromQuery] int userId)
-        {
-            var player = await _context.Players.FindAsync(playerId);
-            if (player == null)
-            {
-                return NotFound(new { Message = "Player not found" });
-            }
-
-            _context.Players.Remove(player);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Message = $"Player '{player.Name}' deleted successfully" });
+            return Ok(new { Message = "User deleted successfully" });
         }
 
         // DASHBOARD DATA
@@ -289,13 +144,6 @@ namespace FantasyLeague.Api.Controllers
             var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
             var totalLeagues = await _context.Leagues.CountAsync();
             var activeLeagues = await _context.Leagues.CountAsync(l => l.IsActive);
-            var totalPlayers = await _context.Players.CountAsync();
-            var activePlayers = totalPlayers;
-
-            var playersByLeague = await _context.Players
-                .GroupBy(p => p.League)
-                .Select(g => new { League = g.Key, Count = g.Count() })
-                .ToListAsync();
 
             var recentUsers = await _context.Users
                 .OrderByDescending(u => u.CreatedAt)
@@ -312,6 +160,7 @@ namespace FantasyLeague.Api.Controllers
 
             var recentLeagues = await _context.Leagues
                 .Include(l => l.CreatedBy)
+                .Include(l => l.Users)
                 .OrderByDescending(l => l.CreatedAt)
                 .Take(5)
                 .Select(l => new
@@ -324,7 +173,7 @@ namespace FantasyLeague.Api.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(new
+            var dashboardData = new
             {
                 Stats = new
                 {
@@ -332,48 +181,97 @@ namespace FantasyLeague.Api.Controllers
                     ActiveUsers = activeUsers,
                     TotalLeagues = totalLeagues,
                     ActiveLeagues = activeLeagues,
-                    TotalPlayers = totalPlayers,
-                    ActivePlayers = activePlayers
+                    TotalPlayers = 0, // We don't have a Player model
+                    ActivePlayers = 0
                 },
-                PlayersByLeague = playersByLeague,
+                PlayersByLeague = new[]
+                {
+                    new { League = "NFL", Count = 0 },
+                    new { League = "MLB", Count = 0 },
+                    new { League = "NBA", Count = 0 }
+                },
                 RecentUsers = recentUsers,
                 RecentLeagues = recentLeagues
-            });
+            };
+
+            return Ok(dashboardData);
         }
-    }
 
-    // DTOs for player management
-    public class CreatePlayerDto
-    {
-        [Required]
-        [StringLength(100)]
-        public string Name { get; set; } = string.Empty;
+        // PLAYERS MANAGEMENT
+        [HttpGet("players")]
+        public async Task<IActionResult> GetAllPlayers([FromQuery] int userId, [FromQuery] string? league = null)
+        {
+            var query = _context.Players.AsQueryable();
+            
+            if (!string.IsNullOrEmpty(league))
+            {
+                query = query.Where(p => p.League.ToLower() == league.ToLower());
+            }
+            
+            var players = await query
+                .OrderBy(p => p.League)
+                .ThenBy(p => p.Team)
+                .ThenBy(p => p.Name)
+                .Select(p => new
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Position = p.Position,
+                    Team = p.Team,
+                    League = p.League,
+                    GamesPlayed = p.GamesPlayed,
+                    // NFL Stats
+                    PassingYards = p.PassingYards,
+                    PassingTouchdowns = p.PassingTouchdowns,
+                    Interceptions = p.Interceptions,
+                    RushingYards = p.RushingYards,
+                    RushingTouchdowns = p.RushingTouchdowns,
+                    ReceivingYards = p.ReceivingYards,
+                    ReceivingTouchdowns = p.ReceivingTouchdowns,
+                    Receptions = p.Receptions,
+                    // NBA Stats
+                    PointsPerGame = p.PointsPerGame,
+                    ReboundsPerGame = p.ReboundsPerGame,
+                    AssistsPerGame = p.AssistsPerGame,
+                    FieldGoalPercentage = p.FieldGoalPercentage,
+                    ThreePointPercentage = p.ThreePointPercentage,
+                    FreeThrowPercentage = p.FreeThrowPercentage,
+                    StealsPerGame = p.StealsPerGame,
+                    BlocksPerGame = p.BlocksPerGame,
+                    // MLB Stats
+                    BattingAverage = p.BattingAverage,
+                    HomeRuns = p.HomeRuns,
+                    RunsBattedIn = p.RunsBattedIn,
+                    Runs = p.Runs,
+                    Hits = p.Hits,
+                    StolenBases = p.StolenBases,
+                    EarnedRunAverage = p.EarnedRunAverage,
+                    Wins = p.Wins,
+                    Losses = p.Losses,
+                    Strikeouts = p.Strikeouts,
+                    Saves = p.Saves,
+                    WHIP = p.WHIP,
+                    CreatedAt = p.CreatedAt,
+                    UpdatedAt = p.UpdatedAt
+                })
+                .ToListAsync();
+            
+            return Ok(players);
+        }
 
-        [Required]
-        [StringLength(10)]
-        public string Position { get; set; } = string.Empty;
+        [HttpDelete("players/{playerId}")]
+        public async Task<IActionResult> DeletePlayer(int playerId, [FromQuery] int userId)
+        {
+            var player = await _context.Players.FindAsync(playerId);
+            if (player == null)
+            {
+                return NotFound(new { Message = "Player not found" });
+            }
 
-        [Required]
-        [StringLength(50)]
-        public string Team { get; set; } = string.Empty;
+            _context.Players.Remove(player);
+            await _context.SaveChangesAsync();
 
-        [Required]
-        [StringLength(10)]
-        public string League { get; set; } = string.Empty;
-    }
-
-    public class UpdatePlayerDto
-    {
-        [StringLength(100)]
-        public string? Name { get; set; }
-
-        [StringLength(10)]
-        public string? Position { get; set; }
-
-        [StringLength(50)]
-        public string? Team { get; set; }
-
-        [StringLength(10)]
-        public string? League { get; set; }
+            return Ok(new { Message = "Player deleted successfully" });
+        }
     }
 }

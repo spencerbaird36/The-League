@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../config/api';
 import ScoringSettingsSection from '../components/ScoringSettingsSection';
+import { commissionerService, CommissionerLeague } from '../services/commissionerService';
 import './LeagueSettings.css';
 
 interface User {
@@ -26,6 +27,13 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  
+  // Commissioner-specific state
+  const [isCommissioner, setIsCommissioner] = useState(false);
+  const [commissionerData, setCommissionerData] = useState<CommissionerLeague | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
     if (user?.league?.name) {
@@ -33,6 +41,32 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
       setOriginalLeagueName(user.league.name);
     }
   }, [user?.league?.name]);
+
+  // Check commissioner status and load data
+  useEffect(() => {
+    const checkCommissionerStatus = async () => {
+      if (!user?.id || !user?.league?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const commissionerCheck = await commissionerService.isCommissioner(user.id, user.league.id);
+        setIsCommissioner(commissionerCheck);
+
+        if (commissionerCheck) {
+          const data = await commissionerService.getLeagueForCommissioner(user.league.id, user.id);
+          setCommissionerData(data);
+        }
+      } catch (error) {
+        console.error('Error checking commissioner status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkCommissionerStatus();
+  }, [user?.id, user?.league?.id]);
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -96,6 +130,63 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
   };
 
   const hasChanges = leagueName.trim() !== originalLeagueName;
+
+  // Commissioner functions
+  const handleInviteUser = async () => {
+    if (!user?.league?.id || !inviteEmail.trim()) return;
+
+    setIsInviting(true);
+    try {
+      await commissionerService.inviteUser(user.league.id, user.id, { email: inviteEmail.trim() });
+      setInviteEmail('');
+      setSaveMessage({
+        type: 'success',
+        text: 'User invited successfully!'
+      });
+
+      // Refresh commissioner data
+      if (isCommissioner) {
+        const data = await commissionerService.getLeagueForCommissioner(user.league.id, user.id);
+        setCommissionerData(data);
+      }
+
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      setSaveMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to invite user'
+      });
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleRemoveUser = async (targetUserId: number) => {
+    if (!user?.league?.id || !window.confirm('Are you sure you want to remove this user from the league?')) {
+      return;
+    }
+
+    try {
+      await commissionerService.removeUser(user.league.id, user.id, targetUserId);
+      setSaveMessage({
+        type: 'success',
+        text: 'User removed successfully!'
+      });
+
+      // Refresh commissioner data
+      if (isCommissioner) {
+        const data = await commissionerService.getLeagueForCommissioner(user.league.id, user.id);
+        setCommissionerData(data);
+      }
+
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      setSaveMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Failed to remove user'
+      });
+    }
+  };
 
   if (!user?.league) {
     return (
@@ -200,6 +291,98 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
             </div>
           )}
         </div>
+
+        {/* Commissioner Management Section */}
+        {isCommissioner && commissionerData && (
+          <div className="settings-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                <span className="section-icon">👑</span>
+                Commissioner Controls
+              </h2>
+              <p className="section-description">
+                Manage league members and settings (Commissioner Only)
+              </p>
+            </div>
+
+            {/* League Members */}
+            <div className="setting-item">
+              <div className="setting-label-group">
+                <label className="setting-label">League Members ({commissionerData.userCount}/{commissionerData.maxPlayers})</label>
+                <p className="setting-help">
+                  Current members in your league
+                </p>
+              </div>
+
+              <div className="members-list">
+                {commissionerData.users.map((member) => (
+                  <div key={member.id} className="member-item">
+                    <div className="member-info">
+                      <span className="member-name">
+                        {member.firstName} {member.lastName} ({member.username})
+                      </span>
+                      <span className="member-email">{member.email}</span>
+                      {member.id === commissionerData.commissioner?.id && (
+                        <span className="commissioner-badge">👑 Commissioner</span>
+                      )}
+                    </div>
+                    {member.id !== user.id && (
+                      <button
+                        onClick={() => handleRemoveUser(member.id)}
+                        className="remove-user-btn"
+                        title="Remove user from league"
+                      >
+                        🗑️ Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Invite New Member */}
+            {commissionerData.userCount < commissionerData.maxPlayers && (
+              <div className="setting-item">
+                <div className="setting-label-group">
+                  <label className="setting-label">Invite New Member</label>
+                  <p className="setting-help">
+                    Enter the email address of the user you want to invite to your league
+                  </p>
+                </div>
+
+                <div className="setting-control">
+                  <div className="invite-control">
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="invite-email-input"
+                      placeholder="Enter email address"
+                      disabled={isInviting}
+                    />
+                    <button
+                      onClick={handleInviteUser}
+                      disabled={!inviteEmail.trim() || isInviting}
+                      className="invite-btn"
+                    >
+                      {isInviting ? (
+                        <>
+                          <span className="spinner"></span>
+                          Inviting...
+                        </>
+                      ) : (
+                        <>
+                          <span className="btn-icon">📨</span>
+                          Send Invite
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Future Settings Sections */}
         <div className="settings-section coming-soon">

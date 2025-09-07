@@ -28,6 +28,7 @@ namespace FantasyLeague.Api.Data
         public DbSet<TradeProposal> TradeProposals { get; set; }
         public DbSet<TradePlayer> TradePlayers { get; set; }
         public DbSet<TradeNotification> TradeNotifications { get; set; }
+        public DbSet<LeagueConfiguration> LeagueConfigurations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -116,6 +117,20 @@ namespace FantasyLeague.Api.Data
                     .HasForeignKey(e => e.CreatedById)
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                    
+                // Configure relationship with commissioner
+                entity.HasOne(e => e.Commissioner)
+                    .WithMany()
+                    .HasForeignKey(e => e.CommissionerId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+                    
+                // Configure relationship with configuration (one-to-one)
+                entity.HasOne(e => e.Configuration)
+                    .WithOne(c => c.League)
+                    .HasForeignKey<LeagueConfiguration>(c => c.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
             });
 
             // Configure TeamStats entity
@@ -163,20 +178,35 @@ namespace FantasyLeague.Api.Data
                     .IsRequired()
                     .HasMaxLength(1000);
                     
+                entity.Property(e => e.DraftType)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(DraftType.Keeper);
+                    
+                entity.Property(e => e.SportType)
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.MaxPicks)
+                    .IsRequired()
+                    .HasDefaultValue(15);
+                    
+                entity.Property(e => e.MaxPicksPerSport)
+                    .IsRequired()
+                    .HasDefaultValue(5);
+                    
                 entity.Property(e => e.CreatedAt)
                     .IsRequired()
                     .HasDefaultValueSql("NOW()");
                 
-                // Configure relationship with League (one-to-one)
+                // Configure relationship with League
                 entity.HasOne(e => e.League)
                     .WithMany()
                     .HasForeignKey(e => e.LeagueId)
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
                     
-                // Create unique index for league (one draft per league)
-                entity.HasIndex(e => e.LeagueId)
-                    .IsUnique();
+                // Create index for league-drafttype-sport combination (multiple drafts allowed per league)
+                entity.HasIndex(e => new { e.LeagueId, e.DraftType, e.SportType });
             });
 
             // Configure DraftPick entity
@@ -199,6 +229,10 @@ namespace FantasyLeague.Api.Data
                 entity.Property(e => e.PlayerLeague)
                     .IsRequired()
                     .HasMaxLength(10);
+                    
+                entity.Property(e => e.IsKeeperPick)
+                    .IsRequired()
+                    .HasDefaultValue(false);
                     
                 entity.Property(e => e.PickedAt)
                     .IsRequired()
@@ -758,6 +792,48 @@ namespace FantasyLeague.Api.Data
                 entity.HasIndex(e => new { e.UserId, e.IsRead });
                 entity.HasIndex(e => new { e.UserId, e.CreatedAt });
                 entity.HasIndex(e => e.TradeProposalId);
+            });
+
+            // Configure LeagueConfiguration entity
+            modelBuilder.Entity<LeagueConfiguration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.IncludeNFL)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+                    
+                entity.Property(e => e.IncludeMLB)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                    
+                entity.Property(e => e.IncludeNBA)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+                    
+                entity.Property(e => e.TotalKeeperSlots)
+                    .IsRequired()
+                    .HasDefaultValue(15);
+                    
+                entity.Property(e => e.IsKeeperLeague)
+                    .IsRequired()
+                    .HasDefaultValue(true);
+                    
+                entity.Property(e => e.MaxPlayersPerTeam)
+                    .IsRequired()
+                    .HasDefaultValue(25);
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create unique index for league (one configuration per league)
+                entity.HasIndex(e => e.LeagueId)
+                    .IsUnique();
             });
         }
     }

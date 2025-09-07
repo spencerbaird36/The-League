@@ -46,6 +46,11 @@ builder.Services.AddDbContext<FantasyLeagueContext>(options =>
 
 // Add services
 builder.Services.AddScoped<ScheduleService>();
+builder.Services.AddScoped<ICommissionerService, CommissionerService>();
+builder.Services.AddScoped<LeagueConfigurationService>();
+builder.Services.AddScoped<KeeperDraftService>();
+builder.Services.AddScoped<PlayerPoolService>();
+builder.Services.AddScoped<RegularDraftService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

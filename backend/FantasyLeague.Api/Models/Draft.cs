@@ -25,6 +25,17 @@ namespace FantasyLeague.Api.Models
         
         public bool IsCompleted { get; set; } = false;
         
+        // Keeper Draft Properties
+        public DraftType DraftType { get; set; } = DraftType.Keeper;
+        
+        public string? SportType { get; set; } // NFL, MLB, NBA - null for keeper draft (all sports)
+        
+        public int MaxPicks { get; set; } = 15; // Total picks allowed in this draft
+        
+        public int MaxPicksPerSport { get; set; } = 5; // For keeper drafts: picks per sport
+        
+        public bool IsKeeperDraft => DraftType == DraftType.Keeper;
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public DateTime? StartedAt { get; set; }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Models;
 using FantasyLeague.Api.DTOs;
 using FantasyLeague.Api.Data;
+using FantasyLeague.Api.Services;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -13,10 +14,12 @@ namespace FantasyLeague.Api.Controllers
     public class LeaguesController : ControllerBase
     {
         private readonly FantasyLeagueContext _context;
+        private readonly LeagueConfigurationService _configurationService;
 
-        public LeaguesController(FantasyLeagueContext context)
+        public LeaguesController(FantasyLeagueContext context, LeagueConfigurationService configurationService)
         {
             _context = context;
+            _configurationService = configurationService;
         }
 
         private string GenerateJoinCode()
@@ -33,6 +36,13 @@ namespace FantasyLeague.Api.Controllers
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            // Validate sport configuration
+            var validationErrors = createLeagueDto.GetValidationErrors();
+            if (validationErrors.Any())
+            {
+                return BadRequest(new { Message = "Invalid configuration", Errors = validationErrors });
             }
 
             var user = await _context.Users.FindAsync(userId);
@@ -60,12 +70,30 @@ namespace FantasyLeague.Api.Controllers
                 Description = createLeagueDto.Description,
                 MaxPlayers = createLeagueDto.MaxPlayers,
                 CreatedById = userId,
+                CommissionerId = userId, // Set creator as commissioner
                 JoinCode = joinCode,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
 
             _context.Leagues.Add(league);
+            await _context.SaveChangesAsync();
+
+            // Create custom league configuration based on user selections
+            var configuration = new LeagueConfiguration
+            {
+                LeagueId = league.Id,
+                IncludeNFL = createLeagueDto.IncludeNFL,
+                IncludeMLB = createLeagueDto.IncludeMLB,
+                IncludeNBA = createLeagueDto.IncludeNBA,
+                TotalKeeperSlots = createLeagueDto.TotalKeeperSlots,
+                IsKeeperLeague = createLeagueDto.IsKeeperLeague,
+                MaxPlayersPerTeam = createLeagueDto.MaxPlayersPerTeam,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.LeagueConfigurations.Add(configuration);
             await _context.SaveChangesAsync();
 
             // Add creator to the league
@@ -80,7 +108,18 @@ namespace FantasyLeague.Api.Controllers
                 MaxPlayers = league.MaxPlayers,
                 JoinCode = league.JoinCode,
                 CreatedAt = league.CreatedAt,
-                UserCount = 1
+                UserCount = 1,
+                Configuration = new
+                {
+                    IncludeNFL = configuration.IncludeNFL,
+                    IncludeMLB = configuration.IncludeMLB,
+                    IncludeNBA = configuration.IncludeNBA,
+                    TotalKeeperSlots = configuration.TotalKeeperSlots,
+                    KeepersPerSport = configuration.KeepersPerSport,
+                    IsKeeperLeague = configuration.IsKeeperLeague,
+                    MaxPlayersPerTeam = configuration.MaxPlayersPerTeam,
+                    SelectedSports = configuration.GetSelectedSports()
+                }
             };
 
             return CreatedAtAction(nameof(GetLeague), new { id = league.Id }, leagueResponse);
@@ -510,6 +549,41 @@ namespace FantasyLeague.Api.Controllers
             }
 
             return Ok(new { TotalUsers = users.Count, ChloeUsers = chloeUsers });
+        }
+
+        [HttpGet("{id}/configuration")]
+        public async Task<IActionResult> GetLeagueConfiguration(int id)
+        {
+            // First check if league exists
+            var league = await _context.Leagues.FindAsync(id);
+            if (league == null)
+            {
+                return NotFound(new { Message = "League not found" });
+            }
+
+            var config = await _configurationService.GetConfigurationAsync(id);
+            
+            // If no configuration exists, create a default one
+            if (config == null)
+            {
+                config = await _configurationService.CreateDefaultConfigurationAsync(id);
+            }
+
+            return Ok(new
+            {
+                Id = config.Id,
+                LeagueId = config.LeagueId,
+                IncludeNFL = config.IncludeNFL,
+                IncludeMLB = config.IncludeMLB,
+                IncludeNBA = config.IncludeNBA,
+                TotalKeeperSlots = config.TotalKeeperSlots,
+                KeepersPerSport = config.KeepersPerSport,
+                IsKeeperLeague = config.IsKeeperLeague,
+                MaxPlayersPerTeam = config.MaxPlayersPerTeam,
+                CreatedAt = config.CreatedAt,
+                UpdatedAt = config.UpdatedAt,
+                SelectedSports = config.GetSelectedSports()
+            });
         }
     }
 }

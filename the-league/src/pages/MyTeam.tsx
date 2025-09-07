@@ -521,16 +521,6 @@ const MyTeam: React.FC<MyTeamProps> = ({
     }
   };
 
-  const renderStats = (player: Player) => {
-    if (!player.stats) return '-';
-    
-    const stats = Object.entries(player.stats);
-    return stats.slice(0, 2).map(([key, value]) => (
-      <span key={key} className="stat-item">
-        {key}: {value}
-      </span>
-    ));
-  };
 
   // Get sport-specific stat columns
   const getStatColumns = (league: string) => {

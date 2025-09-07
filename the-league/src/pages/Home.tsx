@@ -489,7 +489,15 @@ const Home: React.FC<HomeProps> = ({
     name: '',
     description: '',
     maxPlayers: 10,
-    joinCode: ''
+    joinCode: '',
+    // Sport Configuration
+    includeNFL: true,
+    includeMLB: false,
+    includeNBA: false,
+    // Keeper Configuration
+    totalKeeperSlots: 15,
+    isKeeperLeague: true,
+    maxPlayersPerTeam: 25
   });
   const [leagueError, setLeagueError] = useState('');
   
@@ -501,6 +509,33 @@ const Home: React.FC<HomeProps> = ({
   // Tab state for the features section
   const [activeTab, setActiveTab] = useState<'how' | 'faq'>('how');
 
+  // Helper function to calculate keepers per sport
+  const calculateKeepersPerSport = () => {
+    const selectedSports = [
+      leagueFormData.includeNFL,
+      leagueFormData.includeMLB,
+      leagueFormData.includeNBA
+    ].filter(Boolean).length;
+    
+    return selectedSports > 0 ? Math.floor(leagueFormData.totalKeeperSlots / selectedSports) : 0;
+  };
+
+  const getSelectedSportsCount = () => {
+    return [
+      leagueFormData.includeNFL,
+      leagueFormData.includeMLB,
+      leagueFormData.includeNBA
+    ].filter(Boolean).length;
+  };
+
+  const getSelectedSports = () => {
+    const sports = [];
+    if (leagueFormData.includeNFL) sports.push('NFL');
+    if (leagueFormData.includeMLB) sports.push('MLB');
+    if (leagueFormData.includeNBA) sports.push('NBA');
+    return sports;
+  };
+
   // Home page doesn't need roster data
 
   // Home page helper functions
@@ -511,10 +546,15 @@ const Home: React.FC<HomeProps> = ({
     });
   };
   
-  const handleLeagueInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleLeagueInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const target = e.target as HTMLInputElement;
+    const value = target.type === 'checkbox' ? target.checked : 
+                  target.type === 'number' ? parseInt(target.value) || 0 : 
+                  target.value;
+    
     setLeagueFormData({
       ...leagueFormData,
-      [e.target.name]: e.target.value
+      [target.name]: value
     });
   };
   const fetchAvailableLeagues = async () => {
@@ -581,6 +621,19 @@ const Home: React.FC<HomeProps> = ({
     e.preventDefault();
     setLeagueError('');
     
+    // Client-side validation
+    const selectedSportsCount = getSelectedSportsCount();
+    if (selectedSportsCount === 0) {
+      setLeagueError('At least one sport must be selected');
+      return;
+    }
+    
+    if (leagueFormData.isKeeperLeague && 
+        leagueFormData.totalKeeperSlots % selectedSportsCount !== 0) {
+      setLeagueError(`Total keeper slots (${leagueFormData.totalKeeperSlots}) must be evenly divisible by number of selected sports (${selectedSportsCount})`);
+      return;
+    }
+    
     try {
       const response = await apiRequest(`/api/leagues/create?userId=${user?.id}`, {
         method: 'POST',
@@ -590,7 +643,13 @@ const Home: React.FC<HomeProps> = ({
         body: JSON.stringify({
           name: leagueFormData.name,
           description: leagueFormData.description,
-          maxPlayers: leagueFormData.maxPlayers
+          maxPlayers: leagueFormData.maxPlayers,
+          includeNFL: leagueFormData.includeNFL,
+          includeMLB: leagueFormData.includeMLB,
+          includeNBA: leagueFormData.includeNBA,
+          totalKeeperSlots: leagueFormData.totalKeeperSlots,
+          isKeeperLeague: leagueFormData.isKeeperLeague,
+          maxPlayersPerTeam: leagueFormData.maxPlayersPerTeam
         }),
       });
 
@@ -901,6 +960,90 @@ const Home: React.FC<HomeProps> = ({
                       ))}
                     </select>
                   </div>
+                  
+                  {/* Sport Selection */}
+                  <div className="form-group">
+                    <label>Sports to Include</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                        <input
+                          type="checkbox"
+                          name="includeNFL"
+                          checked={leagueFormData.includeNFL}
+                          onChange={handleLeagueInputChange}
+                        />
+                        NFL (Football)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                        <input
+                          type="checkbox"
+                          name="includeMLB"
+                          checked={leagueFormData.includeMLB}
+                          onChange={handleLeagueInputChange}
+                        />
+                        MLB (Baseball)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                        <input
+                          type="checkbox"
+                          name="includeNBA"
+                          checked={leagueFormData.includeNBA}
+                          onChange={handleLeagueInputChange}
+                        />
+                        NBA (Basketball)
+                      </label>
+                    </div>
+                    {getSelectedSportsCount() === 0 && (
+                      <div style={{ color: '#ff6b6b', fontSize: '0.8rem', marginTop: '4px' }}>
+                        At least one sport must be selected
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Keeper Configuration */}
+                  <div className="form-group">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        name="isKeeperLeague"
+                        checked={leagueFormData.isKeeperLeague}
+                        onChange={handleLeagueInputChange}
+                      />
+                      Enable Keeper System
+                    </label>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.7)', margin: '4px 0 0 0' }}>
+                      Keeper leagues start with a keeper draft where you select core players for each sport
+                    </p>
+                  </div>
+
+                  {leagueFormData.isKeeperLeague && (
+                    <div className="form-group">
+                      <label htmlFor="totalKeeperSlots">Total Keeper Slots</label>
+                      <input
+                        type="number"
+                        id="totalKeeperSlots"
+                        name="totalKeeperSlots"
+                        value={leagueFormData.totalKeeperSlots}
+                        onChange={handleLeagueInputChange}
+                        min="3"
+                        max="50"
+                        required
+                      />
+                      {getSelectedSportsCount() > 0 && (
+                        <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                          {getSelectedSportsCount() > 0 && leagueFormData.totalKeeperSlots % getSelectedSportsCount() === 0 ? (
+                            <span style={{ color: '#4CAF50' }}>
+                              ✓ {calculateKeepersPerSport()} keepers per sport ({getSelectedSports().join(', ')})
+                            </span>
+                          ) : (
+                            <span style={{ color: '#ff6b6b' }}>
+                              ⚠️ Keeper slots must be evenly divisible by selected sports ({getSelectedSportsCount()})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="form-buttons">
                     <button type="submit" className="league-action-btn">Create League</button>
                     <button 

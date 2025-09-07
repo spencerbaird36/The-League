@@ -38,6 +38,9 @@ namespace FantasyLeague.Api.Models
         
         public int RoundPick { get; set; } // Pick within the round (1, 2, 3, etc.)
         
+        // Keeper Draft Properties
+        public bool IsKeeperPick { get; set; } = false; // True if this was picked in a keeper draft
+        
         public DateTime PickedAt { get; set; } = DateTime.UtcNow;
     }
 }

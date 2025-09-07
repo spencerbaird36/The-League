@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250906122530_AddLeagueConfiguration")]
+    partial class AddLeagueConfiguration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -124,12 +127,6 @@ namespace FantasyLeague.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("DraftType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("Keeper");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -139,26 +136,13 @@ namespace FantasyLeague.Api.Migrations
                     b.Property<int>("LeagueId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxPicks")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(15);
-
-                    b.Property<int>("MaxPicksPerSport")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(5);
-
-                    b.Property<string>("SportType")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LeagueId", "DraftType", "SportType");
+                    b.HasIndex("LeagueId")
+                        .IsUnique();
 
                     b.ToTable("Drafts");
                 });
@@ -173,11 +157,6 @@ namespace FantasyLeague.Api.Migrations
 
                     b.Property<int>("DraftId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("IsKeeperPick")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<int>("PickNumber")
                         .HasColumnType("integer");

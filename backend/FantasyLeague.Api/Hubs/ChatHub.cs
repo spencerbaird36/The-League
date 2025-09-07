@@ -553,10 +553,10 @@ namespace FantasyLeague.Api.Hubs
                 
                 Console.WriteLine($"🎯 Snake draft advancement: NextTotalPicks={nextTotalPicks}, NextRound={draft.CurrentRound}, NextUserIndex={nextUserIndex}");
 
-                // Check if draft is complete
-                const int maxRounds = 15;
-                Console.WriteLine($"🎯 Checking draft completion: CurrentRound={draft.CurrentRound}, MaxRounds={maxRounds}");
-                if (draft.CurrentRound > maxRounds)
+                // Check if draft is complete based on total picks made
+                var totalPicksMade = draft.DraftPicks.Count;
+                Console.WriteLine($"🎯 Checking draft completion: TotalPicksMade={totalPicksMade}, MaxPicks={draft.MaxPicks}");
+                if (draft.MaxPicks > 0 && totalPicksMade >= draft.MaxPicks)
                 {
                     Console.WriteLine($"❌ DRAFT COMPLETED! Setting IsActive=false");
                     draft.IsActive = false;
@@ -565,7 +565,7 @@ namespace FantasyLeague.Api.Hubs
                 }
                 else
                 {
-                    Console.WriteLine($"✅ Draft still active: CurrentRound={draft.CurrentRound} <= MaxRounds={maxRounds}");
+                    Console.WriteLine($"✅ Draft still active: TotalPicksMade={totalPicksMade} < MaxPicks={draft.MaxPicks}");
                 }
 
                 Console.WriteLine($"🎯 About to save changes. Draft state: IsActive={draft.IsActive}, IsCompleted={draft.IsCompleted}");
@@ -1037,9 +1037,9 @@ namespace FantasyLeague.Api.Hubs
                         draft.CurrentTurn = nextUserIndex;
                         draft.CurrentRound = nextRoundIndex + 1; // 1-based round
 
-                        // Check if draft is complete (adjust max rounds as needed)
-                        const int maxRounds = 15; // Adjust based on roster requirements
-                        if (draft.CurrentRound > maxRounds)
+                        // Check if draft is complete based on total picks made
+                        var totalPicksMade = draft.DraftPicks.Count;
+                        if (draft.MaxPicks > 0 && totalPicksMade >= draft.MaxPicks)
                         {
                             draft.IsActive = false;
                             draft.IsCompleted = true;

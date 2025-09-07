@@ -23,6 +23,7 @@ import CommissionerControls from '../components/CommissionerControls';
 import { DraftAction } from '../components/CommissionerControls';
 import signalRService from '../services/signalRService';
 import { draftService } from '../services/draftService';
+import { leagueService, LeagueConfiguration } from '../services/leagueService';
 import './Draft.css';
 
 // Lazy load modals since they're only needed when users interact
@@ -397,6 +398,7 @@ const Draft: React.FC<DraftProps> = ({
   // State for available players from backend
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [isLoadingAvailablePlayers, setIsLoadingAvailablePlayers] = useState(false);
+  const [leagueConfig, setLeagueConfig] = useState<LeagueConfiguration | null>(null);
   
   // Debounce timer for API calls
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -440,6 +442,34 @@ const Draft: React.FC<DraftProps> = ({
       debouncedFetchPlayers();
     }
   }, [user?.league?.id, debouncedFetchPlayers]);
+
+  // Fetch league configuration to determine enabled sports
+  useEffect(() => {
+    const fetchLeagueConfig = async () => {
+      if (user?.league?.id) {
+        try {
+          const config = await leagueService.getLeagueConfiguration(user.league.id);
+          setLeagueConfig(config);
+        } catch (error) {
+          console.error('Error fetching league configuration:', error);
+        }
+      }
+    };
+
+    fetchLeagueConfig();
+  }, [user?.league?.id]);
+
+  // Get enabled sports based on league configuration
+  const getEnabledSports = (): ('NFL' | 'MLB' | 'NBA')[] => {
+    if (!leagueConfig) return ['NFL', 'MLB', 'NBA']; // Default to all sports if config not loaded
+    
+    const enabledSports: ('NFL' | 'MLB' | 'NBA')[] = [];
+    if (leagueConfig.includeNFL) enabledSports.push('NFL');
+    if (leagueConfig.includeMLB) enabledSports.push('MLB');
+    if (leagueConfig.includeNBA) enabledSports.push('NBA');
+    
+    return enabledSports;
+  };
 
   const filteredPlayers = React.useMemo(() => {
     const filtered = availablePlayers.filter((player: Player) => {
@@ -1020,9 +1050,16 @@ const Draft: React.FC<DraftProps> = ({
             <div className="draft-completed">
               <p>✅ Draft has been completed!</p>
               <p>All teams have finished selecting their players.</p>
+              <p>You can now pick up free agents to improve your team!</p>
               <div className="draft-management-buttons">
                 <button onClick={handleResetDraft} className="draft-control-btn reset">
                   Reset Draft
+                </button>
+                <button 
+                  className="free-agents-btn"
+                  onClick={() => navigate('/free-agents')}
+                >
+                  View Free Agents
                 </button>
               </div>
             </div>
@@ -1128,24 +1165,15 @@ const Draft: React.FC<DraftProps> = ({
                     >
                       All Leagues
                     </button>
-                    <button
-                      className={selectedLeague === 'NFL' ? 'active' : ''}
-                      onClick={() => setSelectedLeague('NFL')}
-                    >
-                      NFL
-                    </button>
-                    <button
-                      className={selectedLeague === 'MLB' ? 'active' : ''}
-                      onClick={() => setSelectedLeague('MLB')}
-                    >
-                      MLB
-                    </button>
-                    <button
-                      className={selectedLeague === 'NBA' ? 'active' : ''}
-                      onClick={() => setSelectedLeague('NBA')}
-                    >
-                      NBA
-                    </button>
+                    {getEnabledSports().map(sport => (
+                      <button
+                        key={sport}
+                        className={selectedLeague === sport ? 'active' : ''}
+                        onClick={() => setSelectedLeague(sport)}
+                      >
+                        {sport}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1160,10 +1188,48 @@ const Draft: React.FC<DraftProps> = ({
                     </button>
                     {selectedLeague === 'ALL' && (
                       <>
+                        {getEnabledSports().includes('NFL') && (
+                          <>
+                            <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
+                            <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
+                            <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
+                            <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                          </>
+                        )}
+                        {getEnabledSports().includes('MLB') && (
+                          <>
+                            <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
+                            <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
+                            <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
+                            <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
+                            <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
+                            <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
+                            <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                            <button className={selectedPosition === 'DH' ? 'active' : ''} onClick={() => setSelectedPosition('DH')}>DH</button>
+                            <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
+                          </>
+                        )}
+                        {getEnabledSports().includes('NBA') && (
+                          <>
+                            <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
+                            <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
+                            <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
+                            <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
+                            <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
+                          </>
+                        )}
+                      </>
+                    )}
+                    {selectedLeague === 'NFL' && getEnabledSports().includes('NFL') && (
+                      <>
                         <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
                         <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
                         <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
                         <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
+                      </>
+                    )}
+                    {selectedLeague === 'MLB' && getEnabledSports().includes('MLB') && (
+                      <>
                         <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
                         <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
                         <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
@@ -1173,35 +1239,9 @@ const Draft: React.FC<DraftProps> = ({
                         <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
                         <button className={selectedPosition === 'DH' ? 'active' : ''} onClick={() => setSelectedPosition('DH')}>DH</button>
                         <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-                        <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
-                        <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
-                        <button className={selectedPosition === 'SF' ? 'active' : ''} onClick={() => setSelectedPosition('SF')}>SF</button>
-                        <button className={selectedPosition === 'PF' ? 'active' : ''} onClick={() => setSelectedPosition('PF')}>PF</button>
-                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
                       </>
                     )}
-                    {selectedLeague === 'NFL' && (
-                      <>
-                        <button className={selectedPosition === 'QB' ? 'active' : ''} onClick={() => setSelectedPosition('QB')}>QB</button>
-                        <button className={selectedPosition === 'RB' ? 'active' : ''} onClick={() => setSelectedPosition('RB')}>RB</button>
-                        <button className={selectedPosition === 'WR' ? 'active' : ''} onClick={() => setSelectedPosition('WR')}>WR</button>
-                        <button className={selectedPosition === 'TE' ? 'active' : ''} onClick={() => setSelectedPosition('TE')}>TE</button>
-                      </>
-                    )}
-                    {selectedLeague === 'MLB' && (
-                      <>
-                        <button className={selectedPosition === 'SP' ? 'active' : ''} onClick={() => setSelectedPosition('SP')}>SP</button>
-                        <button className={selectedPosition === 'CP' ? 'active' : ''} onClick={() => setSelectedPosition('CP')}>CP</button>
-                        <button className={selectedPosition === '1B' ? 'active' : ''} onClick={() => setSelectedPosition('1B')}>1B</button>
-                        <button className={selectedPosition === '2B' ? 'active' : ''} onClick={() => setSelectedPosition('2B')}>2B</button>
-                        <button className={selectedPosition === '3B' ? 'active' : ''} onClick={() => setSelectedPosition('3B')}>3B</button>
-                        <button className={selectedPosition === 'SS' ? 'active' : ''} onClick={() => setSelectedPosition('SS')}>SS</button>
-                        <button className={selectedPosition === 'C' ? 'active' : ''} onClick={() => setSelectedPosition('C')}>C</button>
-                        <button className={selectedPosition === 'DH' ? 'active' : ''} onClick={() => setSelectedPosition('DH')}>DH</button>
-                        <button className={selectedPosition === 'OF' ? 'active' : ''} onClick={() => setSelectedPosition('OF')}>OF</button>
-                      </>
-                    )}
-                    {selectedLeague === 'NBA' && (
+                    {selectedLeague === 'NBA' && getEnabledSports().includes('NBA') && (
                       <>
                         <button className={selectedPosition === 'PG' ? 'active' : ''} onClick={() => setSelectedPosition('PG')}>PG</button>
                         <button className={selectedPosition === 'SG' ? 'active' : ''} onClick={() => setSelectedPosition('SG')}>SG</button>
@@ -1322,22 +1362,7 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             </section>
           </>
-        ) : (
-          /* Phase 1 Redesign: When draft is completed, show message to use Free Agents */
-          <div className="draft-completed-section">
-            <div className="draft-completed-content">
-              <h2>🎉 Draft Complete!</h2>
-              <p>All teams have finished selecting their players.</p>
-              <p>You can now pick up free agents to improve your team!</p>
-              <button 
-                className="free-agents-btn"
-                onClick={() => window.location.href = '/free-agents'}
-              >
-                View Free Agents
-              </button>
-            </div>
-          </div>
-        )}
+        ) : null}
       </section>
 
       {/* Player Info Modal */}

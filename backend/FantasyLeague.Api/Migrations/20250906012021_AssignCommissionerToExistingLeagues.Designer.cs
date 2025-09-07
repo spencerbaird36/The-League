@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250906012021_AssignCommissionerToExistingLeagues")]
+    partial class AssignCommissionerToExistingLeagues
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -124,12 +127,6 @@ namespace FantasyLeague.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("DraftType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("Keeper");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -139,26 +136,13 @@ namespace FantasyLeague.Api.Migrations
                     b.Property<int>("LeagueId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("MaxPicks")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(15);
-
-                    b.Property<int>("MaxPicksPerSport")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(5);
-
-                    b.Property<string>("SportType")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LeagueId", "DraftType", "SportType");
+                    b.HasIndex("LeagueId")
+                        .IsUnique();
 
                     b.ToTable("Drafts");
                 });
@@ -173,11 +157,6 @@ namespace FantasyLeague.Api.Migrations
 
                     b.Property<int>("DraftId")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("IsKeeperPick")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<int>("PickNumber")
                         .HasColumnType("integer");
@@ -280,65 +259,6 @@ namespace FantasyLeague.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Leagues");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.LeagueConfiguration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<bool>("IncludeMLB")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IncludeNBA")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<bool>("IncludeNFL")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsKeeperLeague")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<int>("LeagueId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("MaxPlayersPerTeam")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(25);
-
-                    b.Property<int>("TotalKeeperSlots")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(15);
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LeagueId")
-                        .IsUnique();
-
-                    b.ToTable("LeagueConfigurations");
                 });
 
             modelBuilder.Entity("FantasyLeague.Api.Models.Matchup", b =>
@@ -1447,17 +1367,6 @@ namespace FantasyLeague.Api.Migrations
                     b.Navigation("CreatedBy");
                 });
 
-            modelBuilder.Entity("FantasyLeague.Api.Models.LeagueConfiguration", b =>
-                {
-                    b.HasOne("FantasyLeague.Api.Models.League", "League")
-                        .WithOne("Configuration")
-                        .HasForeignKey("FantasyLeague.Api.Models.LeagueConfiguration", "LeagueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("League");
-                });
-
             modelBuilder.Entity("FantasyLeague.Api.Models.Matchup", b =>
                 {
                     b.HasOne("FantasyLeague.Api.Models.User", "AwayTeam")
@@ -1687,8 +1596,6 @@ namespace FantasyLeague.Api.Migrations
 
             modelBuilder.Entity("FantasyLeague.Api.Models.League", b =>
                 {
-                    b.Navigation("Configuration");
-
                     b.Navigation("ScoringSettings");
 
                     b.Navigation("TeamStats");

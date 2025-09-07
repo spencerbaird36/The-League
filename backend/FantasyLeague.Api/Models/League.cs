@@ -16,6 +16,9 @@ namespace FantasyLeague.Api.Models
         public int CreatedById { get; set; }
         public User CreatedBy { get; set; } = null!;
         
+        public int? CommissionerId { get; set; }
+        public User? Commissioner { get; set; }
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public int MaxPlayers { get; set; } = 10;
@@ -34,5 +37,8 @@ namespace FantasyLeague.Api.Models
         
         // Navigation property for scoring settings
         public ICollection<ScoringSettings> ScoringSettings { get; set; } = new List<ScoringSettings>();
+        
+        // Navigation property for league configuration
+        public LeagueConfiguration? Configuration { get; set; }
     }
 }

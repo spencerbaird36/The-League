@@ -202,18 +202,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             <div className="stats-grid">
               <div className="stat-card">
                 <h3>Users</h3>
-                <div className="stat-number">{dashboardData.stats.totalUsers}</div>
-                <div className="stat-detail">{dashboardData.stats.activeUsers} active</div>
+                <div className="stat-number">{dashboardData.stats?.totalUsers || 0}</div>
+                <div className="stat-detail">{dashboardData.stats?.activeUsers || 0} active</div>
               </div>
               <div className="stat-card">
                 <h3>Leagues</h3>
-                <div className="stat-number">{dashboardData.stats.totalLeagues}</div>
-                <div className="stat-detail">{dashboardData.stats.activeLeagues} active</div>
+                <div className="stat-number">{dashboardData.stats?.totalLeagues || 0}</div>
+                <div className="stat-detail">{dashboardData.stats?.activeLeagues || 0} active</div>
               </div>
               <div className="stat-card">
                 <h3>Players</h3>
-                <div className="stat-number">{dashboardData.stats.totalPlayers}</div>
-                <div className="stat-detail">{dashboardData.stats.activePlayers} active</div>
+                <div className="stat-number">{dashboardData.stats?.totalPlayers || 0}</div>
+                <div className="stat-detail">{dashboardData.stats?.activePlayers || 0} active</div>
               </div>
             </div>
 
@@ -221,7 +221,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <div className="dashboard-section">
                 <h3>Players by League</h3>
                 <div className="league-stats">
-                  {dashboardData.playersByLeague.map(league => (
+                  {(dashboardData.playersByLeague || []).map(league => (
                     <div key={league.league} className="league-stat">
                       <span className="league-name">{league.league}</span>
                       <span className="league-count">{league.count}</span>
@@ -233,7 +233,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <div className="dashboard-section">
                 <h3>Recent Users</h3>
                 <div className="recent-list">
-                  {dashboardData.recentUsers.map(user => (
+                  {(dashboardData.recentUsers || []).map(user => (
                     <div key={user.id} className="recent-item">
                       <span>{user.firstName} {user.lastName}</span>
                       <span className="recent-date">{formatDate(user.createdAt)}</span>
@@ -245,7 +245,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <div className="dashboard-section">
                 <h3>Recent Leagues</h3>
                 <div className="recent-list">
-                  {dashboardData.recentLeagues.map(league => (
+                  {(dashboardData.recentLeagues || []).map(league => (
                     <div key={league.id} className="recent-item">
                       <span>{league.name} ({league.userCount} users)</span>
                       <span className="recent-date">{formatDate(league.createdAt)}</span>
@@ -286,7 +286,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                   <div className="league-members">
                     <h4>Members:</h4>
                     <div className="members-list">
-                      {league.users.map(user => (
+                      {(league.users || []).map(user => (
                         <div key={user.id} className="member-item">
                           {user.firstName} {user.lastName} ({user.username})
                         </div>
