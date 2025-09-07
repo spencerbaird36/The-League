@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_WITH_PATH } from '../config/api';
+
+const API_BASE_WITH_PATH = `${API_BASE_WITH_PATH}/api`;
 
 export interface CommissionerLeague {
   id: number;
@@ -89,7 +91,7 @@ export class CommissionerService {
 
   // Check if user is commissioner of a league
   async isCommissioner(userId: number, leagueId: number): Promise<boolean> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/verify/${leagueId}?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/verify/${leagueId}?userId=${userId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -99,7 +101,7 @@ export class CommissionerService {
 
   // Get league data for commissioner management
   async getLeagueForCommissioner(leagueId: number, commissionerId: number): Promise<CommissionerLeague> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}?commissionerId=${commissionerId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -108,7 +110,7 @@ export class CommissionerService {
 
   // Update league settings
   async updateLeagueSettings(leagueId: number, commissionerId: number, settings: UpdateLeagueSettings): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/settings?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/settings?commissionerId=${commissionerId}`, {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(settings),
@@ -118,7 +120,7 @@ export class CommissionerService {
 
   // Invite user to league
   async inviteUser(leagueId: number, commissionerId: number, invite: InviteUser): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/invite?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/invite?commissionerId=${commissionerId}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(invite),
@@ -128,7 +130,7 @@ export class CommissionerService {
 
   // Remove user from league
   async removeUser(leagueId: number, commissionerId: number, targetUserId: number): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/users/${targetUserId}?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/users/${targetUserId}?commissionerId=${commissionerId}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
@@ -137,7 +139,7 @@ export class CommissionerService {
 
   // Transfer commissioner role
   async transferCommissioner(leagueId: number, currentCommissionerId: number, transfer: TransferCommissioner): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/transfer?currentCommissionerId=${currentCommissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/transfer?currentCommissionerId=${currentCommissionerId}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(transfer),
@@ -147,7 +149,7 @@ export class CommissionerService {
 
   // Check draft status and get pending sports for regular drafts
   async getDraftStatus(leagueId: number, commissionerId: number): Promise<DraftStatus> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/draft-status?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/draft-status?commissionerId=${commissionerId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -156,7 +158,7 @@ export class CommissionerService {
 
   // Create a regular draft for a specific sport
   async createRegularDraft(leagueId: number, commissionerId: number, draft: CreateRegularDraft): Promise<CreateDraftResponse> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/create-regular-draft?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/create-regular-draft?commissionerId=${commissionerId}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(draft),
@@ -166,7 +168,7 @@ export class CommissionerService {
 
   // Create regular drafts for all pending sports
   async createAllRegularDrafts(leagueId: number, commissionerId: number): Promise<CreateAllDraftsResponse> {
-    const response = await fetch(`${API_BASE_URL}/commissioner/league/${leagueId}/create-all-regular-drafts?commissionerId=${commissionerId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/commissioner/league/${leagueId}/create-all-regular-drafts?commissionerId=${commissionerId}`, {
       method: 'POST',
       headers: this.getHeaders(),
     });

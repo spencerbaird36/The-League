@@ -6,10 +6,7 @@ import {
   TradeNotification,
   TradeActivity
 } from '../types/Trade';
-
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://the-league-api-1ff2960f0715.herokuapp.com' 
-  : 'http://localhost:5000';
+import { API_BASE_URL } from '../config/api';
 
 export class TradeProposalService {
   private baseUrl = `${API_BASE_URL}/api/trades`;

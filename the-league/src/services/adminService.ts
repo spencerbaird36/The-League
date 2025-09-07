@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import { API_BASE_WITH_PATH } from '../config/api';
+
+const API_BASE_WITH_PATH = `${API_BASE_WITH_PATH}/api`;
 
 export interface AdminUser {
   id: number;
@@ -99,7 +101,7 @@ export class AdminService {
 
   // Dashboard
   async getDashboard(userId: number): Promise<AdminDashboard> {
-    const response = await fetch(`${API_BASE_URL}/admin/dashboard?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/dashboard?userId=${userId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -108,7 +110,7 @@ export class AdminService {
 
   // Leagues Management
   async getAllLeagues(userId: number): Promise<AdminLeague[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/leagues?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/leagues?userId=${userId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -116,7 +118,7 @@ export class AdminService {
   }
 
   async deleteLeague(leagueId: number, userId: number): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/admin/leagues/${leagueId}?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/leagues/${leagueId}?userId=${userId}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
@@ -125,7 +127,7 @@ export class AdminService {
 
   // Users Management
   async getAllUsers(userId: number): Promise<AdminUser[]> {
-    const response = await fetch(`${API_BASE_URL}/admin/users?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/users?userId=${userId}`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
@@ -133,7 +135,7 @@ export class AdminService {
   }
 
   async deleteUser(targetUserId: number, userId: number): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/admin/users/${targetUserId}?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/users/${targetUserId}?userId=${userId}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
@@ -143,8 +145,8 @@ export class AdminService {
   // Players Management
   async getAllPlayers(userId: number, league?: string): Promise<AdminPlayer[]> {
     const url = league 
-      ? `${API_BASE_URL}/admin/players?userId=${userId}&league=${league}`
-      : `${API_BASE_URL}/admin/players?userId=${userId}`;
+      ? `${API_BASE_WITH_PATH}/admin/players?userId=${userId}&league=${league}`
+      : `${API_BASE_WITH_PATH}/admin/players?userId=${userId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -154,7 +156,7 @@ export class AdminService {
   }
 
   async createPlayer(userId: number, playerData: Omit<AdminPlayer, 'id'>): Promise<AdminPlayer> {
-    const response = await fetch(`${API_BASE_URL}/admin/players?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/players?userId=${userId}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(playerData),
@@ -163,7 +165,7 @@ export class AdminService {
   }
 
   async updatePlayer(playerId: number, userId: number, playerData: Partial<Omit<AdminPlayer, 'id'>>): Promise<AdminPlayer> {
-    const response = await fetch(`${API_BASE_URL}/admin/players/${playerId}?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/players/${playerId}?userId=${userId}`, {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(playerData),
@@ -172,7 +174,7 @@ export class AdminService {
   }
 
   async deletePlayer(playerId: number, userId: number): Promise<{ message: string }> {
-    const response = await fetch(`${API_BASE_URL}/admin/players/${playerId}?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_WITH_PATH}/admin/players/${playerId}?userId=${userId}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });

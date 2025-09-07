@@ -1,8 +1,5 @@
 import { ChatMessage, CreateChatMessage, ChatReadStatus } from '../types/Chat';
-
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://the-league-api-1ff2960f0715.herokuapp.com' 
-  : 'http://localhost:5000';
+import { API_BASE_URL } from '../config/api';
 
 class ChatService {
   async getMessages(leagueId: number, limit = 50, offset = 0): Promise<ChatMessage[]> {
