@@ -102,6 +102,52 @@ namespace FantasyLeague.Api.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost("league/{leagueId}/sport/{sport}/year/{year}/regenerate")]
+        public async Task<ActionResult<SeasonResponseDto>> RegenerateSchedule(int leagueId, string sport, int year)
+        {
+            try
+            {
+                var season = await _scheduleService.RegenerateScheduleForMembershipChangeAsync(leagueId, sport, year);
+                
+                if (season == null)
+                {
+                    return BadRequest(new { message = "Unable to regenerate schedule. League may not have enough members or an even number of members." });
+                }
+
+                var response = new SeasonResponseDto
+                {
+                    League = sport,
+                    Season = year,
+                    Weeks = season.Weeks.OrderBy(w => w.WeekNumber).Select(w => new WeekResponseDto
+                    {
+                        Week = w.WeekNumber,
+                        StartDate = w.StartDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                        EndDate = w.EndDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                        Matchups = w.Matchups.Select(m => new MatchupResponseDto
+                        {
+                            Id = $"{sport.ToLower()}-{w.WeekNumber}-{m.HomeTeamId}-{m.AwayTeamId}",
+                            Week = w.WeekNumber,
+                            HomeTeamId = m.HomeTeamId,
+                            AwayTeamId = m.AwayTeamId,
+                            HomeTeamName = $"{m.HomeTeam.FirstName} {m.HomeTeam.LastName}",
+                            AwayTeamName = $"{m.AwayTeam.FirstName} {m.AwayTeam.LastName}",
+                            Date = m.ScheduledDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                            League = sport,
+                            Status = m.Status,
+                            HomeScore = m.HomeScore,
+                            AwayScore = m.AwayScore
+                        }).ToList()
+                    }).ToList()
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 
     // DTOs for API responses

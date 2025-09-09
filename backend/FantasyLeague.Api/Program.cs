@@ -51,6 +51,12 @@ builder.Services.AddScoped<LeagueConfigurationService>();
 builder.Services.AddScoped<KeeperDraftService>();
 builder.Services.AddScoped<PlayerPoolService>();
 builder.Services.AddScoped<RegularDraftService>();
+builder.Services.AddScoped<NflPlayerDataService>();
+builder.Services.AddScoped<MlbPlayerDataService>();
+builder.Services.AddScoped<NbaPlayerDataService>();
+
+// Add HttpClient for API calls
+builder.Services.AddHttpClient();
 
 // Add CORS
 builder.Services.AddCors(options =>

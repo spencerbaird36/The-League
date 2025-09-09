@@ -46,6 +46,12 @@ namespace FantasyLeague.Api.Services
                 throw new InvalidOperationException("Need at least 2 teams to generate a schedule");
             }
 
+            // Require even number of teams for proper schedule generation
+            if (leagueMembers.Count % 2 != 0)
+            {
+                throw new InvalidOperationException("Need an even number of teams to generate a proper schedule");
+            }
+
             // Create season
             var (startDate, endDate, totalWeeks) = GetSeasonDates(sport, year);
             var season = new Season
@@ -201,6 +207,54 @@ namespace FantasyLeague.Api.Services
                 _ => weekStart.AddDays(6) // Default to Sunday
             };
             return DateTime.SpecifyKind(gameDate, DateTimeKind.Utc);
+        }
+
+        public async Task<Season?> RegenerateScheduleForMembershipChangeAsync(int leagueId, string sport, int year)
+        {
+            // Delete existing schedule for this league, sport, and year
+            var existingSeason = await _context.Seasons
+                .Include(s => s.Weeks)
+                .ThenInclude(w => w.Matchups)
+                .FirstOrDefaultAsync(s => s.LeagueId == leagueId && s.Sport == sport && s.Year == year);
+
+            if (existingSeason != null)
+            {
+                // Remove all matchups first
+                foreach (var week in existingSeason.Weeks)
+                {
+                    _context.Matchups.RemoveRange(week.Matchups);
+                }
+                
+                // Remove all weeks
+                _context.Weeks.RemoveRange(existingSeason.Weeks);
+                
+                // Remove the season
+                _context.Seasons.Remove(existingSeason);
+                
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation($"Removed existing schedule for league {leagueId}, sport {sport}, year {year}");
+            }
+
+            // Generate new schedule with current members
+            try
+            {
+                return await GenerateScheduleAsync(leagueId, sport, year);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning($"Could not regenerate schedule for league {leagueId}: {ex.Message}");
+                return null; // Return null if we can't generate a schedule (e.g., odd number of teams)
+            }
+        }
+
+        public async Task<bool> CanGenerateScheduleAsync(int leagueId)
+        {
+            var leagueMembers = await _context.Users
+                .Where(u => u.LeagueId == leagueId)
+                .ToListAsync();
+
+            return leagueMembers.Count >= 2 && leagueMembers.Count % 2 == 0;
         }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250908122606_AddActiveMlbPlayersTable")]
+    partial class AddActiveMlbPlayersTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -85,71 +88,6 @@ namespace FantasyLeague.Api.Migrations
                     b.HasIndex("FirstName", "LastName");
 
                     b.ToTable("ActiveMlbPlayers");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.ActiveNbaPlayer", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("BirthDate")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("LastSyncedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<int>("PlayerID")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("Team")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BirthDate");
-
-                    b.HasIndex("PlayerID")
-                        .IsUnique();
-
-                    b.HasIndex("Position");
-
-                    b.HasIndex("Team");
-
-                    b.HasIndex("FirstName", "LastName");
-
-                    b.ToTable("ActiveNbaPlayers");
                 });
 
             modelBuilder.Entity("FantasyLeague.Api.Models.ActiveNflPlayer", b =>

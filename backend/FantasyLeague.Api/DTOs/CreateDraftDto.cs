@@ -10,5 +10,8 @@ namespace FantasyLeague.Api.DTOs
         [Required(ErrorMessage = "Draft order is required")]
         [MinLength(1, ErrorMessage = "Draft order must contain at least one user")]
         public List<int> DraftOrder { get; set; } = new List<int>();
+        
+        [Required(ErrorMessage = "Created by user ID is required")]
+        public int CreatedByUserId { get; set; }
     }
 }

@@ -532,3 +532,386 @@
     padding: 4px 0;
   }
 }
+
+/* NFL Players Section Styles */
+.nfl-players-management {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.nfl-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sync-button {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sync-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+}
+
+.sync-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sync-button.syncing {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.sync-result {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 4px solid;
+}
+
+.sync-result.success {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.sync-result.error {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: #f44336;
+  color: #c62828;
+}
+
+.sync-details {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.sync-details span {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.nfl-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.nfl-filters {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  margin: 24px 0;
+  padding: 16px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.filter-group select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface-glass);
+  color: var(--text-primary);
+  min-width: 120px;
+}
+
+.apply-filters-button {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.apply-filters-button:hover:not(:disabled) {
+  background: var(--accent-blue-dark);
+  transform: translateY(-1px);
+}
+
+.nfl-players-table {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.nfl-players-table .table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr 1.2fr;
+  gap: 16px;
+  background: var(--surface-hover);
+  padding: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nfl-players-table .table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr 1.2fr;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-light);
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.nfl-players-table .table-row:hover {
+  background: var(--surface-hover);
+}
+
+.nfl-players-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.position-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 40px;
+}
+
+.position-badge.qb {
+  background: rgba(156, 39, 176, 0.2);
+  color: #9c27b0;
+  border: 1px solid #9c27b0;
+}
+
+.position-badge.rb {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid #4caf50;
+}
+
+.position-badge.wr {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  border: 1px solid #2196f3;
+}
+
+.position-badge.te {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid #ff9800;
+}
+
+.position-badge.k {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+  border: 1px solid #f44336;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 24px 0;
+  padding: 16px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+
+.pagination button {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: var(--accent-blue-dark);
+  transform: translateY(-1px);
+}
+
+.pagination button:disabled {
+  background: var(--text-disabled);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pagination span {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* MLB Players Styles */
+.mlb-players-management {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.mlb-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mlb-filters {
+  display: flex;
+  gap: 16px;
+  align-items: end;
+  margin: 24px 0;
+  padding: 16px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.mlb-players-table {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mlb-players-table .table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1.2fr 1.5fr;
+  gap: 16px;
+  background: var(--surface-hover);
+  padding: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.mlb-players-table .table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1.2fr 1.5fr;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color 0.2s ease;
+}
+
+.mlb-players-table .table-row:hover {
+  background: var(--surface-hover);
+}
+
+.mlb-players-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.position-mlb {
+  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  color: white;
+}
+
+/* NBA Styling */
+.nba-players-management {
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 32px;
+  border: 1px solid var(--border-light);
+}
+
+.nba-stats {
+  background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(128, 0, 128, 0.1));
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.nba-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.nba-filters {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: var(--surface-elevated);
+  border-radius: 16px;
+  border: 1px solid var(--border-light);
+}
+
+.nba-players-table {
+  background: var(--surface-elevated);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  margin-bottom: 24px;
+}
+
+.nba-players-table .table-header {
+  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  color: white;
+  font-weight: 700;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1.2fr 1.5fr;
+  gap: 16px;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nba-players-table .table-row {
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1.2fr 1.5fr;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.nba-players-table .table-row:hover {
+  background: var(--surface-hover);
+}
+
+.nba-players-table .table-row:last-child {
+  border-bottom: none;
+}
+
+.position-nba {
+  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  color: white;
+}

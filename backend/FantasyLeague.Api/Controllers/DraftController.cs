@@ -70,11 +70,23 @@ namespace FantasyLeague.Api.Controllers
                 return BadRequest(new { Message = "League not found" });
             }
 
+            // Check if the requesting user is the commissioner of the league
+            if (league.CommissionerId != createDraftDto.CreatedByUserId)
+            {
+                return StatusCode(403, new { Message = "Only the league commissioner can create a draft" });
+            }
+
             // Verify all draft order user IDs are valid league members
             var leagueUserIds = league.Users.Select(u => u.Id).ToHashSet();
             if (!createDraftDto.DraftOrder.All(userId => leagueUserIds.Contains(userId)))
             {
                 return BadRequest(new { Message = "All users in draft order must be league members" });
+            }
+
+            // Require even number of teams for proper draft functionality
+            if (league.Users.Count % 2 != 0)
+            {
+                return BadRequest(new { Message = "Draft requires an even number of players. Current league has " + league.Users.Count + " players." });
             }
 
             var draft = new Draft
@@ -204,7 +216,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpPost("{id}/start")]
-        public async Task<IActionResult> StartDraft(int id)
+        public async Task<IActionResult> StartDraft(int id, [FromBody] StartDraftDto startDraftDto)
         {
             var draft = await _context.Drafts
                 .Include(d => d.League)
@@ -215,6 +227,12 @@ namespace FantasyLeague.Api.Controllers
             if (draft == null)
             {
                 return NotFound();
+            }
+
+            // Check if the requesting user is the commissioner of the league
+            if (draft.League.CommissionerId != startDraftDto.UserId)
+            {
+                return StatusCode(403, new { Message = "Only the league commissioner can start the draft" });
             }
 
             if (draft.IsActive)
@@ -963,10 +981,26 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpPost("regular/{id}/start")]
-        public async Task<IActionResult> StartRegularDraft(int id)
+        public async Task<IActionResult> StartRegularDraft(int id, [FromBody] StartDraftDto startDraftDto)
         {
             try
             {
+                // Get the draft and league information to check commissioner status
+                var draft = await _context.Drafts
+                    .Include(d => d.League)
+                    .FirstOrDefaultAsync(d => d.Id == id);
+
+                if (draft == null)
+                {
+                    return NotFound(new { Message = "Draft not found" });
+                }
+
+                // Check if the requesting user is the commissioner of the league
+                if (draft.League.CommissionerId != startDraftDto.UserId)
+                {
+                    return StatusCode(403, new { Message = "Only the league commissioner can start the draft" });
+                }
+
                 var success = await _regularDraftService.StartRegularDraftAsync(id);
                 if (!success)
                 {

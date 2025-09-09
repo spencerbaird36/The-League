@@ -15,11 +15,13 @@ namespace FantasyLeague.Api.Controllers
     {
         private readonly FantasyLeagueContext _context;
         private readonly LeagueConfigurationService _configurationService;
+        private readonly ScheduleService _scheduleService;
 
-        public LeaguesController(FantasyLeagueContext context, LeagueConfigurationService configurationService)
+        public LeaguesController(FantasyLeagueContext context, LeagueConfigurationService configurationService, ScheduleService scheduleService)
         {
             _context = context;
             _configurationService = configurationService;
+            _scheduleService = scheduleService;
         }
 
         private string GenerateJoinCode()
@@ -161,6 +163,28 @@ namespace FantasyLeague.Api.Controllers
             user.LeagueId = league.Id;
             await _context.SaveChangesAsync();
 
+            // Regenerate schedules for all sports if we have an even number of teams now
+            var currentYear = DateTime.UtcNow.Year;
+            var canGenerateSchedule = await _scheduleService.CanGenerateScheduleAsync(league.Id);
+            
+            if (canGenerateSchedule)
+            {
+                // Regenerate schedules for NFL, NBA, and MLB
+                var sports = new[] { "NFL", "NBA", "MLB" };
+                foreach (var sport in sports)
+                {
+                    try
+                    {
+                        await _scheduleService.RegenerateScheduleForMembershipChangeAsync(league.Id, sport, currentYear);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the join operation if schedule generation fails
+                        Console.WriteLine($"Failed to regenerate {sport} schedule for league {league.Id}: {ex.Message}");
+                    }
+                }
+            }
+
             var leagueResponse = new
             {
                 Id = league.Id,
@@ -169,7 +193,8 @@ namespace FantasyLeague.Api.Controllers
                 MaxPlayers = league.MaxPlayers,
                 JoinCode = league.JoinCode,
                 CreatedAt = league.CreatedAt,
-                UserCount = league.Users.Count + 1
+                UserCount = league.Users.Count + 1,
+                CanGenerateSchedule = canGenerateSchedule
             };
 
             return Ok(leagueResponse);
