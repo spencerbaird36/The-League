@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../config/api';
 
-const API_BASE_WITH_PATH = `${API_BASE_URL}/api/nflplayers`;
+const API_BASE_WITH_PATH = `${API_BASE_URL}/api/NflPlayers`;
 
 export interface ActiveNflPlayer {
   id: number;
