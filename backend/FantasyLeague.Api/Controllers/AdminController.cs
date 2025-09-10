@@ -259,6 +259,81 @@ namespace FantasyLeague.Api.Controllers
             return Ok(players);
         }
 
+        [HttpPost("players")]
+        public async Task<IActionResult> CreatePlayer([FromQuery] int userId, [FromBody] Player playerData)
+        {
+            if (playerData == null)
+            {
+                return BadRequest(new { Message = "Player data is required" });
+            }
+
+            // Set timestamps
+            playerData.CreatedAt = DateTime.UtcNow;
+            playerData.UpdatedAt = DateTime.UtcNow;
+
+            _context.Players.Add(playerData);
+            await _context.SaveChangesAsync();
+
+            return Ok(playerData);
+        }
+
+        [HttpPut("players/{playerId}")]
+        public async Task<IActionResult> UpdatePlayer(int playerId, [FromQuery] int userId, [FromBody] Player playerData)
+        {
+            var existingPlayer = await _context.Players.FindAsync(playerId);
+            if (existingPlayer == null)
+            {
+                return NotFound(new { Message = "Player not found" });
+            }
+
+            // Update player properties
+            existingPlayer.Name = playerData.Name ?? existingPlayer.Name;
+            existingPlayer.Position = playerData.Position ?? existingPlayer.Position;
+            existingPlayer.Team = playerData.Team ?? existingPlayer.Team;
+            existingPlayer.League = playerData.League ?? existingPlayer.League;
+            existingPlayer.GamesPlayed = playerData.GamesPlayed ?? existingPlayer.GamesPlayed;
+            
+            // NFL Stats
+            existingPlayer.PassingYards = playerData.PassingYards ?? existingPlayer.PassingYards;
+            existingPlayer.PassingTouchdowns = playerData.PassingTouchdowns ?? existingPlayer.PassingTouchdowns;
+            existingPlayer.Interceptions = playerData.Interceptions ?? existingPlayer.Interceptions;
+            existingPlayer.RushingYards = playerData.RushingYards ?? existingPlayer.RushingYards;
+            existingPlayer.RushingTouchdowns = playerData.RushingTouchdowns ?? existingPlayer.RushingTouchdowns;
+            existingPlayer.ReceivingYards = playerData.ReceivingYards ?? existingPlayer.ReceivingYards;
+            existingPlayer.ReceivingTouchdowns = playerData.ReceivingTouchdowns ?? existingPlayer.ReceivingTouchdowns;
+            existingPlayer.Receptions = playerData.Receptions ?? existingPlayer.Receptions;
+            
+            // NBA Stats
+            existingPlayer.PointsPerGame = playerData.PointsPerGame ?? existingPlayer.PointsPerGame;
+            existingPlayer.ReboundsPerGame = playerData.ReboundsPerGame ?? existingPlayer.ReboundsPerGame;
+            existingPlayer.AssistsPerGame = playerData.AssistsPerGame ?? existingPlayer.AssistsPerGame;
+            existingPlayer.FieldGoalPercentage = playerData.FieldGoalPercentage ?? existingPlayer.FieldGoalPercentage;
+            existingPlayer.ThreePointPercentage = playerData.ThreePointPercentage ?? existingPlayer.ThreePointPercentage;
+            existingPlayer.FreeThrowPercentage = playerData.FreeThrowPercentage ?? existingPlayer.FreeThrowPercentage;
+            existingPlayer.StealsPerGame = playerData.StealsPerGame ?? existingPlayer.StealsPerGame;
+            existingPlayer.BlocksPerGame = playerData.BlocksPerGame ?? existingPlayer.BlocksPerGame;
+            
+            // MLB Stats
+            existingPlayer.BattingAverage = playerData.BattingAverage ?? existingPlayer.BattingAverage;
+            existingPlayer.HomeRuns = playerData.HomeRuns ?? existingPlayer.HomeRuns;
+            existingPlayer.RunsBattedIn = playerData.RunsBattedIn ?? existingPlayer.RunsBattedIn;
+            existingPlayer.Runs = playerData.Runs ?? existingPlayer.Runs;
+            existingPlayer.Hits = playerData.Hits ?? existingPlayer.Hits;
+            existingPlayer.StolenBases = playerData.StolenBases ?? existingPlayer.StolenBases;
+            existingPlayer.EarnedRunAverage = playerData.EarnedRunAverage ?? existingPlayer.EarnedRunAverage;
+            existingPlayer.Wins = playerData.Wins ?? existingPlayer.Wins;
+            existingPlayer.Losses = playerData.Losses ?? existingPlayer.Losses;
+            existingPlayer.Strikeouts = playerData.Strikeouts ?? existingPlayer.Strikeouts;
+            existingPlayer.Saves = playerData.Saves ?? existingPlayer.Saves;
+            existingPlayer.WHIP = playerData.WHIP ?? existingPlayer.WHIP;
+            
+            existingPlayer.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(existingPlayer);
+        }
+
         [HttpDelete("players/{playerId}")]
         public async Task<IActionResult> DeletePlayer(int playerId, [FromQuery] int userId)
         {

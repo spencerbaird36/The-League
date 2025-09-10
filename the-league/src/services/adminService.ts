@@ -53,9 +53,40 @@ export interface AdminPlayer {
   position: string;
   team: string;
   league: string;
-  isActive: boolean;
-  bye?: number;
-  rankings?: number;
+  gamesPlayed?: number;
+  // NFL Stats
+  passingYards?: number;
+  passingTouchdowns?: number;
+  interceptions?: number;
+  rushingYards?: number;
+  rushingTouchdowns?: number;
+  receivingYards?: number;
+  receivingTouchdowns?: number;
+  receptions?: number;
+  // NBA Stats
+  pointsPerGame?: number;
+  reboundsPerGame?: number;
+  assistsPerGame?: number;
+  fieldGoalPercentage?: number;
+  threePointPercentage?: number;
+  freeThrowPercentage?: number;
+  stealsPerGame?: number;
+  blocksPerGame?: number;
+  // MLB Stats
+  battingAverage?: number;
+  homeRuns?: number;
+  runsBattedIn?: number;
+  runs?: number;
+  hits?: number;
+  stolenBases?: number;
+  earnedRunAverage?: number;
+  wins?: number;
+  losses?: number;
+  strikeouts?: number;
+  saves?: number;
+  whip?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AdminDashboard {

@@ -705,47 +705,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                   onClick={syncMlbPlayers}
                   disabled={mlbSyncing}
                 >
-                  {mlbSyncing ? '⏳ Syncing...' : '🔄 Sync Players'}
+                  {mlbSyncing ? '🔄 Syncing...' : '🔄 Sync from API'}
                 </button>
-
-                {mlbSyncResult && (
-                  <div className={`sync-result ${mlbSyncResult.success ? 'success' : 'error'}`}>
-                    <p>{mlbSyncResult.message}</p>
-                    {mlbSyncResult.success && (
-                      <div className="sync-stats">
-                        <span>Added: {mlbSyncResult.playersAdded}</span>
-                        <span>Updated: {mlbSyncResult.playersUpdated}</span>
-                        <span>Removed: {mlbSyncResult.playersRemoved}</span>
-                        <span>Total: {mlbSyncResult.totalValidPlayers}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
-            {mlbPlayerStats && (
-              <div className="stats-overview">
-                <div className="stat-card">
-                  <h4>Total Players</h4>
-                  <span className="stat-number">{mlbPlayerStats.totalPlayers}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Teams</h4>
-                  <span className="stat-number">{mlbPlayerStats.totalTeams}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Positions</h4>
-                  <span className="stat-number">{mlbPlayerStats.totalPositions}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Position Counts</h4>
-                  <div className="position-counts">
-                    {Object.entries(mlbPlayerStats.positionCounts || {}).map(([pos, count]) => (
-                      <span key={pos} className="position-count">{pos}: {count}</span>
-                    ))}
+            {mlbSyncResult && (
+              <div className={`sync-result ${mlbSyncResult.success ? 'success' : 'error'}`}>
+                <h3>{mlbSyncResult.success ? '✅ Sync Complete!' : '❌ Sync Failed'}</h3>
+                <p>{mlbSyncResult.message}</p>
+                {mlbSyncResult.success && (
+                  <div className="sync-details">
+                    <span>Added: {mlbSyncResult.playersAdded}</span>
+                    <span>Updated: {mlbSyncResult.playersUpdated}</span>
+                    <span>Removed: {mlbSyncResult.playersRemoved}</span>
+                    <span>Total: {mlbSyncResult.totalValidPlayers}</span>
                   </div>
+                )}
+              </div>
+            )}
+
+            {mlbPlayerStats && (
+              <div className="mlb-stats-grid">
+                <div className="stat-card">
+                  <h3>Total Players</h3>
+                  <div className="stat-number">{mlbPlayerStats.totalPlayers}</div>
                 </div>
+                <div className="stat-card">
+                  <h3>Teams</h3>
+                  <div className="stat-number">{mlbPlayerStats.totalTeams}</div>
+                </div>
+                <div className="stat-card">
+                  <h3>Positions</h3>
+                  <div className="stat-number">{mlbPlayerStats.totalPositions}</div>
+                </div>
+                {Object.entries(mlbPlayerStats.positionCounts || {}).map(([position, count]) => (
+                  <div key={position} className="stat-card">
+                    <h3>{position}</h3>
+                    <div className="stat-number">{count}</div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -765,7 +764,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                   ))}
                 </select>
               </div>
-
+              
               <div className="filter-group">
                 <label>Team:</label>
                 <select 
@@ -787,7 +786,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 onClick={loadMlbPlayers}
                 disabled={loading}
               >
-                🔍 Apply Filters
+                Apply Filters
               </button>
             </div>
 
@@ -797,21 +796,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 <span>Position</span>
                 <span>Team</span>
                 <span>Age</span>
-                <span>Birth Date</span>
+                <span>API ID</span>
                 <span>Last Synced</span>
               </div>
+              
               {mlbPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span className="player-name">
-                    <strong>{player.fullName}</strong>
+                  <span><strong>{player.fullName}</strong></span>
+                  <span className={`position-badge ${player.position.toLowerCase()}`}>
+                    {player.position}
                   </span>
-                  <span className="position">
-                    <span className="position-badge position-mlb">{player.position}</span>
-                  </span>
-                  <span className="team">{player.team}</span>
-                  <span className="age">{player.age}</span>
-                  <span className="birth-date">{new Date(player.birthDate).toLocaleDateString()}</span>
-                  <span className="last-synced">{new Date(player.lastSyncedAt).toLocaleString()}</span>
+                  <span>{player.team}</span>
+                  <span>{player.age}</span>
+                  <span>{player.playerID}</span>
+                  <span>{new Date(player.lastSyncedAt).toLocaleDateString()}</span>
                 </div>
               ))}
             </div>
@@ -821,16 +819,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 onClick={() => {
                   setMlbPlayersPage(prev => Math.max(1, prev - 1));
                 }}
-                disabled={mlbPlayersPage <= 1}
+                disabled={mlbPlayersPage === 1 || loading}
               >
                 ← Previous
               </button>
-              <span>Page {mlbPlayersPage} - Total Players: {mlbPlayersTotal}</span>
+              <span>Page {mlbPlayersPage} - Total: {mlbPlayersTotal} players</span>
               <button 
                 onClick={() => {
                   setMlbPlayersPage(prev => prev + 1);
                 }}
-                disabled={mlbPlayers.length < 20}
+                disabled={mlbPlayers.length < 20 || loading}
               >
                 Next →
               </button>
@@ -851,47 +849,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                   onClick={syncNbaPlayers}
                   disabled={nbaSyncing}
                 >
-                  {nbaSyncing ? '🔄 Syncing...' : '🔄 Sync Players'}
+                  {nbaSyncing ? '🔄 Syncing...' : '🔄 Sync from API'}
                 </button>
-
-                {nbaSyncResult && (
-                  <div className={`sync-result ${nbaSyncResult.success ? 'success' : 'error'}`}>
-                    <p>{nbaSyncResult.message}</p>
-                    {nbaSyncResult.success && (
-                      <div className="sync-stats">
-                        <span>Added: {nbaSyncResult.playersAdded}</span>
-                        <span>Updated: {nbaSyncResult.playersUpdated}</span>
-                        <span>Removed: {nbaSyncResult.playersRemoved}</span>
-                        <span>Total: {nbaSyncResult.totalValidPlayers}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
-            {nbaPlayerStats && (
-              <div className="stats-overview nba-stats">
-                <div className="stat-card">
-                  <h4>Total Players</h4>
-                  <span className="stat-number">{nbaPlayerStats.totalPlayers}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Teams</h4>
-                  <span className="stat-number">{nbaPlayerStats.totalTeams}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Positions</h4>
-                  <span className="stat-number">{nbaPlayerStats.totalPositions}</span>
-                </div>
-                <div className="stat-card">
-                  <h4>Position Counts</h4>
-                  <div className="position-counts">
-                    {Object.entries(nbaPlayerStats.positionCounts || {}).map(([pos, count]) => (
-                      <span key={pos} className="position-count">{pos}: {count}</span>
-                    ))}
+            {nbaSyncResult && (
+              <div className={`sync-result ${nbaSyncResult.success ? 'success' : 'error'}`}>
+                <h3>{nbaSyncResult.success ? '✅ Sync Complete!' : '❌ Sync Failed'}</h3>
+                <p>{nbaSyncResult.message}</p>
+                {nbaSyncResult.success && (
+                  <div className="sync-details">
+                    <span>Added: {nbaSyncResult.playersAdded}</span>
+                    <span>Updated: {nbaSyncResult.playersUpdated}</span>
+                    <span>Removed: {nbaSyncResult.playersRemoved}</span>
+                    <span>Total: {nbaSyncResult.totalValidPlayers}</span>
                   </div>
+                )}
+              </div>
+            )}
+
+            {nbaPlayerStats && (
+              <div className="nba-stats-grid">
+                <div className="stat-card">
+                  <h3>Total Players</h3>
+                  <div className="stat-number">{nbaPlayerStats.totalPlayers}</div>
                 </div>
+                <div className="stat-card">
+                  <h3>Teams</h3>
+                  <div className="stat-number">{nbaPlayerStats.totalTeams}</div>
+                </div>
+                <div className="stat-card">
+                  <h3>Positions</h3>
+                  <div className="stat-number">{nbaPlayerStats.totalPositions}</div>
+                </div>
+                {Object.entries(nbaPlayerStats.positionCounts || {}).map(([position, count]) => (
+                  <div key={position} className="stat-card">
+                    <h3>{position}</h3>
+                    <div className="stat-number">{count}</div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -911,7 +908,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                   ))}
                 </select>
               </div>
-
+              
               <div className="filter-group">
                 <label>Team:</label>
                 <select 
@@ -933,7 +930,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 onClick={loadNbaPlayers}
                 disabled={loading}
               >
-                🏀 Apply Filters
+                Apply Filters
               </button>
             </div>
 
@@ -943,21 +940,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 <span>Position</span>
                 <span>Team</span>
                 <span>Age</span>
-                <span>Birth Date</span>
+                <span>API ID</span>
                 <span>Last Synced</span>
               </div>
+              
               {nbaPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span className="player-name">
-                    <strong>{player.fullName}</strong>
+                  <span><strong>{player.fullName}</strong></span>
+                  <span className={`position-badge ${player.position.toLowerCase()}`}>
+                    {player.position}
                   </span>
-                  <span className="position">
-                    <span className="position-badge position-nba">{player.position}</span>
-                  </span>
-                  <span className="team">{player.team}</span>
-                  <span className="age">{player.age}</span>
-                  <span className="birth-date">{new Date(player.birthDate).toLocaleDateString()}</span>
-                  <span className="last-synced">{new Date(player.lastSyncedAt).toLocaleString()}</span>
+                  <span>{player.team}</span>
+                  <span>{player.age}</span>
+                  <span>{player.playerID}</span>
+                  <span>{new Date(player.lastSyncedAt).toLocaleDateString()}</span>
                 </div>
               ))}
             </div>
@@ -967,16 +963,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                 onClick={() => {
                   setNbaPlayersPage(prev => Math.max(1, prev - 1));
                 }}
-                disabled={nbaPlayersPage <= 1}
+                disabled={nbaPlayersPage === 1 || loading}
               >
                 ← Previous
               </button>
-              <span>Page {nbaPlayersPage} - Total Players: {nbaPlayersTotal}</span>
+              <span>Page {nbaPlayersPage} - Total: {nbaPlayersTotal} players</span>
               <button 
                 onClick={() => {
                   setNbaPlayersPage(prev => prev + 1);
                 }}
-                disabled={nbaPlayers.length < 20}
+                disabled={nbaPlayers.length < 20 || loading}
               >
                 Next →
               </button>

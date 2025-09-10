@@ -427,11 +427,19 @@ export function useDraftOperations(user: User | null) {
     }
 
     try {
-      // Use SignalR reset instead of REST API for better real-time sync
-      await signalRService.resetDraft(user.league.id);
-      console.log('✅ Draft reset request sent via SignalR');
+      // Try SignalR first for better real-time sync
+      if (signalRService.isConnected()) {
+        console.log('🔄 Attempting draft reset via SignalR...');
+        await signalRService.resetDraft(user.league.id);
+        console.log('✅ Draft reset request sent via SignalR');
+      } else {
+        // Fallback to REST API if SignalR is not connected
+        console.log('🔄 SignalR not connected, using REST API fallback...');
+        await draftService.resetDraft(draftId);
+        console.log('✅ Draft reset request sent via REST API');
+      }
       
-      // Clear local state immediately (SignalR event will trigger full refresh)
+      // Clear local state immediately
       dispatch({ type: 'CLEAR_LOCAL_ROSTERS' });
       dispatch({ type: 'RESET_TIMER', payload: { duration: 15 } });
       
@@ -442,6 +450,30 @@ export function useDraftOperations(user: User | null) {
       
     } catch (error) {
       console.error('Error resetting draft:', error);
+      
+      // If SignalR failed, try REST API as fallback
+      if (signalRService.isConnected()) {
+        console.log('🔄 SignalR reset failed, trying REST API fallback...');
+        try {
+          await draftService.resetDraft(draftId);
+          console.log('✅ Draft reset successful via REST API fallback');
+          
+          // Clear local state
+          dispatch({ type: 'CLEAR_LOCAL_ROSTERS' });
+          dispatch({ type: 'RESET_TIMER', payload: { duration: 15 } });
+          
+          // Fetch fresh draft state
+          setTimeout(() => {
+            fetchDraftState();
+          }, 500);
+          
+          return; // Success via fallback
+        } catch (fallbackError) {
+          console.error('❌ Both SignalR and REST API reset failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
+      
       throw error;
     }
   }, [dispatch, user?.league?.id, fetchDraftState]);

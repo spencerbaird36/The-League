@@ -1223,6 +1223,18 @@ namespace FantasyLeague.Api.Hubs
                         .Where(r => r.DraftId == draft.Id)
                         .ToListAsync();
                     
+                    // First clear any TradePlayers that reference these UserRosters to avoid foreign key constraint violations
+                    var rosterIds = existingRosters.Select(r => r.Id).ToList();
+                    var relatedTradePlayers = await _context.TradePlayers
+                        .Where(tp => rosterIds.Contains(tp.UserRosterId))
+                        .ToListAsync();
+                    
+                    if (relatedTradePlayers.Any())
+                    {
+                        _context.TradePlayers.RemoveRange(relatedTradePlayers);
+                        Console.WriteLine($"🔄 Cleared {relatedTradePlayers.Count} trade players to avoid foreign key constraints");
+                    }
+                    
                     _context.UserRosters.RemoveRange(existingRosters);
                     Console.WriteLine($"🔄 Cleared {existingRosters.Count} user roster entries");
                     
