@@ -374,6 +374,7 @@ const Draft: React.FC<DraftProps> = ({
   const [isDraftConfirmModalOpen, setIsDraftConfirmModalOpen] = useState<boolean>(false);
   const [selectedPlayerForInfo, setSelectedPlayerForInfo] = useState<Player | null>(null);
   const [selectedPlayerForDraft, setSelectedPlayerForDraft] = useState<Player | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   
   
   // Phase 4 Redesign: Chat and commissioner controls visibility
@@ -475,11 +476,14 @@ const Draft: React.FC<DraftProps> = ({
     const filtered = availablePlayers.filter((player: Player) => {
       const leagueMatch = selectedLeague === 'ALL' || player.league === selectedLeague;
       const positionMatch = selectedPosition === 'ALL' || player.position === selectedPosition;
-      return leagueMatch && positionMatch;
+      const searchMatch = !searchTerm || 
+        player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        player.team.toLowerCase().includes(searchTerm.toLowerCase());
+      return leagueMatch && positionMatch && searchMatch;
     });
     
     return filtered;
-  }, [availablePlayers, selectedLeague, selectedPosition]);
+  }, [availablePlayers, selectedLeague, selectedPosition, searchTerm]);
   
   // Phase 2 Redesign: Smart recommendations and analytics
   const teamNeeds = React.useMemo(() => {
@@ -1174,6 +1178,28 @@ const Draft: React.FC<DraftProps> = ({
                         {sport}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="search-filter">
+                  <h4>Search Players</h4>
+                  <div className="search-input-container">
+                    <input
+                      type="text"
+                      placeholder="Search by player name or team..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="search-input"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="clear-search-btn"
+                        title="Clear search"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 </div>
 

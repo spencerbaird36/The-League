@@ -1141,8 +1141,9 @@
   justify-content: center;
 }
 
-/* Filters section league and position filters - compact inline layout */
+/* Filters section league, search, and position filters - compact inline layout */
 .filters-section .league-filter,
+.filters-section .search-filter,
 .filters-section .position-filter {
   margin-bottom: 0;
   display: flex;
@@ -1151,6 +1152,7 @@
 }
 
 .filters-section .league-filter h4,
+.filters-section .search-filter h4,
 .filters-section .position-filter h4 {
   font-family: 'Poppins', sans-serif;
   font-size: 0.95rem;
@@ -1227,6 +1229,57 @@
   color: var(--primary-navy);
   border-color: var(--accent-gold);
   box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
+}
+
+/* Search Filter Styles */
+.filters-section .search-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filters-section .search-input {
+  background: rgba(245, 242, 232, 0.08);
+  color: var(--text-cream);
+  border: 2px solid var(--border-cream);
+  padding: 10px 40px 10px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  width: 300px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.filters-section .search-input::placeholder {
+  color: rgba(245, 242, 232, 0.6);
+  font-style: italic;
+}
+
+.filters-section .search-input:focus {
+  outline: none;
+  background: rgba(245, 242, 232, 0.12);
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.2);
+}
+
+.filters-section .clear-search-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-gray);
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.filters-section .clear-search-btn:hover {
+  color: var(--accent-gold);
+  background: rgba(218, 165, 32, 0.1);
 }
 
 /* Available Players Section - Full width layout */
@@ -2196,10 +2249,16 @@ tbody tr:hover td {
   }
   
   .filters-section .league-filter,
+  .filters-section .search-filter,
   .filters-section .position-filter {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+  
+  .filters-section .search-input {
+    width: 100%;
+    max-width: 280px;
   }
 }
 
@@ -2893,6 +2952,7 @@ tbody tr:hover td {
   }
   
   .filters-section .league-filter,
+  .filters-section .search-filter,
   .filters-section .position-filter {
     flex-direction: column;
     align-items: center;
@@ -2900,6 +2960,7 @@ tbody tr:hover td {
   }
   
   .filters-section .league-filter h4,
+  .filters-section .search-filter h4,
   .filters-section .position-filter h4 {
     font-size: 0.85rem;
     margin: 0;
