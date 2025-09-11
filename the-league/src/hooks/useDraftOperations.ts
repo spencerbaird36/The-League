@@ -409,7 +409,7 @@ export function useDraftOperations(user: User | null) {
     }
 
     try {
-      const updatedDraft = await draftService.startDraft(state.draftState.id);
+      const updatedDraft = await draftService.startDraft(state.draftState.id, user?.id || 0);
       dispatch({ type: 'SET_DRAFT_STATE', payload: updatedDraft });
       // Automatically start the timer when draft begins
       dispatch({ type: 'START_TIMER', payload: { duration: 15 } });

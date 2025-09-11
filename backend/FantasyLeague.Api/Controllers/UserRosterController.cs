@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Models;
 using FantasyLeague.Api.Data;
+using FantasyLeague.Api.Services;
 
 namespace FantasyLeague.Api.Controllers
 {
@@ -10,15 +11,24 @@ namespace FantasyLeague.Api.Controllers
     public class UserRosterController : ControllerBase
     {
         private readonly FantasyLeagueContext _context;
+        private readonly LeagueConfigurationService _configurationService;
 
-        public UserRosterController(FantasyLeagueContext context)
+        public UserRosterController(FantasyLeagueContext context, LeagueConfigurationService configurationService)
         {
             _context = context;
+            _configurationService = configurationService;
         }
 
         [HttpGet("user/{userId}/league/{leagueId}")]
         public async Task<IActionResult> GetUserRoster(int userId, int leagueId)
         {
+            // Get league configuration to determine which sports are enabled
+            var config = await _configurationService.GetConfigurationAsync(leagueId);
+            if (config == null)
+            {
+                return BadRequest("League configuration not found");
+            }
+
             var roster = await _context.UserRosters
                 .Where(ur => ur.UserId == userId && ur.LeagueId == leagueId)
                 .OrderBy(ur => ur.PickNumber)
@@ -36,12 +46,28 @@ namespace FantasyLeague.Api.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(roster);
+            // Filter roster based on league configuration
+            var filteredRoster = roster.Where(r => r.PlayerLeague.ToUpper() switch
+            {
+                "NFL" => config.IncludeNFL,
+                "NBA" => config.IncludeNBA,
+                "MLB" => config.IncludeMLB,
+                _ => false
+            }).ToList();
+
+            return Ok(filteredRoster);
         }
 
         [HttpGet("league/{leagueId}")]
         public async Task<IActionResult> GetAllRosters(int leagueId)
         {
+            // Get league configuration to determine which sports are enabled
+            var config = await _configurationService.GetConfigurationAsync(leagueId);
+            if (config == null)
+            {
+                return BadRequest("League configuration not found");
+            }
+
             var rosters = await _context.UserRosters
                 .Include(ur => ur.User)
                 .Where(ur => ur.LeagueId == leagueId)
@@ -67,7 +93,23 @@ namespace FantasyLeague.Api.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(rosters);
+            // Filter each user's roster based on league configuration
+            var filteredRosters = rosters.Select(roster => new
+            {
+                roster.UserId,
+                roster.Username,
+                roster.FirstName,
+                roster.LastName,
+                Players = roster.Players.Where(p => p.PlayerLeague.ToUpper() switch
+                {
+                    "NFL" => config.IncludeNFL,
+                    "NBA" => config.IncludeNBA,
+                    "MLB" => config.IncludeMLB,
+                    _ => false
+                }).ToList()
+            }).ToList();
+
+            return Ok(filteredRosters);
         }
 
         [HttpPut("{rosterId}/position")]

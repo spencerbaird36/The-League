@@ -94,10 +94,16 @@ class DraftService {
     }
   }
 
-  async startDraft(draftId: number): Promise<DraftState> {
+  async startDraft(draftId: number, userId: number): Promise<DraftState> {
     try {
       const response = await apiRequest(`/api/draft/${draftId}/start`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId
+        }),
       });
 
       if (response.ok) {

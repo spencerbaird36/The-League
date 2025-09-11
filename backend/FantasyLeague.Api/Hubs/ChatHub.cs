@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Data;
 using FantasyLeague.Api.DTOs;
+using FantasyLeague.Api.Services;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -11,15 +12,17 @@ namespace FantasyLeague.Api.Hubs
     {
         private readonly FantasyLeagueContext _context;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly PlayerPoolService _playerPoolService;
         private static readonly ConcurrentDictionary<string, UserConnection> _connections = new();
         private static readonly ConcurrentDictionary<int, Timer> _draftTimers = new();
         private static readonly ConcurrentDictionary<int, DateTime> _timerStartTimes = new();
         private static IServiceProvider? _staticServiceProvider;
 
-        public ChatHub(FantasyLeagueContext context, IHubContext<ChatHub> hubContext, IServiceProvider serviceProvider)
+        public ChatHub(FantasyLeagueContext context, IHubContext<ChatHub> hubContext, PlayerPoolService playerPoolService)
         {
             _context = context;
             _hubContext = hubContext;
+            _playerPoolService = playerPoolService;
         }
         
         public static void InitializeServiceProvider(IServiceProvider serviceProvider)
@@ -89,144 +92,78 @@ namespace FantasyLeague.Api.Hubs
 
         private async Task<List<AutoDraftPlayer>> GetAvailablePlayersFromAPI(string leagueId, FantasyLeagueContext context)
         {
-            // Get already drafted players by their IDs - using same logic as DraftController
-            var draft = await context.Drafts
-                .Include(d => d.DraftPicks)
-                .FirstOrDefaultAsync(d => d.LeagueId == int.Parse(leagueId));
-
-            // Extract player IDs from PlayerName field (format: "playerId:PlayerName (AUTO)" or just "PlayerName")
-            var draftedPlayerIds = new HashSet<string>();
-            if (draft?.DraftPicks != null)
+            try
             {
-                foreach (var pick in draft.DraftPicks)
-                {
-                    if (!string.IsNullOrEmpty(pick.PlayerName))
+                Console.WriteLine($"🔍 GetAvailablePlayersFromAPI called for league {leagueId}");
+                Console.WriteLine($"🔍 PlayerPoolService is null: {_playerPoolService == null}");
+                
+                // Use the same PlayerPoolService logic as the regular draft interface
+                var availablePlayersResponse = await _playerPoolService.GetAvailablePlayersForLeagueAsync(int.Parse(leagueId));
+                
+                Console.WriteLine($"🔍 PlayerPoolService returned {availablePlayersResponse.Count} available players");
+                
+                // Convert the PlayerPoolService response to AutoDraftPlayer format
+                var availablePlayers = availablePlayersResponse.Select(p => {
+                    var playerObj = p as dynamic;
+                    return new AutoDraftPlayer
                     {
-                        if (pick.PlayerName.Contains(":"))
-                        {
-                            // Format: "playerId:PlayerName (AUTO)"
-                            var playerId = pick.PlayerName.Split(':')[0];
-                            draftedPlayerIds.Add(playerId);
-                        }
-                        else
-                        {
-                            // For manual picks, we need to match by name to find the player ID
-                            // Extract player name (remove (AUTO) if present)
-                            var cleanPlayerName = pick.PlayerName.Replace(" (AUTO)", "").Trim();
-                            
-                            // Map common player names to IDs (this should match the backend player pool)
-                            var nameToIdMap = new Dictionary<string, string>
-                            {
-                                {"Lamar Jackson", "lamar-jackson"},
-                                {"Josh Allen", "josh-allen"},
-                                {"Joe Burrow", "joe-burrow"},
-                                {"Jared Goff", "jared-goff"},
-                                {"Tua Tagovailoa", "tua-tagovailoa"},
-                                {"Aaron Rodgers", "aaron-rodgers"},
-                                {"Dak Prescott", "dak-prescott"},
-                                {"Christian McCaffrey", "christian-mccaffrey"},
-                                {"Austin Ekeler", "austin-ekeler"},
-                                {"Josh Jacobs", "josh-jacobs"},
-                                {"Saquon Barkley", "saquon-barkley"},
-                                {"Derrick Henry", "derrick-henry"},
-                                {"Nick Chubb", "nick-chubb"},
-                                {"Tyreek Hill", "tyreek-hill"},
-                                {"Davante Adams", "davante-adams"},
-                                {"Stefon Diggs", "stefon-diggs"},
-                                {"Amon-Ra St. Brown", "amon-ra-st-brown"},
-                                {"CeeDee Lamb", "ceedee-lamb"},
-                                {"Ja'Marr Chase", "jamarr-chase"},
-                                {"Travis Kelce", "travis-kelce"},
-                                {"Mark Andrews", "mark-andrews"},
-                                {"T.J. Hockenson", "tj-hockenson"},
-                                {"George Kittle", "george-kittle"},
-                                {"Sam LaPorta", "sam-laporta"},
-                                {"Justin Tucker", "justin-tucker"},
-                                {"Harrison Butker", "harrison-butker"},
-                                {"Tyler Bass", "tyler-bass"},
-                                {"LeBron James", "lebron-james"},
-                                {"Stephen Curry", "stephen-curry"},
-                                {"Giannis Antetokounmpo", "giannis-antetokounmpo"},
-                                {"Luka Doncic", "luka-doncic"},
-                                {"Jayson Tatum", "jayson-tatum"},
-                                {"Mike Trout", "mike-trout"},
-                                {"Mookie Betts", "mookie-betts"},
-                                {"Aaron Judge", "aaron-judge"},
-                                {"Ronald Acuña Jr.", "ronald-acuna-jr"},
-                                {"Shohei Ohtani", "shohei-ohtani"}
-                            };
-                            
-                            if (nameToIdMap.ContainsKey(cleanPlayerName))
-                            {
-                                draftedPlayerIds.Add(nameToIdMap[cleanPlayerName]);
-                            }
-                        }
-                    }
-                }
+                        Id = playerObj.id?.ToString() ?? "",
+                        Name = playerObj.name?.ToString() ?? "",
+                        Position = playerObj.position?.ToString() ?? "",
+                        Team = playerObj.team?.ToString() ?? "",
+                        League = playerObj.league?.ToString() ?? ""
+                    };
+                }).ToList();
+                
+                Console.WriteLine($"🎯 Found {availablePlayers.Count} available players for auto-draft using PlayerPoolService");
+                
+                return availablePlayers;
             }
-
-            // Player pool matching frontend players.ts (subset with same IDs)
-            var allPlayers = new List<AutoDraftPlayer>
+            catch (Exception ex)
             {
-                // NFL Quarterbacks
-                new AutoDraftPlayer { Id = "lamar-jackson", Name = "Lamar Jackson", Position = "QB", Team = "Baltimore Ravens", League = "NFL" },
-                new AutoDraftPlayer { Id = "josh-allen", Name = "Josh Allen", Position = "QB", Team = "Buffalo Bills", League = "NFL" },
-                new AutoDraftPlayer { Id = "joe-burrow", Name = "Joe Burrow", Position = "QB", Team = "Cincinnati Bengals", League = "NFL" },
-                new AutoDraftPlayer { Id = "jared-goff", Name = "Jared Goff", Position = "QB", Team = "Detroit Lions", League = "NFL" },
-                new AutoDraftPlayer { Id = "tua-tagovailoa", Name = "Tua Tagovailoa", Position = "QB", Team = "Miami Dolphins", League = "NFL" },
-                new AutoDraftPlayer { Id = "aaron-rodgers", Name = "Aaron Rodgers", Position = "QB", Team = "New York Jets", League = "NFL" },
-                new AutoDraftPlayer { Id = "dak-prescott", Name = "Dak Prescott", Position = "QB", Team = "Dallas Cowboys", League = "NFL" },
-                
-                // NFL Running Backs
-                new AutoDraftPlayer { Id = "christian-mccaffrey", Name = "Christian McCaffrey", Position = "RB", Team = "San Francisco 49ers", League = "NFL" },
-                new AutoDraftPlayer { Id = "austin-ekeler", Name = "Austin Ekeler", Position = "RB", Team = "Washington Commanders", League = "NFL" },
-                new AutoDraftPlayer { Id = "josh-jacobs", Name = "Josh Jacobs", Position = "RB", Team = "Green Bay Packers", League = "NFL" },
-                new AutoDraftPlayer { Id = "saquon-barkley", Name = "Saquon Barkley", Position = "RB", Team = "Philadelphia Eagles", League = "NFL" },
-                new AutoDraftPlayer { Id = "derrick-henry", Name = "Derrick Henry", Position = "RB", Team = "Baltimore Ravens", League = "NFL" },
-                new AutoDraftPlayer { Id = "nick-chubb", Name = "Nick Chubb", Position = "RB", Team = "Cleveland Browns", League = "NFL" },
-                
-                // NFL Wide Receivers
-                new AutoDraftPlayer { Id = "tyreek-hill", Name = "Tyreek Hill", Position = "WR", Team = "Miami Dolphins", League = "NFL" },
-                new AutoDraftPlayer { Id = "davante-adams", Name = "Davante Adams", Position = "WR", Team = "New York Jets", League = "NFL" },
-                new AutoDraftPlayer { Id = "stefon-diggs", Name = "Stefon Diggs", Position = "WR", Team = "Houston Texans", League = "NFL" },
-                new AutoDraftPlayer { Id = "amon-ra-st-brown", Name = "Amon-Ra St. Brown", Position = "WR", Team = "Detroit Lions", League = "NFL" },
-                new AutoDraftPlayer { Id = "ceedee-lamb", Name = "CeeDee Lamb", Position = "WR", Team = "Dallas Cowboys", League = "NFL" },
-                new AutoDraftPlayer { Id = "jamarr-chase", Name = "Ja'Marr Chase", Position = "WR", Team = "Cincinnati Bengals", League = "NFL" },
-                
-                // NFL Tight Ends
-                new AutoDraftPlayer { Id = "travis-kelce", Name = "Travis Kelce", Position = "TE", Team = "Kansas City Chiefs", League = "NFL" },
-                new AutoDraftPlayer { Id = "mark-andrews", Name = "Mark Andrews", Position = "TE", Team = "Baltimore Ravens", League = "NFL" },
-                new AutoDraftPlayer { Id = "tj-hockenson", Name = "T.J. Hockenson", Position = "TE", Team = "Minnesota Vikings", League = "NFL" },
-                new AutoDraftPlayer { Id = "george-kittle", Name = "George Kittle", Position = "TE", Team = "San Francisco 49ers", League = "NFL" },
-                new AutoDraftPlayer { Id = "sam-laporta", Name = "Sam LaPorta", Position = "TE", Team = "Detroit Lions", League = "NFL" },
-                
-                // NFL Kickers
-                new AutoDraftPlayer { Id = "justin-tucker", Name = "Justin Tucker", Position = "K", Team = "Baltimore Ravens", League = "NFL" },
-                new AutoDraftPlayer { Id = "harrison-butker", Name = "Harrison Butker", Position = "K", Team = "Kansas City Chiefs", League = "NFL" },
-                new AutoDraftPlayer { Id = "tyler-bass", Name = "Tyler Bass", Position = "K", Team = "Buffalo Bills", League = "NFL" },
-                
-                // NBA Players
-                new AutoDraftPlayer { Id = "lebron-james", Name = "LeBron James", Position = "SF", Team = "Los Angeles Lakers", League = "NBA" },
-                new AutoDraftPlayer { Id = "stephen-curry", Name = "Stephen Curry", Position = "PG", Team = "Golden State Warriors", League = "NBA" },
-                new AutoDraftPlayer { Id = "giannis-antetokounmpo", Name = "Giannis Antetokounmpo", Position = "PF", Team = "Milwaukee Bucks", League = "NBA" },
-                new AutoDraftPlayer { Id = "luka-doncic", Name = "Luka Doncic", Position = "PG", Team = "Dallas Mavericks", League = "NBA" },
-                new AutoDraftPlayer { Id = "jayson-tatum", Name = "Jayson Tatum", Position = "SF", Team = "Boston Celtics", League = "NBA" },
-                
-                // MLB Players
-                new AutoDraftPlayer { Id = "mike-trout", Name = "Mike Trout", Position = "OF", Team = "Los Angeles Angels", League = "MLB" },
-                new AutoDraftPlayer { Id = "mookie-betts", Name = "Mookie Betts", Position = "OF", Team = "Los Angeles Dodgers", League = "MLB" },
-                new AutoDraftPlayer { Id = "aaron-judge", Name = "Aaron Judge", Position = "OF", Team = "New York Yankees", League = "MLB" },
-                new AutoDraftPlayer { Id = "ronald-acuna-jr", Name = "Ronald Acuña Jr.", Position = "OF", Team = "Atlanta Braves", League = "MLB" },
-                new AutoDraftPlayer { Id = "shohei-ohtani", Name = "Shohei Ohtani", Position = "DH", Team = "Los Angeles Dodgers", League = "MLB" }
-            };
+                Console.WriteLine($"❌ Error getting available players from PlayerPoolService: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                // Fallback to empty list to prevent crashes
+                return new List<AutoDraftPlayer>();
+            }
+        }
 
-            // Filter out already drafted players by ID
-            var availablePlayers = allPlayers.Where(p => !draftedPlayerIds.Contains(p.Id)).ToList();
-            
-            Console.WriteLine($"🎯 Found {availablePlayers.Count} available players for auto-draft (out of {allPlayers.Count} total)");
-            Console.WriteLine($"🎯 Drafted player IDs: [{string.Join(", ", draftedPlayerIds)}]");
-            
-            return availablePlayers;
+        private async Task<List<AutoDraftPlayer>> GetAvailablePlayersUsingService(string leagueId, PlayerPoolService playerPoolService)
+        {
+            try
+            {
+                Console.WriteLine($"🔍 GetAvailablePlayersUsingService called for league {leagueId}");
+                Console.WriteLine($"🔍 PlayerPoolService parameter is null: {playerPoolService == null}");
+                
+                // Use the PlayerPoolService directly
+                var availablePlayersResponse = await playerPoolService.GetAvailablePlayersForLeagueAsync(int.Parse(leagueId));
+                
+                Console.WriteLine($"🔍 PlayerPoolService returned {availablePlayersResponse.Count} available players");
+                
+                // Convert the PlayerPoolService response to AutoDraftPlayer format
+                var availablePlayers = availablePlayersResponse.Select(p => {
+                    var playerObj = p as dynamic;
+                    return new AutoDraftPlayer
+                    {
+                        Id = playerObj.id?.ToString() ?? "",
+                        Name = playerObj.name?.ToString() ?? "",
+                        Position = playerObj.position?.ToString() ?? "",
+                        Team = playerObj.team?.ToString() ?? "",
+                        League = playerObj.league?.ToString() ?? ""
+                    };
+                }).ToList();
+                
+                Console.WriteLine($"🎯 Found {availablePlayers.Count} available players for auto-draft using PlayerPoolService");
+                
+                return availablePlayers;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error getting available players from PlayerPoolService: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                // Fallback to empty list to prevent crashes
+                return new List<AutoDraftPlayer>();
+            }
         }
 
         public class UserConnection
@@ -450,9 +387,11 @@ namespace FantasyLeague.Api.Hubs
                 var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
 
 
+                // Get PlayerPoolService from the scoped service provider
+                var playerPoolService = scope.ServiceProvider.GetRequiredService<PlayerPoolService>();
+                
                 // Simple auto-draft logic - pick first available player
-                // In a real implementation, you'd want more sophisticated logic
-                await MakeAutoDraftPick(leagueId.ToString(), currentUserId, context);
+                await MakeAutoDraftPick(leagueId.ToString(), currentUserId, context, playerPoolService);
                 
                 // Re-fetch draft to check final state
                 var finalDraft = await context.Drafts.FirstOrDefaultAsync(d => d.LeagueId == leagueId);
@@ -464,10 +403,10 @@ namespace FantasyLeague.Api.Hubs
             }
         }
 
-        private async Task MakeAutoDraftPick(string leagueId, int userId, FantasyLeagueContext context)
+        private async Task MakeAutoDraftPick(string leagueId, int userId, FantasyLeagueContext context, PlayerPoolService playerPoolService)
         {
-            // Get available players for auto-draft using the same logic as the API endpoint
-            var availablePlayers = await GetAvailablePlayersFromAPI(leagueId, context);
+            // Get available players for auto-draft using the PlayerPoolService directly
+            var availablePlayers = await GetAvailablePlayersUsingService(leagueId, playerPoolService);
             
             if (availablePlayers.Count == 0)
             {
@@ -775,51 +714,8 @@ namespace FantasyLeague.Api.Hubs
                     
                     Console.WriteLine($"🏁 Starting complete auto-draft: {totalPicks} picks completed, {totalPicksNeeded - totalPicks} picks remaining");
                     
-                    // Get all available players
-                    var availablePlayers = new List<AutoDraftPlayer>
-                    {
-                        new AutoDraftPlayer { Id = "josh-allen", Name = "Josh Allen", Position = "QB", Team = "Buffalo Bills", League = "NFL" },
-                        new AutoDraftPlayer { Id = "aaron-judge", Name = "Aaron Judge", Position = "OF", Team = "New York Yankees", League = "MLB" },
-                        new AutoDraftPlayer { Id = "austin-ekeler", Name = "Austin Ekeler", Position = "RB", Team = "Los Angeles Chargers", League = "NFL" },
-                        new AutoDraftPlayer { Id = "tj-hockenson", Name = "T.J. Hockenson", Position = "TE", Team = "Detroit Lions", League = "NFL" },
-                        new AutoDraftPlayer { Id = "ronald-acuna-jr", Name = "Ronald Acuña Jr.", Position = "OF", Team = "Atlanta Braves", League = "MLB" },
-                        new AutoDraftPlayer { Id = "luka-doncic", Name = "Luka Dončić", Position = "PG", Team = "Dallas Mavericks", League = "NBA" },
-                        new AutoDraftPlayer { Id = "stefon-diggs", Name = "Stefon Diggs", Position = "WR", Team = "Buffalo Bills", League = "NFL" },
-                        new AutoDraftPlayer { Id = "george-kittle", Name = "George Kittle", Position = "TE", Team = "San Francisco 49ers", League = "NFL" },
-                        new AutoDraftPlayer { Id = "lamar-jackson", Name = "Lamar Jackson", Position = "QB", Team = "Baltimore Ravens", League = "NFL" },
-                        new AutoDraftPlayer { Id = "jayson-tatum", Name = "Jayson Tatum", Position = "SF", Team = "Boston Celtics", League = "NBA" },
-                        new AutoDraftPlayer { Id = "davante-adams", Name = "Davante Adams", Position = "WR", Team = "Las Vegas Raiders", League = "NFL" },
-                        new AutoDraftPlayer { Id = "shohei-ohtani", Name = "Shohei Ohtani", Position = "SP", Team = "Los Angeles Angels", League = "MLB" },
-                        new AutoDraftPlayer { Id = "jared-goff", Name = "Jared Goff", Position = "QB", Team = "Detroit Lions", League = "NFL" },
-                        new AutoDraftPlayer { Id = "nick-chubb", Name = "Nick Chubb", Position = "RB", Team = "Cleveland Browns", League = "NFL" },
-                        new AutoDraftPlayer { Id = "joe-burrow", Name = "Joe Burrow", Position = "QB", Team = "Cincinnati Bengals", League = "NFL" },
-                        new AutoDraftPlayer { Id = "harrison-butker", Name = "Harrison Butker", Position = "K", Team = "Kansas City Chiefs", League = "NFL" },
-                        new AutoDraftPlayer { Id = "mookie-betts", Name = "Mookie Betts", Position = "OF", Team = "Los Angeles Dodgers", League = "MLB" },
-                        new AutoDraftPlayer { Id = "justin-tucker", Name = "Justin Tucker", Position = "K", Team = "Baltimore Ravens", League = "NFL" },
-                        new AutoDraftPlayer { Id = "sam-laporta", Name = "Sam LaPorta", Position = "TE", Team = "Detroit Lions", League = "NFL" },
-                        new AutoDraftPlayer { Id = "amon-ra-st-brown", Name = "Amon-Ra St. Brown", Position = "WR", Team = "Detroit Lions", League = "NFL" },
-                        new AutoDraftPlayer { Id = "christian-mccaffrey", Name = "Christian McCaffrey", Position = "RB", Team = "San Francisco 49ers", League = "NFL" },
-                        new AutoDraftPlayer { Id = "mike-trout", Name = "Mike Trout", Position = "OF", Team = "Los Angeles Angels", League = "MLB" },
-                        new AutoDraftPlayer { Id = "tyler-bass", Name = "Tyler Bass", Position = "K", Team = "Buffalo Bills", League = "NFL" },
-                        new AutoDraftPlayer { Id = "justin-jefferson", Name = "Justin Jefferson", Position = "WR", Team = "Minnesota Vikings", League = "NFL" },
-                        new AutoDraftPlayer { Id = "tua-tagovailoa", Name = "Tua Tagovailoa", Position = "QB", Team = "Miami Dolphins", League = "NFL" },
-                        new AutoDraftPlayer { Id = "derrick-henry", Name = "Derrick Henry", Position = "RB", Team = "Baltimore Ravens", League = "NFL" },
-                        new AutoDraftPlayer { Id = "tyreek-hill", Name = "Tyreek Hill", Position = "WR", Team = "Miami Dolphins", League = "NFL" },
-                        new AutoDraftPlayer { Id = "cooper-kupp", Name = "Cooper Kupp", Position = "WR", Team = "Los Angeles Rams", League = "NFL" },
-                        new AutoDraftPlayer { Id = "travis-kelce", Name = "Travis Kelce", Position = "TE", Team = "Kansas City Chiefs", League = "NFL" },
-                        new AutoDraftPlayer { Id = "tarik-skubal", Name = "Tarik Skubal", Position = "SP", Team = "Detroit Tigers", League = "MLB" },
-                        new AutoDraftPlayer { Id = "anthony-davis", Name = "Anthony Davis", Position = "C", Team = "Los Angeles Lakers", League = "NBA" },
-                        new AutoDraftPlayer { Id = "giannis-antetokounmpo", Name = "Giannis Antetokounmpo", Position = "PF", Team = "Milwaukee Bucks", League = "NBA" },
-                        new AutoDraftPlayer { Id = "nikola-jokic", Name = "Nikola Jokić", Position = "C", Team = "Denver Nuggets", League = "NBA" },
-                        new AutoDraftPlayer { Id = "stephen-curry", Name = "Stephen Curry", Position = "PG", Team = "Golden State Warriors", League = "NBA" },
-                        new AutoDraftPlayer { Id = "lebron-james", Name = "LeBron James", Position = "SF", Team = "Los Angeles Lakers", League = "NBA" },
-                        new AutoDraftPlayer { Id = "kevin-durant", Name = "Kevin Durant", Position = "PF", Team = "Phoenix Suns", League = "NBA" },
-                        new AutoDraftPlayer { Id = "francisco-lindor", Name = "Francisco Lindor", Position = "SS", Team = "New York Mets", League = "MLB" }
-                    };
-                    
-                    // Filter out already drafted players
-                    var draftedPlayerNames = draft.DraftPicks?.Select(dp => dp.PlayerName?.Split(':').FirstOrDefault()).ToHashSet() ?? new HashSet<string>();
-                    var availablePlayersList = availablePlayers.Where(p => !draftedPlayerNames.Contains(p.Id)).ToList();
+                    // Get PlayerPoolService from scoped services (since CompleteAutoDraft runs in scoped context)
+                    var availablePlayersList = await GetAvailablePlayersFromAPI(leagueId, _context);
                     
                     var picksToMake = totalPicksNeeded - totalPicks;
                     Console.WriteLine($"🏁 Will make {picksToMake} picks to complete the draft");

@@ -528,7 +528,7 @@ const Draft: React.FC<DraftProps> = ({
       // Use WebSocket-based draft system if connected
       if (webSocketActions.isConnected()) {
         // Start the draft state in backend, but WebSocket will handle timer
-        const updatedDraft = await draftService.startDraft(currentLegacyDraftState.id);
+        const updatedDraft = await draftService.startDraft(currentLegacyDraftState.id, user.id);
         // Update draft state without starting legacy timer
         draftStateActions.updateDraftState({ 
           isActive: true,
