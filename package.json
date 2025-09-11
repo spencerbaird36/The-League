@@ -1,0 +1,14 @@
+{
+  "name": "the-league-fullstack",
+  "version": "1.0.0",
+  "description": "Fantasy League Full-Stack Application",
+  "scripts": {
+    "build": "cd the-league && npm install && npm run build",
+    "start": "cd backend/FantasyLeague.Api && dotnet run",
+    "heroku-postbuild": "cd the-league && npm install && npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
