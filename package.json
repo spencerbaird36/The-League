@@ -4,7 +4,7 @@
   "description": "Fantasy League Full-Stack Application",
   "scripts": {
     "build": "cd the-league && npm install && npm run build",
-    "start": "npx serve -s the-league/build -l 3000",
+    "start": "npx serve -s the-league/build -l ${PORT:-3000}",
     "heroku-postbuild": "cd the-league && npm install && npm run build && npm install -g serve"
   },
   "engines": {

@@ -41,7 +41,14 @@
       "Bash(heroku config:*)",
       "Bash(heroku logs:*)",
       "Bash(git remote add:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(git remote:*)",
+      "Bash(heroku apps:destroy:*)",
+      "Bash(heroku releases:*)",
+      "Bash(git subtree split:*)",
+      "Bash(heroku restart:*)",
+      "Bash(heroku ps:*)"
     ],
     "deny": [],
     "ask": []
