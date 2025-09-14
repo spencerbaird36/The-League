@@ -32,6 +32,9 @@ namespace FantasyLeague.Api.Data
         public DbSet<ActiveNflPlayer> ActiveNflPlayers { get; set; }
         public DbSet<ActiveMlbPlayer> ActiveMlbPlayers { get; set; }
         public DbSet<ActiveNbaPlayer> ActiveNbaPlayers { get; set; }
+        public DbSet<NflPlayerProjection> NflPlayerProjections { get; set; }
+        public DbSet<MlbPlayerProjection> MlbPlayerProjections { get; set; }
+        public DbSet<NbaPlayerProjection> NbaPlayerProjections { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -986,6 +989,151 @@ namespace FantasyLeague.Api.Data
                 entity.HasIndex(e => e.Position);
                 entity.HasIndex(e => new { e.FirstName, e.LastName });
                 entity.HasIndex(e => e.BirthDate);
+            });
+
+            // Configure NflPlayerProjection entity
+            modelBuilder.Entity<NflPlayerProjection>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.PlayerId)
+                    .IsRequired();
+                    
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.Team)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.Position)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Season)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Year)
+                    .IsRequired();
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.LastSyncedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create unique index for PlayerId-Season-Year combination (prevent duplicates)
+                entity.HasIndex(e => new { e.PlayerId, e.Season, e.Year })
+                    .IsUnique();
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => e.PlayerId);
+                entity.HasIndex(e => e.Team);
+                entity.HasIndex(e => e.Position);
+                entity.HasIndex(e => new { e.Name, e.Season, e.Year });
+                entity.HasIndex(e => new { e.Season, e.Year });
+            });
+
+            // Configure MlbPlayerProjection entity
+            modelBuilder.Entity<MlbPlayerProjection>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.PlayerID)
+                    .IsRequired();
+                    
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.Team)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.Position)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Season)
+                    .IsRequired();
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.LastSyncedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create unique index for PlayerID-Season combination (prevent duplicates)
+                entity.HasIndex(e => new { e.PlayerID, e.Season })
+                    .IsUnique();
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => e.PlayerID);
+                entity.HasIndex(e => e.Team);
+                entity.HasIndex(e => e.Position);
+                entity.HasIndex(e => new { e.Name, e.Season });
+                entity.HasIndex(e => e.Season);
+            });
+
+            // Configure NbaPlayerProjection entity
+            modelBuilder.Entity<NbaPlayerProjection>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                
+                entity.Property(e => e.PlayerID)
+                    .IsRequired();
+                    
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasMaxLength(100);
+                    
+                entity.Property(e => e.Team)
+                    .IsRequired()
+                    .HasMaxLength(50);
+                    
+                entity.Property(e => e.Position)
+                    .IsRequired()
+                    .HasMaxLength(10);
+                    
+                entity.Property(e => e.Season)
+                    .IsRequired();
+                    
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                    
+                entity.Property(e => e.LastSyncedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+                
+                // Create unique index for PlayerID-Season combination (prevent duplicates)
+                entity.HasIndex(e => new { e.PlayerID, e.Season })
+                    .IsUnique();
+                    
+                // Create indexes for efficient querying
+                entity.HasIndex(e => e.PlayerID);
+                entity.HasIndex(e => e.Team);
+                entity.HasIndex(e => e.Position);
+                entity.HasIndex(e => new { e.Name, e.Season });
+                entity.HasIndex(e => e.Season);
             });
         }
     }

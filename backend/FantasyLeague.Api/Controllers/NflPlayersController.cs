@@ -9,11 +9,13 @@ namespace FantasyLeague.Api.Controllers
     public class NflPlayersController : ControllerBase
     {
         private readonly NflPlayerDataService _nflPlayerService;
+        private readonly NflProjectionDataService _nflProjectionDataService;
         private readonly ILogger<NflPlayersController> _logger;
 
-        public NflPlayersController(NflPlayerDataService nflPlayerService, ILogger<NflPlayersController> logger)
+        public NflPlayersController(NflPlayerDataService nflPlayerService, NflProjectionDataService nflProjectionDataService, ILogger<NflPlayersController> logger)
         {
             _nflPlayerService = nflPlayerService;
+            _nflProjectionDataService = nflProjectionDataService;
             _logger = logger;
         }
 
@@ -52,7 +54,8 @@ namespace FantasyLeague.Api.Controllers
             [FromQuery] string? position = null,
             [FromQuery] string? team = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 50)
+            [FromQuery] int pageSize = 50,
+            [FromQuery] int year = 2025)
         {
             try
             {
@@ -60,11 +63,29 @@ namespace FantasyLeague.Api.Controllers
                 if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
                 var players = await _nflPlayerService.GetActivePlayersAsync(position, team, page, pageSize);
+                var projections = await _nflProjectionDataService.GetNflProjectionsAsync("2025REG", year);
+                
+                // Create lookup for projections by PlayerID
+                var projectionLookup = projections.ToDictionary(p => p.PlayerId, p => p);
+                
+                // Combine player data with projections and rank by fantasy points
+                var playersWithProjections = players.Select(player => new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    Position = player.FantasyPosition,
+                    player.FirstName,
+                    player.LastName,
+                    player.Age,
+                    Projection = projectionLookup.ContainsKey(player.PlayerID) ? projectionLookup[player.PlayerID] : null
+                }).OrderByDescending(p => p.Projection?.FantasyPointsYahooSeasonLong ?? 0).ToList();
+                
                 var totalCount = await _nflPlayerService.GetActivePlayersCountAsync(position, team);
 
                 var response = new
                 {
-                    players = players,
+                    players = playersWithProjections,
                     pagination = new
                     {
                         page = page,
@@ -87,7 +108,7 @@ namespace FantasyLeague.Api.Controllers
         /// Get a specific NFL player by PlayerID
         /// </summary>
         [HttpGet("{playerId}")]
-        public async Task<IActionResult> GetPlayerById(int playerId)
+        public async Task<IActionResult> GetPlayerById(int playerId, [FromQuery] int year = 2025)
         {
             try
             {
@@ -97,8 +118,22 @@ namespace FantasyLeague.Api.Controllers
                 {
                     return NotFound(new { message = $"Player with ID {playerId} not found" });
                 }
+                
+                var projection = await _nflProjectionDataService.GetNflProjectionByPlayerIdAsync(playerId, "2025REG", year);
+                
+                var result = new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    Position = player.FantasyPosition,
+                    player.FirstName,
+                    player.LastName,
+                    player.Age,
+                    Projection = projection
+                };
 
-                return Ok(player);
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -150,9 +185,10 @@ namespace FantasyLeague.Api.Controllers
         public async Task<IActionResult> GetPlayersByPosition(
             string position,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 50)
+            [FromQuery] int pageSize = 50,
+            [FromQuery] int year = 2025)
         {
-            return await GetActivePlayers(position, null, page, pageSize);
+            return await GetActivePlayers(position, null, page, pageSize, year);
         }
 
         /// <summary>

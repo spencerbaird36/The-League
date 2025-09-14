@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DraftSlot } from '../hooks/useDraftProgress';
 import { LeagueMember } from '../context/DraftContext';
 import { cleanPlayerName } from '../utils/playerNameUtils';
 import './DraftBoard.css';
+
+type DraftBoardSize = 'small' | 'medium' | 'large';
 
 interface DraftBoardProps {
   board: DraftSlot[][];
@@ -19,6 +21,8 @@ const DraftBoard: React.FC<DraftBoardProps> = ({
   onSlotClick,
   className = ''
 }) => {
+  const [boardSize, setBoardSize] = useState<DraftBoardSize>('small');
+
   // Helper function to get manager name for a given userId
   const getManagerName = (userId: number): string => {
     const member = leagueMembers.find(m => m.id === userId);
@@ -40,21 +44,46 @@ const DraftBoard: React.FC<DraftBoardProps> = ({
   }
 
   return (
-    <div className={`draft-board ${className}`}>
+    <div className={`draft-board ${boardSize} ${className}`}>
       <div className="board-header">
         <h3>Draft Board</h3>
-        <div className="board-legend">
-          <div className="legend-item">
-            <div className="legend-color current-pick"></div>
-            <span>Current Pick</span>
+        <div className="board-controls">
+          <div className="size-controls">
+            <button
+              className={`size-btn ${boardSize === 'small' ? 'active' : ''}`}
+              onClick={() => setBoardSize('small')}
+              title="Small view"
+            >
+              S
+            </button>
+            <button
+              className={`size-btn ${boardSize === 'medium' ? 'active' : ''}`}
+              onClick={() => setBoardSize('medium')}
+              title="Medium view"
+            >
+              M
+            </button>
+            <button
+              className={`size-btn ${boardSize === 'large' ? 'active' : ''}`}
+              onClick={() => setBoardSize('large')}
+              title="Large view"
+            >
+              L
+            </button>
           </div>
-          <div className="legend-item">
-            <div className="legend-color your-picks"></div>
-            <span>Your Picks</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color filled-pick"></div>
-            <span>Completed</span>
+          <div className="board-legend">
+            <div className="legend-item">
+              <div className="legend-color current-pick"></div>
+              <span>Current Pick</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color your-picks"></div>
+              <span>Your Picks</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color filled-pick"></div>
+              <span>Completed</span>
+            </div>
           </div>
         </div>
       </div>

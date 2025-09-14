@@ -54,6 +54,9 @@ builder.Services.AddScoped<RegularDraftService>();
 builder.Services.AddScoped<NflPlayerDataService>();
 builder.Services.AddScoped<MlbPlayerDataService>();
 builder.Services.AddScoped<NbaPlayerDataService>();
+builder.Services.AddScoped<NflProjectionDataService>();
+builder.Services.AddScoped<MlbProjectionDataService>();
+builder.Services.AddScoped<NbaProjectionDataService>();
 
 // Add HttpClient for API calls
 builder.Services.AddHttpClient();

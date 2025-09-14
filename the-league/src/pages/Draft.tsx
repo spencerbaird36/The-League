@@ -482,6 +482,25 @@ const Draft: React.FC<DraftProps> = ({
       return leagueMatch && positionMatch && searchMatch;
     });
     
+    // Sort by fantasy points in descending order (highest first)
+    // Players with projections always rank higher than those without
+    filtered.sort((a, b) => {
+      const aFantasyPoints = a.projection?.fantasyPoints ?? -1;
+      const bFantasyPoints = b.projection?.fantasyPoints ?? -1;
+      
+      // If both have projections, sort by fantasy points
+      if (aFantasyPoints >= 0 && bFantasyPoints >= 0) {
+        return bFantasyPoints - aFantasyPoints;
+      }
+      
+      // If only one has projections, prioritize the one with projections
+      if (aFantasyPoints >= 0 && bFantasyPoints < 0) return -1;
+      if (bFantasyPoints >= 0 && aFantasyPoints < 0) return 1;
+      
+      // If neither has projections, sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
+    
     return filtered;
   }, [availablePlayers, selectedLeague, selectedPosition, searchTerm]);
   
@@ -1152,8 +1171,28 @@ const Draft: React.FC<DraftProps> = ({
               onToggle={() => setIsCommissionerControlsVisible(!isCommissionerControlsVisible)}
               onDraftAction={handleCommissionerAction}
             />
+
+            {/* Phase 2 Redesign: Draft Board Visualization - moved above filters */}
+            <section className="draft-board-section">
+              <div className="draft-board-container">
+                {isDraftCreated && legacyDraftState && (
+                  <DraftBoard
+                    board={draftProgress.getDraftBoard()}
+                    leagueMembers={state.leagueMembers}
+                    currentUser={user ? {
+                      id: user.id,
+                      username: user.username,
+                      firstName: user.firstName,
+                      lastName: user.lastName
+                    } : undefined}
+                    onSlotClick={handleDraftSlotClick}
+                    className="main-draft-board"
+                  />
+                )}
+              </div>
+            </section>
             
-            {/* Filters Section - positioned above both draft board and available players */}
+            {/* Filters Section */}
             <section className="filters-section">
               <div className="filters-header">
                 <h3>Filters</h3>
@@ -1281,27 +1320,8 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             </section>
 
-            {/* New Layout: Draft Board and Available Players Side by Side */}
-            <section className="draft-content-grid">
-              {/* Phase 2 Redesign: Draft Board Visualization */}
-              <div className="draft-board-container">
-                {isDraftCreated && legacyDraftState && (
-                  <DraftBoard
-                    board={draftProgress.getDraftBoard()}
-                    leagueMembers={state.leagueMembers}
-                    currentUser={user ? {
-                      id: user.id,
-                      username: user.username,
-                      firstName: user.firstName,
-                      lastName: user.lastName
-                    } : undefined}
-                    onSlotClick={handleDraftSlotClick}
-                    className="main-draft-board"
-                  />
-                )}
-              </div>
-
-              {/* Available Players Section */}
+            {/* Available Players Section */}
+            <section className="available-players-section">
               <div className="available-players-container">
                 <div className="available-players">
                   <h2>
@@ -1347,9 +1367,22 @@ const Draft: React.FC<DraftProps> = ({
                           {
                             key: 'team',
                             header: 'Team',
-                            width: '16%',
+                            width: '14%',
                             render: (player: Player, index: number) => (
                               <span className="team">{player.team}</span>
+                            )
+                          },
+                          {
+                            key: 'projection',
+                            header: 'Proj Pts ↓',
+                            width: '12%',
+                            render: (player: Player, index: number) => (
+                              <span className="projection-points">
+                                {player.projection?.fantasyPoints ? 
+                                  Math.round(player.projection.fantasyPoints) : 
+                                  '-'
+                                }
+                              </span>
                             )
                           },
                           {
@@ -1365,7 +1398,7 @@ const Draft: React.FC<DraftProps> = ({
                           {
                             key: 'action',
                             header: 'Action',
-                            width: '20%',
+                            width: '18%',
                             render: (player: Player, index: number) => (
                               <button
                                 className={`draft-btn ${!isCurrentUserTurn || !isDraftActive || isPickInProgress ? 'disabled' : ''}`}

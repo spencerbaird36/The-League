@@ -9,11 +9,13 @@ namespace FantasyLeague.Api.Controllers
     public class MlbPlayersController : ControllerBase
     {
         private readonly MlbPlayerDataService _mlbPlayerDataService;
+        private readonly MlbProjectionDataService _mlbProjectionDataService;
         private readonly ILogger<MlbPlayersController> _logger;
 
-        public MlbPlayersController(MlbPlayerDataService mlbPlayerDataService, ILogger<MlbPlayersController> logger)
+        public MlbPlayersController(MlbPlayerDataService mlbPlayerDataService, MlbProjectionDataService mlbProjectionDataService, ILogger<MlbPlayersController> logger)
         {
             _mlbPlayerDataService = mlbPlayerDataService;
+            _mlbProjectionDataService = mlbProjectionDataService;
             _logger = logger;
         }
 
@@ -44,7 +46,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetActivePlayers([FromQuery] string? position = null, [FromQuery] string? team = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetActivePlayers([FromQuery] string? position = null, [FromQuery] string? team = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] int season = 2025)
         {
             try
             {
@@ -53,12 +55,31 @@ namespace FantasyLeague.Api.Controllers
                 if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
                 var players = await _mlbPlayerDataService.GetActivePlayersAsync(position, team, page, pageSize);
+                var projections = await _mlbProjectionDataService.GetMlbProjectionsAsync(season);
+                
+                // Create lookup for projections by PlayerID
+                var projectionLookup = projections.ToDictionary(p => p.PlayerID, p => p);
+                
+                // Combine player data with projections and rank by fantasy points
+                var playersWithProjections = players.Select(player => new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projectionLookup.ContainsKey(player.PlayerID) ? projectionLookup[player.PlayerID] : null
+                }).OrderByDescending(p => p.Projection?.FantasyPointsYahoo ?? 0).ToList();
+                
                 var totalCount = await _mlbPlayerDataService.GetActivePlayersCountAsync(position, team);
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
                 var result = new
                 {
-                    players = players,
+                    players = playersWithProjections,
                     pagination = new
                     {
                         page,
@@ -78,7 +99,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet("{playerId:int}")]
-        public async Task<IActionResult> GetPlayerById(int playerId)
+        public async Task<IActionResult> GetPlayerById(int playerId, [FromQuery] int season = 2025)
         {
             try
             {
@@ -87,8 +108,23 @@ namespace FantasyLeague.Api.Controllers
                 {
                     return NotFound(new { message = "Player not found" });
                 }
+                
+                var projection = await _mlbProjectionDataService.GetMlbProjectionByPlayerIdAsync(playerId, season);
+                
+                var result = new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projection
+                };
 
-                return Ok(player);
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -128,7 +164,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet("position/{position}")]
-        public async Task<IActionResult> GetPlayersByPosition(string position, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetPlayersByPosition(string position, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] int season = 2025)
         {
             try
             {
@@ -137,12 +173,31 @@ namespace FantasyLeague.Api.Controllers
                 if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
                 var players = await _mlbPlayerDataService.GetActivePlayersAsync(position, null, page, pageSize);
+                var projections = await _mlbProjectionDataService.GetMlbProjectionsByPositionAsync(position, season);
+                
+                // Create lookup for projections by PlayerID
+                var projectionLookup = projections.ToDictionary(p => p.PlayerID, p => p);
+                
+                // Combine player data with projections and rank by fantasy points
+                var playersWithProjections = players.Select(player => new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projectionLookup.ContainsKey(player.PlayerID) ? projectionLookup[player.PlayerID] : null
+                }).OrderByDescending(p => p.Projection?.FantasyPointsYahoo ?? 0).ToList();
+                
                 var totalCount = await _mlbPlayerDataService.GetActivePlayersCountAsync(position, null);
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
                 var result = new
                 {
-                    players = players,
+                    players = playersWithProjections,
                     pagination = new
                     {
                         page,
@@ -227,6 +282,43 @@ namespace FantasyLeague.Api.Controllers
             {
                 _logger.LogError(ex, "Error occurred while retrieving MLB player stats");
                 return StatusCode(500, new { message = "Internal server error occurred while retrieving stats" });
+            }
+        }
+
+        [HttpGet("debug/projections")]
+        public async Task<IActionResult> GetProjectionsDebug([FromQuery] int season = 2025)
+        {
+            try
+            {
+                var projections = await _mlbProjectionDataService.GetMlbProjectionsAsync(season);
+                
+                var result = new
+                {
+                    season,
+                    totalProjections = projections.Count,
+                    sampleProjections = projections.Take(5).Select(p => new
+                    {
+                        p.PlayerID,
+                        p.Name,
+                        p.Team,
+                        p.Position,
+                        p.FantasyPointsYahoo,
+                        p.LastSyncedAt
+                    }),
+                    highestFantasyPoints = projections.OrderByDescending(p => p.FantasyPointsYahoo).Take(3).Select(p => new
+                    {
+                        p.PlayerID,
+                        p.Name,
+                        p.FantasyPointsYahoo
+                    })
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while retrieving projection debug info");
+                return StatusCode(500, new { message = "Internal server error occurred while retrieving projection debug info" });
             }
         }
     }

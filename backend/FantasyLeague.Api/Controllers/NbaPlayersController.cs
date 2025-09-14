@@ -9,11 +9,13 @@ namespace FantasyLeague.Api.Controllers
     public class NbaPlayersController : ControllerBase
     {
         private readonly NbaPlayerDataService _nbaPlayerDataService;
+        private readonly NbaProjectionDataService _nbaProjectionDataService;
         private readonly ILogger<NbaPlayersController> _logger;
 
-        public NbaPlayersController(NbaPlayerDataService nbaPlayerDataService, ILogger<NbaPlayersController> logger)
+        public NbaPlayersController(NbaPlayerDataService nbaPlayerDataService, NbaProjectionDataService nbaProjectionDataService, ILogger<NbaPlayersController> logger)
         {
             _nbaPlayerDataService = nbaPlayerDataService;
+            _nbaProjectionDataService = nbaProjectionDataService;
             _logger = logger;
         }
 
@@ -44,7 +46,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetActivePlayers([FromQuery] string? position = null, [FromQuery] string? team = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetActivePlayers([FromQuery] string? position = null, [FromQuery] string? team = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] int season = 2025)
         {
             try
             {
@@ -53,12 +55,31 @@ namespace FantasyLeague.Api.Controllers
                 if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
                 var players = await _nbaPlayerDataService.GetActivePlayersAsync(position, team, page, pageSize);
+                var projections = await _nbaProjectionDataService.GetNbaProjectionsAsync(season);
+                
+                // Create lookup for projections by PlayerID
+                var projectionLookup = projections.ToDictionary(p => p.PlayerID, p => p);
+                
+                // Combine player data with projections and rank by fantasy points
+                var playersWithProjections = players.Select(player => new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projectionLookup.ContainsKey(player.PlayerID) ? projectionLookup[player.PlayerID] : null
+                }).OrderByDescending(p => p.Projection?.FantasyPointsYahoo ?? 0).ToList();
+                
                 var totalCount = await _nbaPlayerDataService.GetActivePlayersCountAsync(position, team);
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
                 var result = new
                 {
-                    players = players,
+                    players = playersWithProjections,
                     pagination = new
                     {
                         page,
@@ -78,7 +99,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet("{playerId:int}")]
-        public async Task<IActionResult> GetPlayerById(int playerId)
+        public async Task<IActionResult> GetPlayerById(int playerId, [FromQuery] int season = 2025)
         {
             try
             {
@@ -87,8 +108,23 @@ namespace FantasyLeague.Api.Controllers
                 {
                     return NotFound(new { message = "Player not found" });
                 }
+                
+                var projection = await _nbaProjectionDataService.GetNbaProjectionByPlayerIdAsync(playerId, season);
+                
+                var result = new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projection
+                };
 
-                return Ok(player);
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -128,7 +164,7 @@ namespace FantasyLeague.Api.Controllers
         }
 
         [HttpGet("position/{position}")]
-        public async Task<IActionResult> GetPlayersByPosition(string position, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetPlayersByPosition(string position, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] int season = 2025)
         {
             try
             {
@@ -137,12 +173,31 @@ namespace FantasyLeague.Api.Controllers
                 if (pageSize < 1 || pageSize > 100) pageSize = 50;
 
                 var players = await _nbaPlayerDataService.GetActivePlayersAsync(position, null, page, pageSize);
+                var projections = await _nbaProjectionDataService.GetNbaProjectionsByPositionAsync(position, season);
+                
+                // Create lookup for projections by PlayerID
+                var projectionLookup = projections.ToDictionary(p => p.PlayerID, p => p);
+                
+                // Combine player data with projections and rank by fantasy points
+                var playersWithProjections = players.Select(player => new
+                {
+                    player.PlayerID,
+                    Name = player.FullName,
+                    player.Team,
+                    player.Position,
+                    player.FirstName,
+                    player.LastName,
+                    player.BirthDate,
+                    player.Age,
+                    Projection = projectionLookup.ContainsKey(player.PlayerID) ? projectionLookup[player.PlayerID] : null
+                }).OrderByDescending(p => p.Projection?.FantasyPointsYahoo ?? 0).ToList();
+                
                 var totalCount = await _nbaPlayerDataService.GetActivePlayersCountAsync(position, null);
                 var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
                 var result = new
                 {
-                    players = players,
+                    players = playersWithProjections,
                     pagination = new
                     {
                         page,

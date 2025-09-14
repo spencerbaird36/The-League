@@ -27,6 +27,46 @@
   border-bottom: 1px solid var(--border-light);
 }
 
+.board-controls {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.size-controls {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.size-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-gray);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.size-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+}
+
+.size-btn.active {
+  background: var(--accent-gold);
+  color: var(--surface-dark);
+}
+
 .board-header h3 {
   font-family: 'Poppins', sans-serif;
   color: var(--text-cream);
@@ -310,6 +350,103 @@
   }
 }
 
+/* Size variations */
+/* Small size - default, compact view */
+.draft-board.small .board-container {
+  max-height: 300px;
+}
+
+.draft-board.small .corner-cell,
+.draft-board.small .round-number {
+  width: 50px;
+  padding: 8px 4px;
+  font-size: 0.75rem;
+}
+
+.draft-board.small .team-header,
+.draft-board.small .draft-slot {
+  width: 100px;
+  min-height: 60px;
+  padding: 6px;
+}
+
+.draft-board.small .player-name {
+  font-size: 0.7rem;
+}
+
+.draft-board.small .player-info {
+  font-size: 0.6rem;
+}
+
+.draft-board.small .league-badge {
+  font-size: 0.5rem;
+  padding: 1px 3px;
+}
+
+/* Medium size - standard view */
+.draft-board.medium .board-container {
+  max-height: 450px;
+}
+
+.draft-board.medium .corner-cell,
+.draft-board.medium .round-number {
+  width: 65px;
+  padding: 10px 6px;
+  font-size: 0.8rem;
+}
+
+.draft-board.medium .team-header,
+.draft-board.medium .draft-slot {
+  width: 120px;
+  min-height: 70px;
+  padding: 7px;
+}
+
+.draft-board.medium .player-name {
+  font-size: 0.75rem;
+}
+
+.draft-board.medium .player-info {
+  font-size: 0.65rem;
+}
+
+.draft-board.medium .league-badge {
+  font-size: 0.55rem;
+  padding: 1.5px 4px;
+}
+
+/* Large size - expanded view */
+.draft-board.large .board-container {
+  max-height: 600px;
+}
+
+.draft-board.large .corner-cell,
+.draft-board.large .round-number {
+  width: 80px;
+  padding: 12px 8px;
+  font-size: 0.85rem;
+}
+
+.draft-board.large .team-header,
+.draft-board.large .draft-slot {
+  width: 140px;
+  min-height: 80px;
+  padding: 8px;
+}
+
+.draft-board.large .player-name {
+  font-size: 0.8rem;
+}
+
+.draft-board.large .player-info {
+  font-size: 0.7rem;
+}
+
+.draft-board.large .league-badge {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .draft-board {
@@ -325,9 +462,15 @@
     align-items: flex-start;
     gap: 12px;
   }
+
+  .board-controls {
+    align-self: stretch;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
   
   .board-legend {
-    align-self: stretch;
     justify-content: space-between;
   }
   

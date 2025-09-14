@@ -3156,3 +3156,12 @@ tbody tr:hover td {
 .draft-virtual-table .data-row.clickable:hover .virtual-table-cell {
   color: var(--text-white);
 }
+
+/* Draft Board Section Styling */
+.draft-board-section {
+  margin-bottom: 20px;
+}
+
+.draft-board-section .draft-board {
+  margin-bottom: 0;
+}

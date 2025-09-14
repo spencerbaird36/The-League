@@ -83,7 +83,8 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
             position: player.position || player.Position,
             team: player.team || player.Team,
             league: player.league || player.League,
-            stats: player.stats || player.Stats
+            stats: player.stats || player.Stats,
+            projection: player.projection || player.Projection
           }));
           
           console.log('Transformed players:', transformedPlayers);
@@ -134,8 +135,19 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
       );
     }
 
-    // Sort by name for consistent ordering
-    return filtered.sort((a: Player, b: Player) => a.name.localeCompare(b.name));
+    // Sort by fantasy points in descending order (highest first), then by name
+    return filtered.sort((a: Player, b: Player) => {
+      const aFantasyPoints = a.projection?.fantasyPoints ?? 0;
+      const bFantasyPoints = b.projection?.fantasyPoints ?? 0;
+      
+      // First sort by fantasy points (descending)
+      if (bFantasyPoints !== aFantasyPoints) {
+        return bFantasyPoints - aFantasyPoints;
+      }
+      
+      // If fantasy points are equal, sort by name (ascending)
+      return a.name.localeCompare(b.name);
+    });
   }, [availablePlayers, selectedLeague, selectedPosition, searchTerm]);
 
   // Pagination for filtered players
@@ -360,6 +372,7 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
                     <th>Position</th>
                     <th>Team</th>
                     <th>League</th>
+                    <th>Proj Pts</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -380,6 +393,14 @@ function FreeAgentsNew({ user }: FreeAgentsNewProps) {
                       <td data-label="League">
                         <span className={`league-badge ${player.league.toLowerCase()}`}>
                           {player.league}
+                        </span>
+                      </td>
+                      <td data-label="Proj Pts">
+                        <span className="projection-points">
+                          {player.projection?.fantasyPoints ? 
+                            Math.round(player.projection.fantasyPoints) : 
+                            '-'
+                          }
                         </span>
                       </td>
                       <td data-label="Action">

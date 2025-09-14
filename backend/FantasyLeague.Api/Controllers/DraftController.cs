@@ -71,7 +71,9 @@ namespace FantasyLeague.Api.Controllers
             }
 
             // Check if the requesting user is the commissioner of the league
-            if (league.CommissionerId != createDraftDto.CreatedByUserId)
+            // Use CommissionerId if set, otherwise fall back to CreatedById
+            var commissionerId = league.CommissionerId ?? league.CreatedById;
+            if (commissionerId != createDraftDto.CreatedByUserId)
             {
                 return StatusCode(403, new { Message = "Only the league commissioner can create a draft" });
             }
@@ -230,7 +232,9 @@ namespace FantasyLeague.Api.Controllers
             }
 
             // Check if the requesting user is the commissioner of the league
-            if (draft.League.CommissionerId != startDraftDto.UserId)
+            // Use CommissionerId if set, otherwise fall back to CreatedById
+            var commissionerId = draft.League.CommissionerId ?? draft.League.CreatedById;
+            if (commissionerId != startDraftDto.UserId)
             {
                 return StatusCode(403, new { Message = "Only the league commissioner can start the draft" });
             }
@@ -996,7 +1000,9 @@ namespace FantasyLeague.Api.Controllers
                 }
 
                 // Check if the requesting user is the commissioner of the league
-                if (draft.League.CommissionerId != startDraftDto.UserId)
+                // Use CommissionerId if set, otherwise fall back to CreatedById
+                var commissionerId = draft.League.CommissionerId ?? draft.League.CreatedById;
+                if (commissionerId != startDraftDto.UserId)
                 {
                     return StatusCode(403, new { Message = "Only the league commissioner can start the draft" });
                 }

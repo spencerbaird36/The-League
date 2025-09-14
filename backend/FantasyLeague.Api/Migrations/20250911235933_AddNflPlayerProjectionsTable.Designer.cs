@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250911235933_AddNflPlayerProjectionsTable")]
+    partial class AddNflPlayerProjectionsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -585,205 +588,6 @@ namespace FantasyLeague.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Matchups");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.MlbPlayerProjection", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("BattingAverage")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<double>("FantasyPointsYahoo")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("Hits")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("HomeRuns")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("LastSyncedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<double>("Losses")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<double>("OnBasePlusSlugging")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("PitchingStrikeouts")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("PlayerID")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<double>("Runs")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("RunsBattedIn")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("Saves")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Season")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("StolenBases")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Team")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<double>("Walks")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("WalksHitsPerInningsPitched")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("Wins")
-                        .HasColumnType("double precision");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PlayerID");
-
-                    b.HasIndex("Position");
-
-                    b.HasIndex("Season");
-
-                    b.HasIndex("Team");
-
-                    b.HasIndex("Name", "Season");
-
-                    b.HasIndex("PlayerID", "Season")
-                        .IsUnique();
-
-                    b.ToTable("MlbPlayerProjections");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.NbaPlayerProjection", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<double>("Assists")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("BlockedShots")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<double>("FantasyPointsYahoo")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("FieldGoalsMade")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("FieldGoalsPercentage")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("FreeThrowsMade")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("LastSyncedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("PlayerID")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("Points")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Position")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<double>("Rebounds")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("Season")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("Steals")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Team")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<double>("ThreePointersMade")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("Turnovers")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp without time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PlayerID");
-
-                    b.HasIndex("Position");
-
-                    b.HasIndex("Season");
-
-                    b.HasIndex("Team");
-
-                    b.HasIndex("Name", "Season");
-
-                    b.HasIndex("PlayerID", "Season")
-                        .IsUnique();
-
-                    b.ToTable("NbaPlayerProjections");
                 });
 
             modelBuilder.Entity("FantasyLeague.Api.Models.NflPlayerProjection", b =>

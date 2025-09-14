@@ -275,7 +275,36 @@ class DraftService {
           name: player.name,
           position: player.position,
           team: player.team,
-          league: player.league as 'NFL' | 'NBA' | 'MLB'
+          league: player.league as 'NFL' | 'NBA' | 'MLB',
+          projection: player.projection ? {
+            fantasyPoints: player.projection.fantasyPoints,
+            // NFL specific
+            passingYards: player.projection.passingYards,
+            passingTouchdowns: player.projection.passingTouchdowns,
+            rushingYards: player.projection.rushingYards,
+            rushingTouchdowns: player.projection.rushingTouchdowns,
+            receivingYards: player.projection.receivingYards,
+            receivingTouchdowns: player.projection.receivingTouchdowns,
+            fieldGoalsMade: player.projection.fieldGoalsMade,
+            // NBA specific
+            points: player.projection.points,
+            rebounds: player.projection.rebounds,
+            assists: player.projection.assists,
+            steals: player.projection.steals,
+            blocks: player.projection.blocks,
+            turnovers: player.projection.turnovers,
+            // MLB specific
+            runs: player.projection.runs,
+            hits: player.projection.hits,
+            homeRuns: player.projection.homeRuns,
+            battingAverage: player.projection.battingAverage,
+            runsBattedIn: player.projection.runsBattedIn,
+            stolenBases: player.projection.stolenBases,
+            wins: player.projection.wins,
+            saves: player.projection.saves,
+            strikeouts: player.projection.strikeouts,
+            whip: player.projection.whip
+          } : undefined
         } as Player));
       } else {
         throw new Error(`Failed to fetch available players: ${response.status}`);

@@ -408,8 +408,15 @@ export function useDraftOperations(user: User | null) {
       throw new Error('Cannot start draft - no draft state');
     }
 
+    if (!user?.id) {
+      throw new Error('Cannot start draft - no user ID available');
+    }
+
+    console.log('🚀 Attempting to start draft with user ID:', user.id);
+    console.log('🚀 User object:', user);
+
     try {
-      const updatedDraft = await draftService.startDraft(state.draftState.id, user?.id || 0);
+      const updatedDraft = await draftService.startDraft(state.draftState.id, user.id);
       dispatch({ type: 'SET_DRAFT_STATE', payload: updatedDraft });
       // Automatically start the timer when draft begins
       dispatch({ type: 'START_TIMER', payload: { duration: 15 } });
@@ -418,7 +425,7 @@ export function useDraftOperations(user: User | null) {
       console.error('Error starting draft:', error);
       throw error;
     }
-  }, [state.draftState, dispatch]);
+  }, [state.draftState, user?.id, dispatch]);
 
   // Reset draft using SignalR for real-time updates
   const resetDraft = useCallback(async (draftId: number): Promise<void> => {

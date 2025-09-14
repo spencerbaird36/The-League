@@ -11,19 +11,28 @@ namespace FantasyLeague.Api.Services
         private readonly NflPlayerDataService _nflPlayerService;
         private readonly NbaPlayerDataService _nbaPlayerService;
         private readonly MlbPlayerDataService _mlbPlayerService;
+        private readonly NflProjectionDataService _nflProjectionService;
+        private readonly NbaProjectionDataService _nbaProjectionService;
+        private readonly MlbProjectionDataService _mlbProjectionService;
 
         public PlayerPoolService(
             FantasyLeagueContext context, 
             LeagueConfigurationService configurationService,
             NflPlayerDataService nflPlayerService,
             NbaPlayerDataService nbaPlayerService,
-            MlbPlayerDataService mlbPlayerService)
+            MlbPlayerDataService mlbPlayerService,
+            NflProjectionDataService nflProjectionService,
+            NbaProjectionDataService nbaProjectionService,
+            MlbProjectionDataService mlbProjectionService)
         {
             _context = context;
             _configurationService = configurationService;
             _nflPlayerService = nflPlayerService;
             _nbaPlayerService = nbaPlayerService;
             _mlbPlayerService = mlbPlayerService;
+            _nflProjectionService = nflProjectionService;
+            _nbaProjectionService = nbaProjectionService;
+            _mlbProjectionService = mlbProjectionService;
         }
 
         public async Task<List<object>> GetAvailablePlayersForLeagueAsync(int leagueId)
@@ -243,15 +252,29 @@ namespace FantasyLeague.Api.Services
                 if (config.IncludeNFL)
                 {
                     var nflPlayers = await _nflPlayerService.GetActivePlayersAsync(pageSize: int.MaxValue);
+                    var nflProjections = await _nflProjectionService.GetNflProjectionsAsync("2025REG", 2025);
+                    var nflProjectionLookup = nflProjections.ToDictionary(p => p.PlayerId, p => p);
+
                     foreach (var player in nflPlayers)
                     {
+                        var projection = nflProjectionLookup.ContainsKey(player.PlayerID) ? nflProjectionLookup[player.PlayerID] : null;
                         allPlayers.Add(new 
                         { 
                             id = player.PlayerID.ToString(),
                             name = player.FullName,
                             position = player.FantasyPosition,
                             team = player.Team,
-                            league = "NFL"
+                            league = "NFL",
+                            projection = projection != null ? new {
+                                fantasyPoints = projection.FantasyPointsYahooSeasonLong,
+                                passingYards = projection.PassingYards,
+                                passingTouchdowns = projection.PassingTouchdowns,
+                                rushingYards = projection.RushingYards,
+                                rushingTouchdowns = projection.RushingTouchdowns,
+                                receivingYards = projection.ReceivingYards,
+                                receivingTouchdowns = projection.ReceivingTouchdowns,
+                                fieldGoalsMade = projection.FieldGoalsMade
+                            } : null
                         });
                     }
                 }
@@ -260,15 +283,28 @@ namespace FantasyLeague.Api.Services
                 if (config.IncludeNBA)
                 {
                     var nbaPlayers = await _nbaPlayerService.GetActivePlayersAsync(pageSize: int.MaxValue);
+                    var nbaProjections = await _nbaProjectionService.GetNbaProjectionsAsync(2025);
+                    var nbaProjectionLookup = nbaProjections.ToDictionary(p => p.PlayerID, p => p);
+
                     foreach (var player in nbaPlayers)
                     {
+                        var projection = nbaProjectionLookup.ContainsKey(player.PlayerID) ? nbaProjectionLookup[player.PlayerID] : null;
                         allPlayers.Add(new 
                         { 
                             id = player.PlayerID.ToString(),
                             name = player.FullName,
                             position = player.Position,
                             team = player.Team,
-                            league = "NBA"
+                            league = "NBA",
+                            projection = projection != null ? new {
+                                fantasyPoints = projection.FantasyPointsYahoo,
+                                points = projection.Points,
+                                rebounds = projection.Rebounds,
+                                assists = projection.Assists,
+                                steals = projection.Steals,
+                                blocks = projection.BlockedShots,
+                                turnovers = projection.Turnovers
+                            } : null
                         });
                     }
                 }
@@ -277,15 +313,42 @@ namespace FantasyLeague.Api.Services
                 if (config.IncludeMLB)
                 {
                     var mlbPlayers = await _mlbPlayerService.GetActivePlayersAsync(pageSize: int.MaxValue);
+                    
+                    // Try to get MLB projections, but don't fail if they can't be loaded
+                    var mlbProjectionLookup = new Dictionary<int, MlbPlayerProjection>();
+                    try
+                    {
+                        var mlbProjections = await _mlbProjectionService.GetMlbProjectionsAsync(2025);
+                        mlbProjectionLookup = mlbProjections.ToDictionary(p => p.PlayerID, p => p);
+                    }
+                    catch (Exception)
+                    {
+                        // MLB projections failed to load due to corrupt data, continue without projections
+                    }
+
                     foreach (var player in mlbPlayers)
                     {
+                        var projection = mlbProjectionLookup.ContainsKey(player.PlayerID) ? mlbProjectionLookup[player.PlayerID] : null;
                         allPlayers.Add(new 
                         { 
                             id = player.PlayerID.ToString(),
                             name = player.FullName,
                             position = player.Position,
                             team = player.Team,
-                            league = "MLB"
+                            league = "MLB",
+                            projection = projection != null ? new {
+                                fantasyPoints = projection.FantasyPointsYahoo,
+                                runs = projection.Runs,
+                                hits = projection.Hits,
+                                homeRuns = projection.HomeRuns,
+                                battingAverage = projection.BattingAverage,
+                                runsBattedIn = projection.RunsBattedIn,
+                                stolenBases = projection.StolenBases,
+                                wins = projection.Wins,
+                                saves = projection.Saves,
+                                strikeouts = projection.PitchingStrikeouts,
+                                whip = projection.WalksHitsPerInningsPitched
+                            } : null
                         });
                     }
                 }

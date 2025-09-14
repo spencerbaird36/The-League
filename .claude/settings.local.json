@@ -48,7 +48,9 @@
       "Bash(heroku releases:*)",
       "Bash(git subtree split:*)",
       "Bash(heroku restart:*)",
-      "Bash(heroku ps:*)"
+      "Bash(heroku ps:*)",
+      "Bash(psql:*)",
+      "Bash(ASPNETCORE_URLS=http://localhost:5000 dotnet run)"
     ],
     "deny": [],
     "ask": []
