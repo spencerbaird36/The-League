@@ -35,6 +35,7 @@ namespace FantasyLeague.Api.Data
         public DbSet<NflPlayerProjection> NflPlayerProjections { get; set; }
         public DbSet<MlbPlayerProjection> MlbPlayerProjections { get; set; }
         public DbSet<NbaPlayerProjection> NbaPlayerProjections { get; set; }
+        public DbSet<EmailDeliveryLog> EmailDeliveryLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

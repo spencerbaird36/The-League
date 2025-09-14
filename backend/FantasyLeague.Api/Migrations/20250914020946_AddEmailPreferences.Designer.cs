@@ -3,6 +3,7 @@ using System;
 using FantasyLeague.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FantasyLeague.Api.Migrations
 {
     [DbContext(typeof(FantasyLeagueContext))]
-    partial class FantasyLeagueContextModelSnapshot : ModelSnapshot
+    [Migration("20250914020946_AddEmailPreferences")]
+    partial class AddEmailPreferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -417,67 +420,6 @@ namespace FantasyLeague.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("DraftPicks");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.EmailDeliveryLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime?>("DeliveredAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("EmailAddress")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("EmailType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("ErrorMessage")
-                        .HasColumnType("text");
-
-                    b.Property<int>("RetryCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SendGridMessageId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("SentAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int?>("TradeProposalId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TradeProposalId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("EmailDeliveryLogs");
                 });
 
             modelBuilder.Entity("FantasyLeague.Api.Models.League", b =>
@@ -1978,23 +1920,6 @@ namespace FantasyLeague.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Draft");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FantasyLeague.Api.Models.EmailDeliveryLog", b =>
-                {
-                    b.HasOne("FantasyLeague.Api.Models.TradeProposal", "TradeProposal")
-                        .WithMany()
-                        .HasForeignKey("TradeProposalId");
-
-                    b.HasOne("FantasyLeague.Api.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TradeProposal");
 
                     b.Navigation("User");
                 });

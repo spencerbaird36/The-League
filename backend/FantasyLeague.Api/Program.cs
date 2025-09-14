@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using FantasyLeague.Api.Data;
 using FantasyLeague.Api.Services;
 using FantasyLeague.Api.Hubs;
+using FantasyLeague.Api.Infrastructure;
+using SendGrid;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 // Configure legacy timestamp behavior for PostgreSQL
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -44,6 +48,36 @@ else
 builder.Services.AddDbContext<FantasyLeagueContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Configure Hangfire to use the same connection string as PostgreSQL
+builder.Services.AddHangfire(configuration => configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(connectionString, new PostgreSqlStorageOptions
+    {
+        QueuePollInterval = TimeSpan.FromSeconds(10),
+        JobExpirationCheckInterval = TimeSpan.FromHours(1),
+        CountersAggregateInterval = TimeSpan.FromMinutes(5),
+        PrepareSchemaIfNecessary = true
+    }));
+
+// Add Hangfire server
+builder.Services.AddHangfireServer(options =>
+{
+    options.Queues = new[] { "default", "emails" };
+    options.WorkerCount = Math.Max(Environment.ProcessorCount, 2);
+});
+
+// Configure email settings
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
+// Add SendGrid client
+builder.Services.AddSingleton<ISendGridClient>(provider =>
+{
+    var apiKey = builder.Configuration.GetSection("EmailSettings")["ApiKey"];
+    return new SendGridClient(apiKey);
+});
+
 // Add services
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<ICommissionerService, CommissionerService>();
@@ -57,9 +91,22 @@ builder.Services.AddScoped<NbaPlayerDataService>();
 builder.Services.AddScoped<NflProjectionDataService>();
 builder.Services.AddScoped<MlbProjectionDataService>();
 builder.Services.AddScoped<NbaProjectionDataService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<IEmailService, SendGridEmailService>();
+builder.Services.AddScoped<IBackgroundEmailService, BackgroundEmailService>();
+builder.Services.AddScoped<IEmailMonitoringService, EmailMonitoringService>();
+
+// Add background service for email monitoring
+builder.Services.AddHostedService<EmailMonitoringBackgroundService>();
 
 // Add HttpClient for API calls
 builder.Services.AddHttpClient();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<FantasyLeague.Api.HealthChecks.EmailSystemHealthCheck>("email_system")
+    .AddCheck<FantasyLeague.Api.HealthChecks.SendGridHealthCheck>("sendgrid")
+    .AddDbContextCheck<FantasyLeagueContext>("database");
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -93,10 +140,42 @@ if (app.Environment.IsDevelopment())
 // Use CORS
 app.UseCors("AllowReactApp");
 
+// Add Hangfire dashboard (optional, for monitoring)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new AllowAllConnectionsFilter() }
+    });
+}
+
 app.MapControllers();
 
 // Map SignalR hub
 app.MapHub<ChatHub>("/chathub");
+
+// Map health checks
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                exception = x.Value.Exception?.Message,
+                duration = x.Value.Duration.ToString(),
+                data = x.Value.Data
+            }),
+            duration = report.TotalDuration
+        };
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+    }
+});
 
 // Add health check endpoint
 app.MapGet("/", () => "Fantasy League API is running!");

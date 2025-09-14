@@ -5,6 +5,7 @@ using FantasyLeague.Api.Data;
 using FantasyLeague.Api.Models;
 using FantasyLeague.Api.DTOs;
 using FantasyLeague.Api.Hubs;
+using FantasyLeague.Api.Services;
 
 namespace FantasyLeague.Api.Controllers
 {
@@ -15,12 +16,14 @@ namespace FantasyLeague.Api.Controllers
         private readonly FantasyLeagueContext _context;
         private readonly ILogger<TradesController> _logger;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IBackgroundEmailService _backgroundEmailService;
 
-        public TradesController(FantasyLeagueContext context, ILogger<TradesController> logger, IHubContext<ChatHub> hubContext)
+        public TradesController(FantasyLeagueContext context, ILogger<TradesController> logger, IHubContext<ChatHub> hubContext, IBackgroundEmailService backgroundEmailService)
         {
             _context = context;
             _logger = logger;
             _hubContext = hubContext;
+            _backgroundEmailService = backgroundEmailService;
         }
 
         // GET: api/trades/league/{leagueId}/teams
@@ -221,10 +224,21 @@ namespace FantasyLeague.Api.Controllers
                         Message = notification.Message
                     });
 
+                // Queue email notification to the target user
+                try
+                {
+                    await _backgroundEmailService.QueueTradeProposalEmailAsync(request.TargetUserId, request.ProposingUserId, request.Message, tradeProposal.Id);
+                    _logger.LogInformation($"📧 Email notification queued for user {targetUser.Email} for trade proposal {tradeProposal.Id}");
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogWarning(emailEx, $"⚠️ Failed to queue email notification for trade proposal {tradeProposal.Id}, but trade proposal was created successfully");
+                }
+
                 // Return the created trade proposal
                 var createdTradeDto = await GetTradeProposalDto(tradeProposal.Id);
-                
-                _logger.LogInformation($"✅ Created trade proposal with ID {tradeProposal.Id} and sent SignalR notification");
+
+                _logger.LogInformation($"✅ Created trade proposal with ID {tradeProposal.Id} and sent notifications");
                 
                 return Ok(new TradeProposalResponseDto
                 {
@@ -427,9 +441,20 @@ namespace FantasyLeague.Api.Controllers
                         Accepted = request.Accept
                     });
 
+                // Queue email notification to the proposing user
+                try
+                {
+                    await _backgroundEmailService.QueueTradeResponseEmailAsync(tradeProposal.ProposingUserId, tradeProposal.TargetUserId, request.Accept, notificationMessage, tradeProposal.Id);
+                    _logger.LogInformation($"📧 Email notification queued for user {tradeProposal.ProposingUser.Email} for trade response {tradeProposal.Id}");
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogWarning(emailEx, $"⚠️ Failed to queue email notification for trade response {tradeProposal.Id}, but trade response was processed successfully");
+                }
+
                 var updatedTradeDto = await GetTradeProposalDto(tradeProposal.Id);
 
-                _logger.LogInformation($"✅ {(request.Accept ? "Accepted" : "Rejected")} trade proposal {tradeId} and sent SignalR notification");
+                _logger.LogInformation($"✅ {(request.Accept ? "Accepted" : "Rejected")} trade proposal {tradeId} and sent notifications");
 
                 return Ok(new TradeProposalResponseDto
                 {

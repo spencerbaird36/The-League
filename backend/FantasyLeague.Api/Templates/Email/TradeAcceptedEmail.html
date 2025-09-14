@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Proposal Accepted</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header .emoji {
+            font-size: 48px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .content {
+            padding: 30px 20px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .success-message {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .success-message h2 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .trade-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+        }
+        .footer {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .app-branding {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 0;
+            }
+            .header, .content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <span class="emoji">✅</span>
+            <h1>Trade Accepted!</h1>
+        </div>
+        <div class="content">
+            <div class="greeting">
+                Great news, {{ProposingUserName}}!
+            </div>
+
+            <div class="success-message">
+                <h2>🎉 Your Trade Was Accepted!</h2>
+                <p><strong>{{TargetUserName}}</strong> has accepted your trade proposal.</p>
+            </div>
+
+            <div class="trade-details">
+                <p>Your trade has been completed and the players have been exchanged between your rosters.
+                Check your updated team roster and start planning your winning strategy!</p>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{AppBaseUrl}}" class="cta-button">View Your Updated Roster</a>
+            </div>
+
+            <p style="margin-top: 30px; color: #27ae60; font-weight: 600; text-align: center;">
+                🏆 Time to dominate the league with your new lineup!
+            </p>
+
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+                You're receiving this email because you have email notifications enabled for trade responses.
+                You can manage your notification preferences in your account settings.
+            </p>
+        </div>
+        <div class="footer">
+            <div style="margin-bottom: 10px;">
+                <span class="app-branding">Fantasy League</span>
+            </div>
+            <p style="margin: 0;">This is an automated message from your Fantasy League app.</p>
+        </div>
+    </div>
+</body>
+</html>

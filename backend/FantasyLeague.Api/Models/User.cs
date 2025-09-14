@@ -33,11 +33,16 @@ namespace FantasyLeague.Api.Models
         public DateTime? LastLoginAt { get; set; }
         
         public bool IsActive { get; set; } = true;
-        
+
+        // Email notification preferences
+        public bool EmailNotificationsEnabled { get; set; } = true;
+        public bool TradeProposalEmailsEnabled { get; set; } = true;
+        public bool TradeResponseEmailsEnabled { get; set; } = true;
+
         // League association
         public int? LeagueId { get; set; }
         public League? League { get; set; }
-        
+
         // Team stats
         public TeamStats? TeamStats { get; set; }
     }
