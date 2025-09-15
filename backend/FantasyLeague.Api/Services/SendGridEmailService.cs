@@ -20,10 +20,10 @@ namespace FantasyLeague.Api.Services
             _logger = logger;
         }
 
-        public async Task<bool> SendTradeProposalNotificationAsync(User targetUser, User proposingUser, string message)
+        public async Task<bool> SendTradeProposalNotificationAsync(User targetUser, User proposingUser, string message, TradeProposal? tradeProposal = null)
         {
-            var subject = $"New Trade Proposal from {proposingUser.Username}";
-            var htmlContent = await _templateService.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl);
+            var subject = $"The League - New Trade Proposal from {proposingUser.Username}";
+            var htmlContent = await _templateService.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl, tradeProposal);
             var plainTextContent = _templateService.GeneratePlainTextFromHtml(htmlContent);
 
             return await SendEmailAsync(targetUser.Email, subject, htmlContent, plainTextContent);

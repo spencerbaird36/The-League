@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Trade Proposal</title>
+    <title>The League - New Trade Proposal from {{ProposingUserName}}</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -22,20 +22,33 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         .header {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             color: white;
             padding: 30px 20px;
             text-align: center;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e3a8a;
         }
         .header h1 {
             margin: 0;
             font-size: 28px;
             font-weight: 600;
         }
-        .header .emoji {
-            font-size: 48px;
-            margin-bottom: 10px;
-            display: block;
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-top: 5px;
         }
         .content {
             padding: 30px 20px;
@@ -48,49 +61,99 @@
         .main-message {
             background-color: #f8f9fa;
             padding: 20px;
-            border-left: 4px solid #4CAF50;
+            border-left: 4px solid #1e3a8a;
             margin: 20px 0;
             border-radius: 4px;
         }
+        .trade-details {
+            margin: 25px 0;
+        }
+        .trade-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .trade-table th {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 15px 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .trade-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .trade-table tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .trade-table tr:hover {
+            background-color: #f3f4f6;
+        }
+        .player-name {
+            font-weight: bold;
+            color: #1f2937;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        .player-details {
+            font-size: 14px;
+            color: #6b7280;
+        }
         .user-message {
-            background-color: #e3f2fd;
+            background-color: #eff6ff;
             padding: 15px;
             border-radius: 6px;
             margin: 15px 0;
-            border-left: 3px solid #2196F3;
+            border-left: 3px solid #3b82f6;
         }
         .user-message strong {
-            color: #1976D2;
+            color: #1d4ed8;
         }
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #4CAF50, #45a049);
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             color: white !important;
-            padding: 12px 30px;
+            padding: 15px 35px;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 600;
-            margin: 20px 0;
-            transition: transform 0.2s;
+            margin: 25px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 16px;
         }
         .cta-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(30, 58, 138, 0.3);
         }
         .footer {
-            background-color: #2c3e50;
-            color: #ecf0f1;
-            padding: 20px;
+            background-color: #1f2937;
+            color: #e5e7eb;
+            padding: 25px;
             text-align: center;
             font-size: 14px;
         }
         .footer a {
-            color: #3498db;
+            color: #60a5fa;
             text-decoration: none;
         }
         .app-branding {
-            color: #4CAF50;
+            color: #60a5fa;
             font-weight: 600;
+            font-size: 18px;
+        }
+        .disclaimer {
+            margin-top: 30px;
+            font-size: 13px;
+            color: #6b7280;
+            padding: 15px;
+            background-color: #f9fafb;
+            border-radius: 6px;
         }
         @media only screen and (max-width: 600px) {
             .email-container {
@@ -100,14 +163,26 @@
             .header, .content {
                 padding: 20px 15px;
             }
+            .trade-table th,
+            .trade-table td {
+                padding: 10px 8px;
+                font-size: 14px;
+            }
+            .player-name {
+                font-size: 14px;
+            }
+            .player-details {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="email-container">
         <div class="header">
-            <span class="emoji">🤝</span>
-            <h1>New Trade Proposal</h1>
+            <div class="logo">⚡</div>
+            <h1>The League - New Trade Proposal</h1>
+            <div class="subtitle">from {{ProposingUserName}}</div>
         </div>
         <div class="content">
             <div class="greeting">
@@ -115,7 +190,7 @@
             </div>
 
             <div class="main-message">
-                <strong>{{ProposingUserName}}</strong> has proposed a trade with you in your fantasy league.
+                <strong>{{ProposingUserName}}</strong> has proposed a trade with you in <strong>The League</strong>.
             </div>
 
             {{#if Message}}
@@ -125,22 +200,32 @@
             </div>
             {{/if}}
 
-            <p>Don't keep them waiting! Log in to your fantasy league to view the trade details and make your decision.</p>
+            <div class="trade-details">
+                <h3 style="color: #1f2937; margin-bottom: 15px; text-align: center;">📋 Trade Details</h3>
+                {{TradeDetails}}
+            </div>
+
+            <p style="text-align: center; font-size: 16px; color: #374151;">
+                Don't keep them waiting! Review the trade details and make your decision.
+            </p>
 
             <div style="text-align: center;">
-                <a href="{{AppBaseUrl}}" class="cta-button">View Trade Proposal</a>
+                <a href="{{AppBaseUrl}}" class="cta-button">🏈 Review Trade Proposal</a>
             </div>
 
-            <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            <div class="disclaimer">
                 You're receiving this email because you have email notifications enabled for trade proposals.
                 You can manage your notification preferences in your account settings.
-            </p>
+            </div>
         </div>
         <div class="footer">
-            <div style="margin-bottom: 10px;">
-                <span class="app-branding">Fantasy League</span>
+            <div style="margin-bottom: 15px;">
+                <span class="app-branding">⚡ The League</span>
             </div>
             <p style="margin: 0;">This is an automated message from your Fantasy League app.</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.8;">
+                Manage your team like a champion. Play like a legend.
+            </p>
         </div>
     </div>
 </body>

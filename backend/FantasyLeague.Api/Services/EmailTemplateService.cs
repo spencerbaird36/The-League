@@ -14,15 +14,18 @@ namespace FantasyLeague.Api.Services
             _logger = logger;
         }
 
-        public async Task<string> RenderTradeProposalEmailAsync(User targetUser, User proposingUser, string? message, string appBaseUrl)
+        public async Task<string> RenderTradeProposalEmailAsync(User targetUser, User proposingUser, string? message, string appBaseUrl, TradeProposal? tradeProposal = null)
         {
             var template = await LoadTemplateAsync("TradeProposalEmail.html");
+
+            var tradeDetailsHtml = GenerateTradeDetailsTable(tradeProposal);
 
             var replacements = new Dictionary<string, string>
             {
                 {"{{TargetUserName}}", GetDisplayName(targetUser)},
                 {"{{ProposingUserName}}", proposingUser.Username},
-                {"{{AppBaseUrl}}", appBaseUrl}
+                {"{{AppBaseUrl}}", appBaseUrl + "/my-team"},
+                {"{{TradeDetails}}", tradeDetailsHtml}
             };
 
             var renderedTemplate = ReplaceTokens(template, replacements);
@@ -164,6 +167,85 @@ namespace FantasyLeague.Api.Services
                 return user.FirstName;
             }
             return user.Username;
+        }
+
+        private string GenerateTradeDetailsTable(TradeProposal? tradeProposal)
+        {
+            if (tradeProposal == null)
+            {
+                return "<p>Trade details unavailable.</p>";
+            }
+
+            // Get all trade players for this proposal and filter by trade type
+            var allTradePlayers = new List<TradePlayer>();
+            if (tradeProposal.ProposingPlayers != null) allTradePlayers.AddRange(tradeProposal.ProposingPlayers);
+            if (tradeProposal.TargetPlayers != null) allTradePlayers.AddRange(tradeProposal.TargetPlayers);
+
+            var proposingPlayers = allTradePlayers.Where(p => p.TradeType == "offering").ToList();
+            var targetPlayers = allTradePlayers.Where(p => p.TradeType == "receiving").ToList();
+
+            var html = @"
+                <div class='trade-details'>
+                    <table class='trade-table'>
+                        <thead>
+                            <tr>
+                                <th style='text-align: center; background-color: #4CAF50; color: white; padding: 12px;'>
+                                    " + tradeProposal.ProposingUser?.Username + @" Offers
+                                </th>
+                                <th style='text-align: center; background-color: #2196F3; color: white; padding: 12px;'>
+                                    " + tradeProposal.TargetUser?.Username + @" Receives
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>";
+
+            var maxRows = Math.Max(proposingPlayers.Count, targetPlayers.Count);
+            maxRows = Math.Max(maxRows, 1); // At least one row
+
+            for (int i = 0; i < maxRows; i++)
+            {
+                var proposingPlayer = i < proposingPlayers.Count ? proposingPlayers[i] : null;
+                var targetPlayer = i < targetPlayers.Count ? targetPlayers[i] : null;
+
+                html += "<tr>";
+
+                // Proposing player cell
+                if (proposingPlayer != null)
+                {
+                    html += $@"
+                        <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: center;'>
+                            <div style='font-weight: bold; color: #2c3e50;'>{proposingPlayer.PlayerName}</div>
+                            <div style='font-size: 14px; color: #666;'>{proposingPlayer.PlayerPosition} - {proposingPlayer.PlayerTeam} ({proposingPlayer.PlayerLeague})</div>
+                        </td>";
+                }
+                else
+                {
+                    html += "<td style='padding: 12px; border-bottom: 1px solid #ddd;'>&nbsp;</td>";
+                }
+
+                // Target player cell
+                if (targetPlayer != null)
+                {
+                    html += $@"
+                        <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: center;'>
+                            <div style='font-weight: bold; color: #2c3e50;'>{targetPlayer.PlayerName}</div>
+                            <div style='font-size: 14px; color: #666;'>{targetPlayer.PlayerPosition} - {targetPlayer.PlayerTeam} ({targetPlayer.PlayerLeague})</div>
+                        </td>";
+                }
+                else
+                {
+                    html += "<td style='padding: 12px; border-bottom: 1px solid #ddd;'>&nbsp;</td>";
+                }
+
+                html += "</tr>";
+            }
+
+            html += @"
+                        </tbody>
+                    </table>
+                </div>";
+
+            return html;
         }
 
         private string GetFallbackTemplate(string templateName)

@@ -159,7 +159,8 @@ namespace FantasyLeague.Api.Services
                             success = await emailService.SendTradeProposalNotificationAsync(
                                 emailLog.User,
                                 emailLog.TradeProposal.ProposingUser,
-                                emailLog.TradeProposal.Message ?? ""
+                                emailLog.TradeProposal.Message ?? "",
+                                emailLog.TradeProposal
                             );
                         }
                         break;
