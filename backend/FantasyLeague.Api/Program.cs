@@ -230,5 +230,6 @@ _ = Task.Run(async () =>
     {
         logger.LogError(ex, "Error scheduling recurring projection sync jobs");
     }
+});
 
 app.Run();
