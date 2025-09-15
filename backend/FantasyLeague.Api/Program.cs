@@ -100,21 +100,13 @@ builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IBackgroundEmailService, BackgroundEmailService>();
 builder.Services.AddScoped<IEmailMonitoringService, EmailMonitoringService>();
 
-// Add token system services
-builder.Services.AddScoped<UserWalletService>();
-
-// Add betting system services
-builder.Services.AddScoped<BettingService>();
-builder.Services.AddScoped<OddsCalculationService>();
-// Removed due to model conflicts - will be re-added in next phase
-// builder.Services.AddScoped<RealTimeGameDataService>();
-// builder.Services.AddScoped<AutomatedBetSettlementService>();
-
-// Configure Stripe settings
-builder.Services.Configure<FantasyLeague.Api.Models.StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
-
-// Add Stripe payment service
-builder.Services.AddScoped<StripePaymentService>();
+// Token and betting system services temporarily disabled for production deployment
+// Will be re-enabled after proper migration setup
+// builder.Services.AddScoped<UserWalletService>();
+// builder.Services.AddScoped<BettingService>();
+// builder.Services.AddScoped<OddsCalculationService>();
+// builder.Services.Configure<FantasyLeague.Api.Models.StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
+// builder.Services.AddScoped<StripePaymentService>();
 
 // Add background services
 builder.Services.AddHostedService<EmailMonitoringBackgroundService>();
