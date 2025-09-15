@@ -647,10 +647,10 @@ namespace FantasyLeague.Api.Controllers
                 };
 
                 // Validate the new configuration
-                if (!updatedConfig.IsValidConfiguration())
+                var validationErrors = updatedConfig.GetValidationErrors();
+                if (validationErrors.Any())
                 {
-                    var errors = updatedConfig.GetValidationErrors();
-                    return BadRequest(new { Message = "Invalid configuration", Errors = errors });
+                    return BadRequest(new { Message = "Invalid configuration", Errors = validationErrors });
                 }
 
                 // Update the configuration
