@@ -59,7 +59,7 @@ namespace FantasyLeague.Api.Controllers
                     targetUser.Id,
                     proposingUser.Id,
                     "This is a test trade proposal email",
-                    0 // dummy trade proposal ID
+                    null // no trade proposal ID for test
                 );
 
                 return Ok(new

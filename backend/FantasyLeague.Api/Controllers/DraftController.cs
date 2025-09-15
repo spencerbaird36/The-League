@@ -412,7 +412,7 @@ namespace FantasyLeague.Api.Controllers
             draft.CurrentRound = nextRoundIndex + 1; // 1-based round
 
             // Check if draft should be completed based on total picks made
-            var totalPicksMade = draft.DraftPicks.Count;
+            var totalPicksMade = draft.DraftPicks.Count + 1; // +1 for the pick we're about to save
             if (draft.MaxPicks > 0 && totalPicksMade >= draft.MaxPicks)
             {
                 draft.IsActive = false;
@@ -443,7 +443,7 @@ namespace FantasyLeague.Api.Controllers
                     CurrentTurn = draft.CurrentTurn,
                     CurrentRound = draft.CurrentRound,
                     IsCompleted = draft.IsCompleted,
-                    NextUserId = draft.IsCompleted ? (int?)null : (nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : (int?)null)
+                    NextUserId = draft.IsCompleted ? (int?)null : (nextTotalPicks < draft.MaxPicks ? draftOrder[nextUserIndex] : (int?)null)
                 }
             };
 

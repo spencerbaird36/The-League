@@ -16,7 +16,7 @@ namespace FantasyLeague.Api.Services
             _logger = logger;
         }
 
-        public async Task QueueTradeProposalEmailAsync(int targetUserId, int proposingUserId, string? message, int tradeProposalId)
+        public async Task QueueTradeProposalEmailAsync(int targetUserId, int proposingUserId, string? message, int? tradeProposalId)
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<FantasyLeagueContext>();
@@ -66,7 +66,7 @@ namespace FantasyLeague.Api.Services
             }
         }
 
-        public async Task QueueTradeResponseEmailAsync(int proposingUserId, int targetUserId, bool accepted, string message, int tradeProposalId)
+        public async Task QueueTradeResponseEmailAsync(int proposingUserId, int targetUserId, bool accepted, string message, int? tradeProposalId)
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<FantasyLeagueContext>();

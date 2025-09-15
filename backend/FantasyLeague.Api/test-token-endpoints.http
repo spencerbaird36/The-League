@@ -1,0 +1,59 @@
+# Test Token System Endpoints
+# Use this file with REST Client extension or similar tools
+
+### 1. Get user balance (should create wallet if it doesn't exist)
+GET http://localhost:5000/api/token/balance?userId=1
+
+### 2. Add test tokens to user
+POST http://localhost:5000/api/token/dev/add-test-tokens
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": 100.00,
+  "reason": "Initial test tokens"
+}
+
+### 3. Get wallet details
+GET http://localhost:5000/api/token/wallet/1
+
+### 4. Get transaction history
+GET http://localhost:5000/api/token/transactions/1
+
+### 5. Get system status
+GET http://localhost:5000/api/token/system/status
+
+### 6. Admin: Get dashboard
+GET http://localhost:5000/api/admin/tokens/dashboard
+
+### 7. Admin: Get all wallets
+GET http://localhost:5000/api/admin/tokens/wallets
+
+### 8. Admin: Adjust user balance (add tokens)
+POST http://localhost:5000/api/admin/tokens/adjust-balance?adminUserId=1
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": 50.00,
+  "reason": "Admin test credit"
+}
+
+### 9. Admin: Adjust user balance (remove tokens)
+POST http://localhost:5000/api/admin/tokens/adjust-balance?adminUserId=1
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "amount": -25.00,
+  "reason": "Admin test debit"
+}
+
+### 10. Get updated transaction history
+GET http://localhost:5000/api/token/transactions/1
+
+### 11. Admin: Get all transactions
+GET http://localhost:5000/api/admin/tokens/transactions
+
+### 12. Admin: Get token statistics
+GET http://localhost:5000/api/admin/tokens/statistics

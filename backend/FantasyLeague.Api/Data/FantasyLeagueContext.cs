@@ -37,6 +37,19 @@ namespace FantasyLeague.Api.Data
         public DbSet<NbaPlayerProjection> NbaPlayerProjections { get; set; }
         public DbSet<EmailDeliveryLog> EmailDeliveryLogs { get; set; }
 
+        // Token System DbSets
+        public DbSet<UserWallet> UserWallets { get; set; }
+        public DbSet<TokenTransaction> TokenTransactions { get; set; }
+        public DbSet<SystemTokenPool> SystemTokenPools { get; set; }
+        public DbSet<AdminTokenAction> AdminTokenActions { get; set; }
+        public DbSet<CashoutRequest> CashoutRequests { get; set; }
+
+        // Betting System DbSets
+        public DbSet<Bet> Bets { get; set; }
+        public DbSet<MatchupBet> MatchupBets { get; set; }
+        public DbSet<GameBet> GameBets { get; set; }
+        public DbSet<BettingLine> BettingLines { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -1135,6 +1148,543 @@ namespace FantasyLeague.Api.Data
                 entity.HasIndex(e => e.Position);
                 entity.HasIndex(e => new { e.Name, e.Season });
                 entity.HasIndex(e => e.Season);
+            });
+
+            // Configure UserWallet entity
+            modelBuilder.Entity<UserWallet>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.TokenBalance)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.PendingBalance)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationship with User (one-to-one)
+                entity.HasOne(e => e.User)
+                    .WithOne()
+                    .HasForeignKey<UserWallet>(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                // Create unique index for UserId (one wallet per user)
+                entity.HasIndex(e => e.UserId)
+                    .IsUnique();
+            });
+
+            // Configure TokenTransaction entity
+            modelBuilder.Entity<TokenTransaction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(TokenTransactionStatus.Pending);
+
+                entity.Property(e => e.Amount)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.BalanceBefore)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.BalanceAfter)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.Description)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.PaymentMethodId)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.PaymentIntentId)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Metadata)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                // Configure relationship with ProcessedByAdmin
+                entity.HasOne(e => e.ProcessedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProcessedByAdminId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.PaymentIntentId);
+                entity.HasIndex(e => e.RelatedBetId);
+            });
+
+            // Configure SystemTokenPool entity
+            modelBuilder.Entity<SystemTokenPool>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.TotalTokensIssued)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.TotalTokensInCirculation)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.TotalCashedOut)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.HouseBalance)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.TotalRevenue)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.TotalPayouts)
+                    .IsRequired()
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.LastUpdated)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                entity.Property(e => e.Metadata)
+                    .HasMaxLength(2000);
+            });
+
+            // Configure AdminTokenAction entity
+            modelBuilder.Entity<AdminTokenAction>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(AdminActionStatus.Completed);
+
+                entity.Property(e => e.Amount)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.Reason)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.Metadata)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationship with AdminUser
+                entity.HasOne(e => e.AdminUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.AdminUserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                // Configure relationship with TargetUser
+                entity.HasOne(e => e.TargetUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.TargetUserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                // Configure relationship with TokenTransaction
+                entity.HasOne(e => e.TokenTransaction)
+                    .WithMany()
+                    .HasForeignKey(e => e.TokenTransactionId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.AdminUserId, e.CreatedAt });
+                entity.HasIndex(e => new { e.TargetUserId, e.CreatedAt });
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.Status);
+            });
+
+            // Configure CashoutRequest entity
+            modelBuilder.Entity<CashoutRequest>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Amount)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.Method)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(CashoutStatus.Pending);
+
+                entity.Property(e => e.PaymentDetails)
+                    .IsRequired()
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.RejectionReason)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.StripeTransferId)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Metadata)
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.RequestedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationship with User
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                // Configure relationship with ProcessedByAdmin
+                entity.HasOne(e => e.ProcessedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProcessedByAdminId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Configure relationship with TokenTransaction
+                entity.HasOne(e => e.TokenTransaction)
+                    .WithMany()
+                    .HasForeignKey(e => e.TokenTransactionId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Create indexes for efficient querying
+                entity.HasIndex(e => new { e.UserId, e.RequestedAt });
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.Method);
+                entity.HasIndex(e => new { e.Status, e.RequestedAt });
+            });
+
+            // Configure Bet entity
+            modelBuilder.Entity<Bet>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(BetStatus.Active);
+
+                entity.Property(e => e.Amount)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.PotentialPayout)
+                    .IsRequired()
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.Odds)
+                    .IsRequired()
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.Notes)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.SettlementNotes)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationships
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.TokenTransaction)
+                    .WithMany()
+                    .HasForeignKey(e => e.TokenTransactionId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.MatchupBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.MatchupBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.GameBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.GameBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.SettledByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.SettledByAdminId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Create indexes
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => new { e.Status, e.ExpiresAt });
+                entity.HasIndex(e => e.MatchupBetId);
+                entity.HasIndex(e => e.GameBetId);
+            });
+
+            // Configure MatchupBet entity
+            modelBuilder.Entity<MatchupBet>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Sport)
+                    .IsRequired()
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.PointSpread)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.OverUnderLine)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.Team1Score)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.Team2Score)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.TotalScore)
+                    .HasPrecision(6, 1);
+
+                // Configure relationships
+                entity.HasOne(e => e.Team1User)
+                    .WithMany()
+                    .HasForeignKey(e => e.Team1UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Team2User)
+                    .WithMany()
+                    .HasForeignKey(e => e.Team2UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.WinnerUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.WinnerUserId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                // Create indexes
+                entity.HasIndex(e => new { e.Week, e.Season, e.Sport });
+                entity.HasIndex(e => new { e.Team1UserId, e.Team2UserId });
+                entity.HasIndex(e => e.IsSettled);
+            });
+
+            // Configure GameBet entity
+            modelBuilder.Entity<GameBet>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.ExternalGameId)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
+                entity.Property(e => e.Sport)
+                    .IsRequired()
+                    .HasMaxLength(10);
+
+                entity.Property(e => e.HomeTeam)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.AwayTeam)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Week)
+                    .HasMaxLength(20);
+
+                entity.Property(e => e.Season)
+                    .HasMaxLength(20);
+
+                entity.Property(e => e.GameStatus)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(GameStatus.Scheduled);
+
+                entity.Property(e => e.PointSpread)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.OverUnderLine)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.HomeMoneylineOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.AwayMoneylineOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.OverOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.UnderOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.ExternalDataSource)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Create indexes
+                entity.HasIndex(e => e.ExternalGameId)
+                    .IsUnique();
+                entity.HasIndex(e => new { e.Sport, e.GameDateTime });
+                entity.HasIndex(e => e.GameStatus);
+                entity.HasIndex(e => e.IsSettled);
+            });
+
+            // Configure BettingLine entity
+            modelBuilder.Entity<BettingLine>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.PointSpread)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.OverUnderLine)
+                    .HasPrecision(6, 1);
+
+                entity.Property(e => e.FavoriteOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.UnderdogOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.OverOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.UnderOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.MinBetAmount)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.MaxBetAmount)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.MaxTotalExposure)
+                    .HasPrecision(18, 2);
+
+                entity.Property(e => e.CurrentExposure)
+                    .HasPrecision(18, 2)
+                    .HasDefaultValue(0.00m);
+
+                entity.Property(e => e.Notes)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationships
+                entity.HasOne(e => e.MatchupBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.MatchupBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.GameBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.GameBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.CreatedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByAdminId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                // Create indexes
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.IsActive);
+                entity.HasIndex(e => new { e.IsActive, e.ExpiresAt });
+                entity.HasIndex(e => e.MatchupBetId);
+                entity.HasIndex(e => e.GameBetId);
             });
         }
     }

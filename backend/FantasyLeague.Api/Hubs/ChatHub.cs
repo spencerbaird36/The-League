@@ -542,7 +542,7 @@ namespace FantasyLeague.Api.Hubs
                 else
                 {
                     // Start timer for next user's turn
-                    var nextUserId = nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : 0;
+                    var nextUserId = nextTotalPicks < draft.MaxPicks ? draftOrder[nextUserIndex] : 0;
                     
                     await _hubContext.Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
                     {
@@ -709,8 +709,7 @@ namespace FantasyLeague.Api.Hubs
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
                     var teamCount = draftOrder.Count;
-                    var maxRounds = 34; // Total rounds in draft
-                    var totalPicksNeeded = teamCount * maxRounds;
+                    var totalPicksNeeded = draft.MaxPicks;
                     
                     Console.WriteLine($"🏁 Starting complete auto-draft: {totalPicks} picks completed, {totalPicksNeeded - totalPicks} picks remaining");
                     
@@ -722,6 +721,7 @@ namespace FantasyLeague.Api.Hubs
                     
                     // Create snake draft sequence for remaining picks
                     var snakeSequence = new List<int>();
+                    var maxRounds = totalPicksNeeded / teamCount; // Calculate rounds based on total picks needed
                     for (int round = 0; round < maxRounds; round++)
                     {
                         if (round % 2 == 0)
@@ -973,7 +973,7 @@ namespace FantasyLeague.Api.Hubs
                         else
                         {
                             // Notify next user it's their turn
-                            var nextUserId = nextTotalPicks < teamCount * 15 ? draftOrder[nextUserIndex] : 0;
+                            var nextUserId = nextTotalPicks < draft.MaxPicks ? draftOrder[nextUserIndex] : 0;
                             
                             await Clients.Group($"League_{leagueId}").SendAsync("TurnChanged", new
                             {

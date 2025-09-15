@@ -1,0 +1,241 @@
+# Phase 2 Token System with Stripe Integration - Test Endpoints
+# Use this file with REST Client extension or similar tools
+
+### IMPORTANT SETUP NOTES ###
+# 1. Add the following to your appsettings.Development.json:
+# {
+#   "StripeSettings": {
+#     "SecretKey": "sk_test_...",  // Your Stripe test secret key
+#     "PublishableKey": "pk_test_...",  // Your Stripe test publishable key
+#     "WebhookSecret": "whsec_...",  // Your Stripe webhook endpoint secret
+#     "IsTestMode": true,
+#     "Currency": "usd",
+#     "MinimumPurchaseAmount": 5.00,
+#     "MaximumPurchaseAmount": 10000.00,
+#     "MinimumCashoutAmount": 10.00,
+#     "BusinessName": "Fantasy League Test",
+#     "SupportEmail": "test@fantasyleague.com"
+#   }
+# }
+#
+# 2. Get test keys from: https://dashboard.stripe.com/test/apikeys
+# 3. Set up webhook endpoint: https://dashboard.stripe.com/test/webhooks
+#    - Endpoint URL: http://localhost:5000/api/webhooks/stripe
+#    - Events to listen for: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled
+
+### Phase 2 Test Cards (Stripe Test Mode)
+# 4242424242424242 - Visa Success
+# 4000000000000002 - Visa Decline
+# 4000000000009995 - Visa Insufficient Funds
+# 4000000000000069 - Visa Expired Card
+# 4000000000000127 - Visa Incorrect CVC
+
+### ==============================================
+### PHASE 2: STRIPE PAYMENT INTEGRATION TESTS
+### ==============================================
+
+### 1. Create Payment Intent for Token Purchase
+POST http://localhost:5000/api/token/purchase?userId=1
+Content-Type: application/json
+
+{
+  "amount": 25.00,
+  "description": "Test token purchase"
+}
+
+### 2. Confirm Payment (Simulate successful payment)
+# NOTE: In real usage, this would be called from frontend after Stripe Elements confirms payment
+# For testing, use the PaymentIntentId from the previous response
+POST http://localhost:5000/api/token/purchase/confirm?userId=1
+Content-Type: application/json
+
+{
+  "paymentIntentId": "pi_test_...",  // Replace with actual PaymentIntentId from step 1
+  "paymentMethodId": "pm_card_visa"  // Optional: test payment method
+}
+
+### 3. Get updated balance after purchase
+GET http://localhost:5000/api/token/balance?userId=1
+
+### 4. Get transaction history to see purchase
+GET http://localhost:5000/api/token/transactions/1
+
+### ==============================================
+### CASHOUT SYSTEM TESTS
+### ==============================================
+
+### 5. Request cashout via Stripe
+POST http://localhost:5000/api/token/cashout?userId=1
+Content-Type: application/json
+
+{
+  "amount": 15.00,
+  "method": 4,  // CashoutMethod.Stripe
+  "paymentDetails": "test@example.com",
+  "notes": "Test cashout request"
+}
+
+### 6. Request cashout via Bank Transfer
+POST http://localhost:5000/api/token/cashout?userId=1
+Content-Type: application/json
+
+{
+  "amount": 20.00,
+  "method": 1,  // CashoutMethod.BankTransfer
+  "paymentDetails": "Routing: 123456789, Account: 987654321, Name: John Doe",
+  "notes": "Bank transfer test"
+}
+
+### 7. Request cashout via PayPal
+POST http://localhost:5000/api/token/cashout?userId=1
+Content-Type: application/json
+
+{
+  "amount": 10.00,
+  "method": 2,  // CashoutMethod.PayPal
+  "paymentDetails": "paypal@example.com",
+  "notes": "PayPal cashout test"
+}
+
+### 8. Get cashout history for user
+GET http://localhost:5000/api/token/cashout/history/1
+
+### ==============================================
+### ADMIN CASHOUT MANAGEMENT
+### ==============================================
+
+### 9. Admin: Get all cashout requests
+GET http://localhost:5000/api/admin/tokens/cashout-requests
+
+### 10. Admin: Process a cashout request (approve)
+POST http://localhost:5000/api/admin/tokens/process-cashout?adminUserId=1
+Content-Type: application/json
+
+{
+  "cashoutRequestId": 1,  // Replace with actual ID from cashout request
+  "action": "approve",
+  "notes": "Approved for processing"
+}
+
+### 11. Admin: Process a cashout request (reject)
+POST http://localhost:5000/api/admin/tokens/process-cashout?adminUserId=1
+Content-Type: application/json
+
+{
+  "cashoutRequestId": 2,  // Replace with actual ID from cashout request
+  "action": "reject",
+  "notes": "Insufficient documentation provided",
+  "rejectionReason": "Missing required bank verification documents"
+}
+
+### ==============================================
+### WEBHOOK TESTING
+### ==============================================
+
+### 12. Test Stripe Webhook (Manual)
+# NOTE: This should be called by Stripe, not manually
+# Webhook URL: POST http://localhost:5000/api/webhooks/stripe
+# Headers: Stripe-Signature: (Stripe will provide this)
+# Body: Stripe event JSON
+
+### ==============================================
+### DEVELOPMENT FEATURES (Stripe Test Mode)
+### ==============================================
+
+### 13. Get Stripe test cards reference
+GET http://localhost:5000/api/token/dev/stripe-test-cards
+
+### 14. Simulate webhook event (Development only)
+POST http://localhost:5000/api/token/dev/simulate-webhook
+Content-Type: application/json
+
+{
+  "eventType": "payment_intent.succeeded",
+  "paymentIntentId": "pi_test_...",  // Replace with actual PaymentIntentId
+  "userId": 1,
+  "amount": 25.00
+}
+
+### ==============================================
+### COMPREHENSIVE SYSTEM STATUS
+### ==============================================
+
+### 15. Get complete admin dashboard
+GET http://localhost:5000/api/admin/tokens/dashboard
+
+### 16. Get system statistics
+GET http://localhost:5000/api/admin/tokens/statistics
+
+### 17. Get recent transactions (all users)
+GET http://localhost:5000/api/token/transactions/recent
+
+### ==============================================
+### ERROR TESTING SCENARIOS
+### ==============================================
+
+### 18. Test insufficient balance for cashout
+POST http://localhost:5000/api/token/cashout?userId=1
+Content-Type: application/json
+
+{
+  "amount": 99999.00,  // More than user has
+  "method": 4,
+  "paymentDetails": "test@example.com"
+}
+
+### 19. Test invalid payment amount (too small)
+POST http://localhost:5000/api/token/purchase?userId=1
+Content-Type: application/json
+
+{
+  "amount": 1.00  // Below minimum
+}
+
+### 20. Test invalid payment amount (too large)
+POST http://localhost:5000/api/token/purchase?userId=1
+Content-Type: application/json
+
+{
+  "amount": 50000.00  // Above maximum
+}
+
+### 21. Test duplicate cashout request
+# Run the same cashout request twice quickly to test prevention
+POST http://localhost:5000/api/token/cashout?userId=1
+Content-Type: application/json
+
+{
+  "amount": 10.00,
+  "method": 4,
+  "paymentDetails": "test@example.com"
+}
+
+### ==============================================
+### TESTING SEQUENCE RECOMMENDATION
+### ==============================================
+
+# 1. Start with adding test tokens: POST /api/token/dev/add-test-tokens
+# 2. Create payment intent: POST /api/token/purchase
+# 3. Confirm payment: POST /api/token/purchase/confirm
+# 4. Check balance: GET /api/token/balance
+# 5. Request cashout: POST /api/token/cashout
+# 6. Check cashout history: GET /api/token/cashout/history/{userId}
+# 7. Admin review: GET /api/admin/tokens/dashboard
+# 8. Process cashout: POST /api/admin/tokens/process-cashout
+
+### ==============================================
+### FRONTEND INTEGRATION NOTES
+### ==============================================
+
+# For frontend Stripe Elements integration:
+# 1. Use the clientSecret from /api/token/purchase response
+# 2. Initialize Stripe Elements with the publishableKey
+# 3. After successful payment confirmation, call /api/token/purchase/confirm
+# 4. Handle webhooks for reliable payment processing
+
+# Example frontend flow:
+# const { clientSecret, paymentIntentId } = await fetch('/api/token/purchase')
+# const { error } = await stripe.confirmCardPayment(clientSecret)
+# if (!error) {
+#   await fetch('/api/token/purchase/confirm', { body: { paymentIntentId } })
+# }
