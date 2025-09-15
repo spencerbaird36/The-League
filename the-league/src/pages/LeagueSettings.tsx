@@ -640,7 +640,7 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
                             />
                           </label>
                           <span className="keeper-info">
-                            ({Math.floor((getConfigValue('totalKeeperSlots') || 0) / Math.max(1, [tempConfig.includeNFL, tempConfig.includeMLB, tempConfig.includeNBA].filter(Boolean).length))} per sport)
+                            ({Math.floor((getConfigValue('totalKeeperSlots') as number || 0) / Math.max(1, [tempConfig.includeNFL, tempConfig.includeMLB, tempConfig.includeNBA].filter(Boolean).length))} per sport)
                           </span>
                         </div>
                       )}
