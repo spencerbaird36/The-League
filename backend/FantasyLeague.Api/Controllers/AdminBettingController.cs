@@ -32,22 +32,26 @@ namespace FantasyLeague.Api.Controllers
         }
 
         /// <summary>
-        /// Get betting system dashboard with basic statistics
+        /// Get comprehensive betting system analytics dashboard
         /// </summary>
         [HttpGet("dashboard")]
         public async Task<ActionResult> GetDashboard()
         {
             try
             {
-                // Basic stats that work with current models
+                var systemStats = await GetSystemBettingStatsAsync();
+                var userStats = await GetUserAnalyticsAsync();
+                var revenueStats = await GetRevenueAnalyticsAsync();
+                var betTypeStats = await GetBetTypeAnalyticsAsync();
+                var trendStats = await GetTrendAnalyticsAsync();
+
                 var dashboard = new
                 {
-                    message = "Betting dashboard - Phase 4 features temporarily disabled due to model conflicts",
-                    totalBets = await _context.Bets.CountAsync(),
-                    activeBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Active),
-                    wonBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Won),
-                    lostBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Lost),
-                    totalWagered = await _context.Bets.SumAsync(b => b.Amount),
+                    systemOverview = systemStats,
+                    userAnalytics = userStats,
+                    revenueAnalytics = revenueStats,
+                    betTypeBreakdown = betTypeStats,
+                    trends = trendStats,
                     lastUpdated = DateTime.UtcNow
                 };
 
@@ -347,6 +351,96 @@ namespace FantasyLeague.Api.Controllers
             }
         }
 
+        [HttpGet("analytics/revenue")]
+        public async Task<ActionResult> GetRevenueAnalytics([FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var analytics = await GetRevenueAnalyticsAsync();
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving revenue analytics for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving revenue analytics");
+            }
+        }
+
+        [HttpGet("analytics/users")]
+        public async Task<ActionResult> GetUserAnalytics()
+        {
+            try
+            {
+                var analytics = await GetUserAnalyticsAsync();
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user analytics for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving user analytics");
+            }
+        }
+
+        [HttpGet("analytics/bet-types")]
+        public async Task<ActionResult> GetBetTypeAnalytics()
+        {
+            try
+            {
+                var analytics = await GetBetTypeAnalyticsAsync();
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving bet type analytics for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving bet type analytics");
+            }
+        }
+
+        [HttpGet("analytics/trends")]
+        public async Task<ActionResult> GetTrendAnalytics()
+        {
+            try
+            {
+                var analytics = await GetTrendAnalyticsAsync();
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving trend analytics for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving trend analytics");
+            }
+        }
+
+        [HttpGet("analytics/leaderboard")]
+        public async Task<ActionResult> GetLeaderboard([FromQuery] string type = "profit", [FromQuery] int limit = 10)
+        {
+            try
+            {
+                var leaderboard = await GetLeaderboardAsync(type, limit);
+                return Ok(leaderboard);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving leaderboard for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving leaderboard");
+            }
+        }
+
+        [HttpGet("analytics/risk-management")]
+        public async Task<ActionResult> GetRiskManagementAnalytics()
+        {
+            try
+            {
+                var analytics = await GetRiskManagementAnalyticsAsync();
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving risk management analytics for admin {AdminId}", GetCurrentUserId());
+                return StatusCode(500, "An error occurred while retrieving risk management analytics");
+            }
+        }
+
         [HttpPut("matchups/{matchupBetId}")]
         public async Task<ActionResult<MatchupBetDto>> UpdateMatchupBet(int matchupBetId, [FromBody] CreateMatchupBetDto request)
         {
@@ -467,6 +561,477 @@ namespace FantasyLeague.Api.Controllers
             return userId;
         }
 
-        // Phase 4 helper methods will be restored after model alignment
+        #region Analytics Helper Methods
+
+        private async Task<object> GetSystemBettingStatsAsync()
+        {
+            var totalBets = await _context.Bets.CountAsync();
+            var activeBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Active);
+            var settledBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost);
+            var totalWagered = await _context.Bets.SumAsync(b => b.Amount);
+            var totalPayouts = await _context.Bets.Where(b => b.Status == BetStatus.Won).SumAsync(b => b.PotentialPayout);
+            var houseRevenue = await _context.Bets.Where(b => b.Status == BetStatus.Lost).SumAsync(b => b.Amount);
+            var houseProfit = houseRevenue - totalPayouts;
+
+            var settledBetsCount = await _context.Bets.CountAsync(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost);
+            var wonBetsCount = await _context.Bets.CountAsync(b => b.Status == BetStatus.Won);
+            var houseWinRate = settledBetsCount > 0 ? Math.Round((decimal)(settledBetsCount - wonBetsCount) / settledBetsCount * 100, 2) : 0;
+
+            return new
+            {
+                totalBets,
+                activeBets,
+                settledBets,
+                totalWagered = Math.Round(totalWagered, 2),
+                totalPayouts = Math.Round(totalPayouts, 2),
+                houseRevenue = Math.Round(houseRevenue, 2),
+                houseProfit = Math.Round(houseProfit, 2),
+                houseWinRate,
+                totalMatchupBets = await _context.MatchupBets.CountAsync(),
+                totalGameBets = await _context.GameBets.CountAsync(),
+                pendingSettlements = await _context.Bets.CountAsync(b => b.Status == BetStatus.Pending),
+                expiredBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Expired),
+                cancelledBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Cancelled),
+                voidedBets = await _context.Bets.CountAsync(b => b.Status == BetStatus.Voided)
+            };
+        }
+
+        private async Task<object> GetUserAnalyticsAsync()
+        {
+            var totalUsers = await _context.Users.CountAsync();
+            var usersWithBets = await _context.Bets.Select(b => b.UserId).Distinct().CountAsync();
+            var activeUsersLast30Days = await _context.Bets
+                .Where(b => b.CreatedAt >= DateTime.UtcNow.AddDays(-30))
+                .Select(b => b.UserId)
+                .Distinct()
+                .CountAsync();
+
+            var userBetStats = await _context.Bets
+                .GroupBy(b => b.UserId)
+                .Select(g => new
+                {
+                    UserId = g.Key,
+                    TotalBets = g.Count(),
+                    TotalWagered = g.Sum(b => b.Amount),
+                    TotalWon = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout),
+                    TotalLost = g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount)
+                })
+                .ToListAsync();
+
+            var topWinners = userBetStats
+                .OrderByDescending(u => u.TotalWon - u.TotalLost)
+                .Take(10)
+                .ToList();
+
+            var biggestLosers = userBetStats
+                .OrderBy(u => u.TotalWon - u.TotalLost)
+                .Take(10)
+                .ToList();
+
+            return new
+            {
+                totalUsers,
+                usersWithBets,
+                activeUsersLast30Days,
+                userParticipationRate = totalUsers > 0 ? Math.Round((decimal)usersWithBets / totalUsers * 100, 2) : 0,
+                averageBetsPerUser = usersWithBets > 0 ? Math.Round((decimal)await _context.Bets.CountAsync() / usersWithBets, 2) : 0,
+                topWinners = topWinners.Select(u => new
+                {
+                    userId = u.UserId,
+                    netProfit = Math.Round(u.TotalWon - u.TotalLost, 2),
+                    totalBets = u.TotalBets,
+                    totalWagered = Math.Round(u.TotalWagered, 2)
+                }),
+                biggestLosers = biggestLosers.Select(u => new
+                {
+                    userId = u.UserId,
+                    netLoss = Math.Round(u.TotalLost - u.TotalWon, 2),
+                    totalBets = u.TotalBets,
+                    totalWagered = Math.Round(u.TotalWagered, 2)
+                })
+            };
+        }
+
+        private async Task<object> GetRevenueAnalyticsAsync()
+        {
+            var last30Days = DateTime.UtcNow.AddDays(-30);
+            var last7Days = DateTime.UtcNow.AddDays(-7);
+            var today = DateTime.UtcNow.Date;
+
+            var revenueToday = await _context.Bets
+                .Where(b => b.CreatedAt >= today && b.Status == BetStatus.Lost)
+                .SumAsync(b => b.Amount);
+
+            var revenueLast7Days = await _context.Bets
+                .Where(b => b.CreatedAt >= last7Days && b.Status == BetStatus.Lost)
+                .SumAsync(b => b.Amount);
+
+            var revenueLast30Days = await _context.Bets
+                .Where(b => b.CreatedAt >= last30Days && b.Status == BetStatus.Lost)
+                .SumAsync(b => b.Amount);
+
+            var payoutsLast30Days = await _context.Bets
+                .Where(b => b.CreatedAt >= last30Days && b.Status == BetStatus.Won)
+                .SumAsync(b => b.PotentialPayout);
+
+            var profitLast30Days = revenueLast30Days - payoutsLast30Days;
+
+            // Daily revenue breakdown for the last 30 days
+            var dailyRevenue = await _context.Bets
+                .Where(b => b.CreatedAt >= last30Days && (b.Status == BetStatus.Won || b.Status == BetStatus.Lost))
+                .GroupBy(b => b.CreatedAt.Date)
+                .Select(g => new
+                {
+                    date = g.Key,
+                    revenue = g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount),
+                    payouts = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout),
+                    volume = g.Sum(b => b.Amount),
+                    betCount = g.Count()
+                })
+                .OrderBy(x => x.date)
+                .ToListAsync();
+
+            return new
+            {
+                revenueToday = Math.Round(revenueToday, 2),
+                revenueLast7Days = Math.Round(revenueLast7Days, 2),
+                revenueLast30Days = Math.Round(revenueLast30Days, 2),
+                payoutsLast30Days = Math.Round(payoutsLast30Days, 2),
+                profitLast30Days = Math.Round(profitLast30Days, 2),
+                profitMargin = revenueLast30Days > 0 ? Math.Round(profitLast30Days / revenueLast30Days * 100, 2) : 0,
+                dailyBreakdown = dailyRevenue.Select(d => new
+                {
+                    date = d.date.ToString("yyyy-MM-dd"),
+                    revenue = Math.Round(d.revenue, 2),
+                    payouts = Math.Round(d.payouts, 2),
+                    profit = Math.Round(d.revenue - d.payouts, 2),
+                    volume = Math.Round(d.volume, 2),
+                    betCount = d.betCount
+                })
+            };
+        }
+
+        private async Task<object> GetBetTypeAnalyticsAsync()
+        {
+            var betTypeStats = await _context.Bets
+                .GroupBy(b => b.Type)
+                .Select(g => new
+                {
+                    betType = g.Key,
+                    totalBets = g.Count(),
+                    totalWagered = g.Sum(b => b.Amount),
+                    activeBets = g.Count(b => b.Status == BetStatus.Active),
+                    wonBets = g.Count(b => b.Status == BetStatus.Won),
+                    lostBets = g.Count(b => b.Status == BetStatus.Lost),
+                    totalPayouts = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout),
+                    revenue = g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount)
+                })
+                .ToListAsync();
+
+            var betStatusStats = await _context.Bets
+                .GroupBy(b => b.Status)
+                .Select(g => new
+                {
+                    status = g.Key,
+                    count = g.Count(),
+                    totalAmount = g.Sum(b => b.Amount)
+                })
+                .ToListAsync();
+
+            return new
+            {
+                byBetType = betTypeStats.Select(s => new
+                {
+                    betType = s.betType.ToString(),
+                    totalBets = s.totalBets,
+                    totalWagered = Math.Round(s.totalWagered, 2),
+                    activeBets = s.activeBets,
+                    wonBets = s.wonBets,
+                    lostBets = s.lostBets,
+                    winRate = (s.wonBets + s.lostBets) > 0 ? Math.Round((decimal)s.wonBets / (s.wonBets + s.lostBets) * 100, 2) : 0,
+                    totalPayouts = Math.Round(s.totalPayouts, 2),
+                    revenue = Math.Round(s.revenue, 2),
+                    profit = Math.Round(s.revenue - s.totalPayouts, 2)
+                }),
+                byStatus = betStatusStats.Select(s => new
+                {
+                    status = s.status.ToString(),
+                    count = s.count,
+                    totalAmount = Math.Round(s.totalAmount, 2),
+                    percentage = betStatusStats.Sum(x => x.count) > 0 ? Math.Round((decimal)s.count / betStatusStats.Sum(x => x.count) * 100, 2) : 0
+                })
+            };
+        }
+
+        private async Task<object> GetTrendAnalyticsAsync()
+        {
+            var last30Days = DateTime.UtcNow.AddDays(-30);
+            var last60Days = DateTime.UtcNow.AddDays(-60);
+
+            // Weekly trends for the last 8 weeks
+            var weeklyTrends = new List<object>();
+            for (int i = 0; i < 8; i++)
+            {
+                var weekStart = DateTime.UtcNow.Date.AddDays(-7 * (i + 1));
+                var weekEnd = weekStart.AddDays(7);
+
+                var weekStats = await _context.Bets
+                    .Where(b => b.CreatedAt >= weekStart && b.CreatedAt < weekEnd)
+                    .GroupBy(b => 1)
+                    .Select(g => new
+                    {
+                        totalBets = g.Count(),
+                        totalWagered = g.Sum(b => b.Amount),
+                        revenue = g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount),
+                        payouts = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout)
+                    })
+                    .FirstOrDefaultAsync();
+
+                weeklyTrends.Add(new
+                {
+                    weekStart = weekStart.ToString("yyyy-MM-dd"),
+                    weekEnd = weekEnd.AddDays(-1).ToString("yyyy-MM-dd"),
+                    totalBets = weekStats?.totalBets ?? 0,
+                    totalWagered = Math.Round(weekStats?.totalWagered ?? 0, 2),
+                    revenue = Math.Round(weekStats?.revenue ?? 0, 2),
+                    payouts = Math.Round(weekStats?.payouts ?? 0, 2),
+                    profit = Math.Round((weekStats?.revenue ?? 0) - (weekStats?.payouts ?? 0), 2)
+                });
+            }
+
+            // Growth metrics
+            var current30DayStats = await _context.Bets
+                .Where(b => b.CreatedAt >= last30Days)
+                .GroupBy(b => 1)
+                .Select(g => new
+                {
+                    totalBets = g.Count(),
+                    totalWagered = g.Sum(b => b.Amount),
+                    uniqueUsers = g.Select(b => b.UserId).Distinct().Count()
+                })
+                .FirstOrDefaultAsync();
+
+            var previous30DayStats = await _context.Bets
+                .Where(b => b.CreatedAt >= last60Days && b.CreatedAt < last30Days)
+                .GroupBy(b => 1)
+                .Select(g => new
+                {
+                    totalBets = g.Count(),
+                    totalWagered = g.Sum(b => b.Amount),
+                    uniqueUsers = g.Select(b => b.UserId).Distinct().Count()
+                })
+                .FirstOrDefaultAsync();
+
+            return new
+            {
+                weeklyTrends = weeklyTrends.OrderBy(w => ((dynamic)w).weekStart),
+                growthMetrics = new
+                {
+                    betVolumeGrowth = previous30DayStats?.totalBets > 0
+                        ? Math.Round((decimal)((current30DayStats?.totalBets ?? 0) - (previous30DayStats?.totalBets ?? 0)) / (previous30DayStats?.totalBets ?? 1) * 100, 2)
+                        : 0,
+                    wagerVolumeGrowth = previous30DayStats?.totalWagered > 0
+                        ? Math.Round(((current30DayStats?.totalWagered ?? 0) - (previous30DayStats?.totalWagered ?? 0)) / (previous30DayStats?.totalWagered ?? 1) * 100, 2)
+                        : 0,
+                    userGrowth = previous30DayStats?.uniqueUsers > 0
+                        ? Math.Round((decimal)((current30DayStats?.uniqueUsers ?? 0) - (previous30DayStats?.uniqueUsers ?? 0)) / (previous30DayStats?.uniqueUsers ?? 1) * 100, 2)
+                        : 0,
+                    currentPeriod = new
+                    {
+                        totalBets = current30DayStats?.totalBets ?? 0,
+                        totalWagered = Math.Round(current30DayStats?.totalWagered ?? 0, 2),
+                        uniqueUsers = current30DayStats?.uniqueUsers ?? 0
+                    },
+                    previousPeriod = new
+                    {
+                        totalBets = previous30DayStats?.totalBets ?? 0,
+                        totalWagered = Math.Round(previous30DayStats?.totalWagered ?? 0, 2),
+                        uniqueUsers = previous30DayStats?.uniqueUsers ?? 0
+                    }
+                }
+            };
+        }
+
+        private async Task<object> GetLeaderboardAsync(string type, int limit)
+        {
+            switch (type.ToLower())
+            {
+                case "profit":
+                    var profitLeaders = await _context.Bets
+                        .GroupBy(b => b.UserId)
+                        .Select(g => new
+                        {
+                            UserId = g.Key,
+                            NetProfit = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout) - g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount),
+                            TotalBets = g.Count(),
+                            TotalWagered = g.Sum(b => b.Amount)
+                        })
+                        .OrderByDescending(u => u.NetProfit)
+                        .Take(limit)
+                        .ToListAsync();
+
+                    return new
+                    {
+                        type = "profit",
+                        leaders = profitLeaders.Select(l => new
+                        {
+                            userId = l.UserId,
+                            netProfit = Math.Round(l.NetProfit, 2),
+                            totalBets = l.TotalBets,
+                            totalWagered = Math.Round(l.TotalWagered, 2)
+                        })
+                    };
+
+                case "volume":
+                    var volumeLeaders = await _context.Bets
+                        .GroupBy(b => b.UserId)
+                        .Select(g => new
+                        {
+                            UserId = g.Key,
+                            TotalWagered = g.Sum(b => b.Amount),
+                            TotalBets = g.Count(),
+                            NetProfit = g.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout) - g.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount)
+                        })
+                        .OrderByDescending(u => u.TotalWagered)
+                        .Take(limit)
+                        .ToListAsync();
+
+                    return new
+                    {
+                        type = "volume",
+                        leaders = volumeLeaders.Select(l => new
+                        {
+                            userId = l.UserId,
+                            totalWagered = Math.Round(l.TotalWagered, 2),
+                            totalBets = l.TotalBets,
+                            netProfit = Math.Round(l.NetProfit, 2)
+                        })
+                    };
+
+                case "winrate":
+                    var winRateLeaders = await _context.Bets
+                        .Where(b => b.Status == BetStatus.Won || b.Status == BetStatus.Lost)
+                        .GroupBy(b => b.UserId)
+                        .Select(g => new
+                        {
+                            UserId = g.Key,
+                            TotalBets = g.Count(),
+                            WonBets = g.Count(b => b.Status == BetStatus.Won),
+                            WinRate = (decimal)g.Count(b => b.Status == BetStatus.Won) / g.Count() * 100,
+                            TotalWagered = g.Sum(b => b.Amount)
+                        })
+                        .Where(u => u.TotalBets >= 5) // Only users with at least 5 settled bets
+                        .OrderByDescending(u => u.WinRate)
+                        .Take(limit)
+                        .ToListAsync();
+
+                    return new
+                    {
+                        type = "winrate",
+                        leaders = winRateLeaders.Select(l => new
+                        {
+                            userId = l.UserId,
+                            winRate = Math.Round(l.WinRate, 2),
+                            totalBets = l.TotalBets,
+                            wonBets = l.WonBets,
+                            totalWagered = Math.Round(l.TotalWagered, 2)
+                        })
+                    };
+
+                default:
+                    throw new ArgumentException($"Invalid leaderboard type: {type}");
+            }
+        }
+
+        private async Task<object> GetRiskManagementAnalyticsAsync()
+        {
+            var activeBets = await _context.Bets
+                .Where(b => b.Status == BetStatus.Active)
+                .ToListAsync();
+
+            var potentialPayouts = activeBets.Sum(b => b.PotentialPayout);
+            var activeBetAmounts = activeBets.Sum(b => b.Amount);
+
+            var largestActiveBets = activeBets
+                .OrderByDescending(b => b.Amount)
+                .Take(10)
+                .Select(b => new
+                {
+                    betId = b.Id,
+                    userId = b.UserId,
+                    amount = Math.Round(b.Amount, 2),
+                    potentialPayout = Math.Round(b.PotentialPayout, 2),
+                    betType = b.Type.ToString(),
+                    createdAt = b.CreatedAt,
+                    expiresAt = b.ExpiresAt
+                })
+                .ToList();
+
+            var highRiskUsers = await _context.Bets
+                .Where(b => b.Status == BetStatus.Active)
+                .GroupBy(b => b.UserId)
+                .Select(g => new
+                {
+                    UserId = g.Key,
+                    ActiveBets = g.Count(),
+                    TotalAtRisk = g.Sum(b => b.Amount),
+                    PotentialPayouts = g.Sum(b => b.PotentialPayout)
+                })
+                .OrderByDescending(u => u.TotalAtRisk)
+                .Take(10)
+                .ToListAsync();
+
+            var expiringBets = await _context.Bets
+                .Where(b => b.Status == BetStatus.Active && b.ExpiresAt <= DateTime.UtcNow.AddHours(24))
+                .OrderBy(b => b.ExpiresAt)
+                .Select(b => new
+                {
+                    betId = b.Id,
+                    userId = b.UserId,
+                    amount = Math.Round(b.Amount, 2),
+                    betType = b.Type.ToString(),
+                    expiresAt = b.ExpiresAt,
+                    hoursUntilExpiry = Math.Round((b.ExpiresAt - DateTime.UtcNow).TotalHours, 1)
+                })
+                .ToListAsync();
+
+            var betTypeExposure = await _context.Bets
+                .Where(b => b.Status == BetStatus.Active)
+                .GroupBy(b => b.Type)
+                .Select(g => new
+                {
+                    betType = g.Key.ToString(),
+                    activeBets = g.Count(),
+                    totalAtRisk = Math.Round(g.Sum(b => b.Amount), 2),
+                    potentialPayouts = Math.Round(g.Sum(b => b.PotentialPayout), 2),
+                    maxExposure = Math.Round(g.Sum(b => b.PotentialPayout) - g.Sum(b => b.Amount), 2)
+                })
+                .ToListAsync();
+
+            return new
+            {
+                overview = new
+                {
+                    totalActiveBets = activeBets.Count,
+                    totalAtRisk = Math.Round(activeBetAmounts, 2),
+                    totalPotentialPayouts = Math.Round(potentialPayouts, 2),
+                    maxPotentialLoss = Math.Round(potentialPayouts - activeBetAmounts, 2),
+                    averageBetSize = activeBets.Count > 0 ? Math.Round(activeBetAmounts / activeBets.Count, 2) : 0
+                },
+                largestActiveBets,
+                highRiskUsers = highRiskUsers.Select(u => new
+                {
+                    userId = u.UserId,
+                    activeBets = u.ActiveBets,
+                    totalAtRisk = Math.Round(u.TotalAtRisk, 2),
+                    potentialPayouts = Math.Round(u.PotentialPayouts, 2),
+                    maxExposure = Math.Round(u.PotentialPayouts - u.TotalAtRisk, 2)
+                }),
+                expiringBets,
+                betTypeExposure
+            };
+        }
+
+        #endregion
     }
 }
