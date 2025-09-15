@@ -633,7 +633,7 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
                               type="number"
                               min="1"
                               max="50"
-                              value={getConfigValue('totalKeeperSlots') || ''}
+                              value={getConfigValue('totalKeeperSlots') as number || ''}
                               onChange={(e) => updateTempConfig('totalKeeperSlots', parseInt(e.target.value))}
                               disabled={configSaving}
                               className="number-input"
@@ -652,7 +652,7 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
                             type="number"
                             min="10"
                             max="50"
-                            value={getConfigValue('maxPlayersPerTeam') || ''}
+                            value={getConfigValue('maxPlayersPerTeam') as number || ''}
                             onChange={(e) => updateTempConfig('maxPlayersPerTeam', parseInt(e.target.value))}
                             disabled={configSaving}
                             className="number-input"
