@@ -16,6 +16,19 @@ interface User {
   };
 }
 
+interface LeagueConfiguration {
+  id: number;
+  leagueId: number;
+  includeNFL: boolean;
+  includeMLB: boolean;
+  includeNBA: boolean;
+  totalKeeperSlots: number;
+  keepersPerSport: number;
+  isKeeperLeague: boolean;
+  maxPlayersPerTeam: number;
+  selectedSports: string[];
+}
+
 interface LeagueSettingsProps {
   user: User | null;
   onLeagueNameUpdate?: (newName: string) => void;
@@ -34,6 +47,13 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+
+  // League configuration state
+  const [leagueConfig, setLeagueConfig] = useState<LeagueConfiguration | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configEditing, setConfigEditing] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [tempConfig, setTempConfig] = useState<Partial<LeagueConfiguration>>({});
 
   useEffect(() => {
     if (user?.league?.name) {
@@ -67,6 +87,28 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
 
     checkCommissionerStatus();
   }, [user?.id, user?.league?.id]);
+
+  // Load league configuration
+  useEffect(() => {
+    const loadLeagueConfiguration = async () => {
+      if (!user?.league?.id) return;
+
+      setConfigLoading(true);
+      try {
+        const response = await apiRequest(`/api/leagues/${user.league.id}/configuration`);
+        if (response.ok) {
+          const config = await response.json();
+          setLeagueConfig(config);
+        }
+      } catch (error) {
+        console.error('Error loading league configuration:', error);
+      } finally {
+        setConfigLoading(false);
+      }
+    };
+
+    loadLeagueConfiguration();
+  }, [user?.league?.id]);
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -130,6 +172,103 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
   };
 
   const hasChanges = leagueName.trim() !== originalLeagueName;
+
+  // Configuration handling functions
+  const handleConfigEdit = () => {
+    if (!leagueConfig) return;
+
+    setTempConfig({
+      includeNFL: leagueConfig.includeNFL,
+      includeMLB: leagueConfig.includeMLB,
+      includeNBA: leagueConfig.includeNBA,
+      totalKeeperSlots: leagueConfig.totalKeeperSlots,
+      isKeeperLeague: leagueConfig.isKeeperLeague,
+      maxPlayersPerTeam: leagueConfig.maxPlayersPerTeam
+    });
+    setConfigEditing(true);
+    setSaveMessage(null);
+  };
+
+  const handleConfigCancel = () => {
+    setTempConfig({});
+    setConfigEditing(false);
+    setSaveMessage(null);
+  };
+
+  const handleConfigSave = async () => {
+    if (!user?.league?.id || !tempConfig) return;
+
+    // Basic validation
+    const sportsSelected = [tempConfig.includeNFL, tempConfig.includeMLB, tempConfig.includeNBA].filter(Boolean).length;
+    if (sportsSelected === 0) {
+      setSaveMessage({
+        type: 'error',
+        text: 'You must select at least one sport'
+      });
+      return;
+    }
+
+    if (tempConfig.totalKeeperSlots && tempConfig.totalKeeperSlots % sportsSelected !== 0) {
+      setSaveMessage({
+        type: 'error',
+        text: `Total keeper slots (${tempConfig.totalKeeperSlots}) must be evenly divisible by number of selected sports (${sportsSelected})`
+      });
+      return;
+    }
+
+    setConfigSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const response = await apiRequest(`/api/leagues/${user.league.id}/configuration`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tempConfig),
+      });
+
+      if (response.ok) {
+        const updatedConfig = await response.json();
+        setLeagueConfig(updatedConfig);
+        setConfigEditing(false);
+        setTempConfig({});
+        setSaveMessage({
+          type: 'success',
+          text: 'League configuration updated successfully!'
+        });
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setSaveMessage(null), 3000);
+      } else {
+        const errorData = await response.json();
+        setSaveMessage({
+          type: 'error',
+          text: errorData.message || 'Failed to update league configuration'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating league configuration:', error);
+      setSaveMessage({
+        type: 'error',
+        text: 'An error occurred while updating the configuration'
+      });
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const updateTempConfig = (field: keyof LeagueConfiguration, value: any) => {
+    setTempConfig(prev => ({ ...prev, [field]: value }));
+  };
+
+  const getConfigValue = (field: keyof LeagueConfiguration) => {
+    return configEditing ? tempConfig[field] : leagueConfig?.[field];
+  };
+
+  const hasConfigChanges = configEditing && Object.keys(tempConfig).some(key =>
+    tempConfig[key as keyof LeagueConfiguration] !== leagueConfig?.[key as keyof LeagueConfiguration]
+  );
 
   // Commissioner functions
   const handleInviteUser = async () => {
@@ -383,6 +522,210 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({ user, onLeagueNameUpdat
             )}
           </div>
         )}
+
+        {/* Sports Configuration Section */}
+        <div className="settings-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <span className="section-icon">🏈</span>
+              Sports Configuration
+            </h2>
+            <p className="section-description">
+              Select which sports leagues are included in your fantasy league
+            </p>
+          </div>
+
+          {configLoading ? (
+            <div className="loading-message">Loading configuration...</div>
+          ) : leagueConfig ? (
+            <>
+              {/* Sports Selection */}
+              <div className="setting-item">
+                <div className="setting-label-group">
+                  <label className="setting-label">Included Sports</label>
+                  <p className="setting-help">
+                    Choose which sports are included in your league. Keeper slots will be distributed evenly across selected sports.
+                  </p>
+                </div>
+
+                <div className="setting-control">
+                  {configEditing ? (
+                    <div className="sports-selection">
+                      <div className="sports-checkboxes">
+                        <label className="sport-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={!!getConfigValue('includeNFL')}
+                            onChange={(e) => updateTempConfig('includeNFL', e.target.checked)}
+                            disabled={configSaving}
+                          />
+                          <span className="sport-icon">🏈</span>
+                          <span className="sport-name">NFL</span>
+                        </label>
+                        <label className="sport-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={!!getConfigValue('includeMLB')}
+                            onChange={(e) => updateTempConfig('includeMLB', e.target.checked)}
+                            disabled={configSaving}
+                          />
+                          <span className="sport-icon">⚾</span>
+                          <span className="sport-name">MLB</span>
+                        </label>
+                        <label className="sport-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={!!getConfigValue('includeNBA')}
+                            onChange={(e) => updateTempConfig('includeNBA', e.target.checked)}
+                            disabled={configSaving}
+                          />
+                          <span className="sport-icon">🏀</span>
+                          <span className="sport-name">NBA</span>
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="sports-display">
+                      <div className="selected-sports">
+                        {leagueConfig.selectedSports.map((sport) => (
+                          <span key={sport} className="sport-badge">
+                            <span className="sport-icon">
+                              {sport === 'NFL' ? '🏈' : sport === 'MLB' ? '⚾' : '🏀'}
+                            </span>
+                            {sport}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Keeper Configuration */}
+              <div className="setting-item">
+                <div className="setting-label-group">
+                  <label className="setting-label">Keeper Configuration</label>
+                  <p className="setting-help">
+                    Configure keeper league settings and roster sizes
+                  </p>
+                </div>
+
+                <div className="setting-control">
+                  {configEditing ? (
+                    <div className="keeper-config">
+                      <div className="config-row">
+                        <label className="config-label">
+                          <input
+                            type="checkbox"
+                            checked={!!getConfigValue('isKeeperLeague')}
+                            onChange={(e) => updateTempConfig('isKeeperLeague', e.target.checked)}
+                            disabled={configSaving}
+                          />
+                          Enable Keeper League
+                        </label>
+                      </div>
+
+                      {getConfigValue('isKeeperLeague') && (
+                        <div className="config-row">
+                          <label className="config-label">
+                            Total Keeper Slots:
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={getConfigValue('totalKeeperSlots') || ''}
+                              onChange={(e) => updateTempConfig('totalKeeperSlots', parseInt(e.target.value))}
+                              disabled={configSaving}
+                              className="number-input"
+                            />
+                          </label>
+                          <span className="keeper-info">
+                            ({Math.floor((getConfigValue('totalKeeperSlots') || 0) / Math.max(1, [tempConfig.includeNFL, tempConfig.includeMLB, tempConfig.includeNBA].filter(Boolean).length))} per sport)
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="config-row">
+                        <label className="config-label">
+                          Max Players Per Team:
+                          <input
+                            type="number"
+                            min="10"
+                            max="50"
+                            value={getConfigValue('maxPlayersPerTeam') || ''}
+                            onChange={(e) => updateTempConfig('maxPlayersPerTeam', parseInt(e.target.value))}
+                            disabled={configSaving}
+                            className="number-input"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="edit-actions">
+                        <button
+                          onClick={handleConfigSave}
+                          disabled={!hasConfigChanges || configSaving}
+                          className="save-btn"
+                        >
+                          {configSaving ? (
+                            <>
+                              <span className="spinner"></span>
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <span className="btn-icon">💾</span>
+                              Save Configuration
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleConfigCancel}
+                          disabled={configSaving}
+                          className="cancel-btn"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="keeper-display">
+                      <div className="config-summary">
+                        <div className="summary-item">
+                          <span className="summary-label">League Type:</span>
+                          <span className="summary-value">
+                            {leagueConfig.isKeeperLeague ? 'Keeper League' : 'Redraft League'}
+                          </span>
+                        </div>
+                        {leagueConfig.isKeeperLeague && (
+                          <>
+                            <div className="summary-item">
+                              <span className="summary-label">Total Keepers:</span>
+                              <span className="summary-value">{leagueConfig.totalKeeperSlots}</span>
+                            </div>
+                            <div className="summary-item">
+                              <span className="summary-label">Keepers Per Sport:</span>
+                              <span className="summary-value">{leagueConfig.keepersPerSport}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="summary-item">
+                          <span className="summary-label">Max Roster Size:</span>
+                          <span className="summary-value">{leagueConfig.maxPlayersPerTeam}</span>
+                        </div>
+                      </div>
+                      <button onClick={handleConfigEdit} className="edit-btn">
+                        <span className="btn-icon">✏️</span>
+                        Edit Configuration
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="error-message">Failed to load league configuration</div>
+          )}
+        </div>
 
         {/* Future Settings Sections */}
         <div className="settings-section coming-soon">

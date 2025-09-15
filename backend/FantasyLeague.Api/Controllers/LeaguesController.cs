@@ -610,5 +610,81 @@ namespace FantasyLeague.Api.Controllers
                 SelectedSports = config.GetSelectedSports()
             });
         }
+
+        [HttpPut("{id}/configuration")]
+        public async Task<IActionResult> UpdateLeagueConfiguration(int id, [FromBody] UpdateLeagueConfigurationDto configDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // First check if league exists
+            var league = await _context.Leagues.FindAsync(id);
+            if (league == null)
+            {
+                return NotFound(new { Message = "League not found" });
+            }
+
+            try
+            {
+                // Get or create configuration
+                var existingConfig = await _configurationService.GetConfigurationAsync(id);
+                if (existingConfig == null)
+                {
+                    existingConfig = await _configurationService.CreateDefaultConfigurationAsync(id);
+                }
+
+                // Create updated configuration
+                var updatedConfig = new LeagueConfiguration
+                {
+                    IncludeNFL = configDto.IncludeNFL,
+                    IncludeMLB = configDto.IncludeMLB,
+                    IncludeNBA = configDto.IncludeNBA,
+                    TotalKeeperSlots = configDto.TotalKeeperSlots,
+                    IsKeeperLeague = configDto.IsKeeperLeague,
+                    MaxPlayersPerTeam = configDto.MaxPlayersPerTeam
+                };
+
+                // Validate the new configuration
+                if (!updatedConfig.IsValidConfiguration())
+                {
+                    var errors = updatedConfig.GetValidationErrors();
+                    return BadRequest(new { Message = "Invalid configuration", Errors = errors });
+                }
+
+                // Update the configuration
+                var result = await _configurationService.UpdateConfigurationAsync(id, updatedConfig);
+                if (result == null)
+                {
+                    return StatusCode(500, new { Message = "Failed to update configuration" });
+                }
+
+                return Ok(new
+                {
+                    Id = result.Id,
+                    LeagueId = result.LeagueId,
+                    IncludeNFL = result.IncludeNFL,
+                    IncludeMLB = result.IncludeMLB,
+                    IncludeNBA = result.IncludeNBA,
+                    TotalKeeperSlots = result.TotalKeeperSlots,
+                    KeepersPerSport = result.KeepersPerSport,
+                    IsKeeperLeague = result.IsKeeperLeague,
+                    MaxPlayersPerTeam = result.MaxPlayersPerTeam,
+                    CreatedAt = result.CreatedAt,
+                    UpdatedAt = result.UpdatedAt,
+                    SelectedSports = result.GetSelectedSports(),
+                    Message = "League configuration updated successfully"
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while updating the configuration", Error = ex.Message });
+            }
+        }
     }
 }
