@@ -9,6 +9,7 @@ using FantasyLeague.Api.Services;
 
 namespace FantasyLeague.Api.Controllers
 {
+
     [ApiController]
     [Route("api/[controller]")]
     public class TradesController : ControllerBase
