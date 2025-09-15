@@ -49,6 +49,8 @@ builder.Services.AddDbContext<FantasyLeagueContext>(options =>
     options.UseNpgsql(connectionString));
 
 // Configure Hangfire to use the same connection string as PostgreSQL
+// TEMPORARILY COMMENTED OUT DUE TO POSTGRESQL VERSION COMPATIBILITY ISSUE
+/*
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -67,6 +69,7 @@ builder.Services.AddHangfireServer(options =>
     options.Queues = new[] { "default", "emails" };
     options.WorkerCount = Math.Max(Environment.ProcessorCount, 2);
 });
+*/
 
 // Configure email settings
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -97,8 +100,26 @@ builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 builder.Services.AddScoped<IBackgroundEmailService, BackgroundEmailService>();
 builder.Services.AddScoped<IEmailMonitoringService, EmailMonitoringService>();
 
-// Add background service for email monitoring
+// Add token system services
+builder.Services.AddScoped<UserWalletService>();
+
+// Add betting system services
+builder.Services.AddScoped<BettingService>();
+builder.Services.AddScoped<OddsCalculationService>();
+// Removed due to model conflicts - will be re-added in next phase
+// builder.Services.AddScoped<RealTimeGameDataService>();
+// builder.Services.AddScoped<AutomatedBetSettlementService>();
+
+// Configure Stripe settings
+builder.Services.Configure<FantasyLeague.Api.Models.StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
+
+// Add Stripe payment service
+builder.Services.AddScoped<StripePaymentService>();
+
+// Add background services
 builder.Services.AddHostedService<EmailMonitoringBackgroundService>();
+// Removed due to model conflicts - will be re-added in next phase
+// builder.Services.AddHostedService<BettingDataSyncBackgroundService>();
 
 // Add HttpClient for API calls
 builder.Services.AddHttpClient();
@@ -142,6 +163,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReactApp");
 
 // Add Hangfire dashboard (optional, for monitoring)
+// TEMPORARILY COMMENTED OUT
+/*
 if (app.Environment.IsDevelopment())
 {
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
@@ -149,6 +172,7 @@ if (app.Environment.IsDevelopment())
         Authorization = new[] { new AllowAllConnectionsFilter() }
     });
 }
+*/
 
 app.MapControllers();
 
@@ -203,6 +227,8 @@ _ = Task.Run(async () =>
 });
 
 // Schedule recurring projection sync jobs after app starts
+// TEMPORARILY COMMENTED OUT - HANGFIRE DISABLED
+/*
 _ = Task.Run(async () =>
 {
     await Task.Delay(2000); // Wait for app and migrations to complete
@@ -244,5 +270,6 @@ _ = Task.Run(async () =>
         logger.LogError(ex, "Error scheduling recurring projection and player sync jobs");
     }
 });
+*/
 
 app.Run();

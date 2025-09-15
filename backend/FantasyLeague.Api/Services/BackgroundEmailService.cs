@@ -54,8 +54,9 @@ namespace FantasyLeague.Api.Services
                 context.EmailDeliveryLogs.Add(emailLog);
                 await context.SaveChangesAsync();
 
-                // Queue background job
-                BackgroundJob.Enqueue(() => ProcessEmailQueueAsync(emailLog.Id));
+                // Since Hangfire is disabled, process email immediately
+                // BackgroundJob.Enqueue(() => ProcessEmailQueueAsync(emailLog.Id));
+                _ = Task.Run(async () => await ProcessEmailQueueAsync(emailLog.Id));
 
                 _logger.LogInformation($"Queued trade proposal email for user {targetUserId} with log ID {emailLog.Id}");
             }
@@ -104,8 +105,9 @@ namespace FantasyLeague.Api.Services
                 context.EmailDeliveryLogs.Add(emailLog);
                 await context.SaveChangesAsync();
 
-                // Queue background job
-                BackgroundJob.Enqueue(() => ProcessEmailQueueAsync(emailLog.Id));
+                // Since Hangfire is disabled, process email immediately
+                // BackgroundJob.Enqueue(() => ProcessEmailQueueAsync(emailLog.Id));
+                _ = Task.Run(async () => await ProcessEmailQueueAsync(emailLog.Id));
 
                 _logger.LogInformation($"Queued trade response email for user {proposingUserId} with log ID {emailLog.Id}");
             }
