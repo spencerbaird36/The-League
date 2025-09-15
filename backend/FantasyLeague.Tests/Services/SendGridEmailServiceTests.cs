@@ -131,7 +131,7 @@ namespace FantasyLeague.Tests.Services
             var htmlContent = "<html><body>Trade Proposal</body></html>";
             var plainTextContent = "Trade Proposal";
 
-            _mockTemplateService.Setup(x => x.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl))
+            _mockTemplateService.Setup(x => x.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl, null))
                                .ReturnsAsync(htmlContent);
 
             _mockTemplateService.Setup(x => x.GeneratePlainTextFromHtml(htmlContent))
@@ -146,7 +146,7 @@ namespace FantasyLeague.Tests.Services
 
             // Assert
             Assert.That(result, Is.True);
-            _mockTemplateService.Verify(x => x.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl), Times.Once);
+            _mockTemplateService.Verify(x => x.RenderTradeProposalEmailAsync(targetUser, proposingUser, message, _emailSettings.AppBaseUrl, null), Times.Once);
             _mockTemplateService.Verify(x => x.GeneratePlainTextFromHtml(htmlContent), Times.Once);
         }
 
