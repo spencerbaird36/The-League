@@ -208,11 +208,15 @@ namespace FantasyLeague.Api.Services
 
                     _logger.LogWarning($"Failed to send email {emailLogId} to {emailLog.EmailAddress}");
 
-                    // Schedule retry if retry count is less than 3
+                    // Schedule retry if retry count is less than 3 (using Task.Delay instead of Hangfire)
                     if (emailLog.RetryCount < 3)
                     {
                         var retryDelay = TimeSpan.FromMinutes(Math.Pow(2, emailLog.RetryCount)); // Exponential backoff: 2, 4, 8 minutes
-                        BackgroundJob.Schedule(() => RetryFailedEmailAsync(emailLogId), retryDelay);
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(retryDelay);
+                            await RetryFailedEmailAsync(emailLogId);
+                        });
                         _logger.LogInformation($"Scheduled retry for email {emailLogId} in {retryDelay.TotalMinutes} minutes (attempt {emailLog.RetryCount + 1})");
                     }
                 }
