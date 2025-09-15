@@ -201,4 +201,92 @@ _ = Task.Run(async () =>
     }
 });
 
+// Schedule recurring projection sync jobs after app starts
+_ = Task.Run(async () =>
+{
+    await Task.Delay(2000); // Wait for app and migrations to complete
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        // Schedule daily projection syncs at 6 AM UTC
+        RecurringJob.AddOrUpdate("sync-nfl-projections",
+            () => SyncNflProjectionsAsync(),
+            "0 6 * * *"); // 6 AM UTC daily
+
+        RecurringJob.AddOrUpdate("sync-mlb-projections",
+            () => SyncMlbProjectionsAsync(),
+            "0 6 * * *"); // 6 AM UTC daily
+
+        RecurringJob.AddOrUpdate("sync-nba-projections",
+            () => SyncNbaProjectionsAsync(),
+            "0 6 * * *"); // 6 AM UTC daily
+
+        logger.LogInformation("Recurring projection sync jobs scheduled successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error scheduling recurring projection sync jobs");
+    }
+});
+
+// Static methods for Hangfire background jobs
+static async Task SyncNflProjectionsAsync()
+{
+    using var scope = FantasyLeague.Api.Hubs.ChatHub.ServiceProvider?.CreateScope();
+    if (scope == null) return;
+
+    var service = scope.ServiceProvider.GetRequiredService<NflProjectionDataService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var success = await service.SyncNflProjectionsAsync();
+        logger.LogInformation($"NFL projections sync completed: {success}");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in scheduled NFL projections sync");
+    }
+}
+
+static async Task SyncMlbProjectionsAsync()
+{
+    using var scope = FantasyLeague.Api.Hubs.ChatHub.ServiceProvider?.CreateScope();
+    if (scope == null) return;
+
+    var service = scope.ServiceProvider.GetRequiredService<MlbProjectionDataService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var success = await service.SyncMlbProjectionsAsync();
+        logger.LogInformation($"MLB projections sync completed: {success}");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in scheduled MLB projections sync");
+    }
+}
+
+static async Task SyncNbaProjectionsAsync()
+{
+    using var scope = FantasyLeague.Api.Hubs.ChatHub.ServiceProvider?.CreateScope();
+    if (scope == null) return;
+
+    var service = scope.ServiceProvider.GetRequiredService<NbaProjectionDataService>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var success = await service.SyncNbaProjectionsAsync();
+        logger.LogInformation($"NBA projections sync completed: {success}");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in scheduled NBA projections sync");
+    }
+}
+
 app.Run();
