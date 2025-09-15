@@ -54,7 +54,8 @@
       "Bash(dotnet add:*)",
       "Bash(dotnet test)",
       "Bash(dotnet test:*)",
-      "Bash(heroku:*)"
+      "Bash(heroku:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

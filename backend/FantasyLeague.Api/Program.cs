@@ -224,11 +224,24 @@ _ = Task.Run(async () =>
             service => service.SyncNbaProjectionsAsync(),
             "0 6 * * *"); // 6 AM UTC daily
 
-        logger.LogInformation("Recurring projection sync jobs scheduled successfully");
+        // Schedule player roster syncs at 5 AM UTC (before projections)
+        RecurringJob.AddOrUpdate<ProjectionSyncService>("sync-nfl-players",
+            service => service.SyncNflPlayersAsync(),
+            "0 5 * * *"); // 5 AM UTC daily
+
+        RecurringJob.AddOrUpdate<ProjectionSyncService>("sync-mlb-players",
+            service => service.SyncMlbPlayersAsync(),
+            "0 5 * * *"); // 5 AM UTC daily
+
+        RecurringJob.AddOrUpdate<ProjectionSyncService>("sync-nba-players",
+            service => service.SyncNbaPlayersAsync(),
+            "0 5 * * *"); // 5 AM UTC daily
+
+        logger.LogInformation("Recurring projection and player sync jobs scheduled successfully");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error scheduling recurring projection sync jobs");
+        logger.LogError(ex, "Error scheduling recurring projection and player sync jobs");
     }
 });
 
