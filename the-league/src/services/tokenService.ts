@@ -164,10 +164,10 @@ export const tokenService = {
 
   // Development: Quick token purchase (creates a mock successful payment)
   async quickPurchaseForDev(tokenAmount: number): Promise<PurchaseConfirmResponse> {
-    const response = await fetch(`${API_BASE}/tokens/dev/quick-purchase`, {
+    const response = await fetch(`${API_BASE}/tokens/purchase/dev`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ tokenAmount })
+      body: JSON.stringify({ amount: tokenAmount })
     });
 
     if (!response.ok) {
