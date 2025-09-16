@@ -330,7 +330,7 @@ namespace FantasyLeague.Api.Controllers
             var teamCount = draftOrder.Count;
             var currentRoundIndex = totalPicks / teamCount; // 0-based round index
             var currentPickInRound = totalPicks % teamCount; // 0-based pick in round
-            
+
             // For snake draft: even rounds (0, 2, 4...) go forward, odd rounds (1, 3, 5...) go backward
             int currentUserIndex;
             if (currentRoundIndex % 2 == 0)
@@ -345,9 +345,42 @@ namespace FantasyLeague.Api.Controllers
             }
 
             var currentUserId = draftOrder[currentUserIndex];
+
+            // Enhanced logging for draft order debugging
+            _logger.LogInformation("Draft Pick Attempt - Draft ID: {DraftId}", id);
+            _logger.LogInformation("Draft Order: [{DraftOrder}]", string.Join(", ", draftOrder));
+            _logger.LogInformation("Total Picks Made: {TotalPicks}", totalPicks);
+            _logger.LogInformation("Team Count: {TeamCount}", teamCount);
+            _logger.LogInformation("Current Round Index (0-based): {CurrentRoundIndex}", currentRoundIndex);
+            _logger.LogInformation("Current Pick In Round (0-based): {CurrentPickInRound}", currentPickInRound);
+            _logger.LogInformation("Current User Index: {CurrentUserIndex}", currentUserIndex);
+            _logger.LogInformation("Expected User ID: {ExpectedUserId}", currentUserId);
+            _logger.LogInformation("Requesting User ID: {RequestingUserId}", draftPickDto.UserId);
+            _logger.LogInformation("Draft Current Turn (from DB): {DbCurrentTurn}", draft.CurrentTurn);
+            _logger.LogInformation("Draft Current Round (from DB): {DbCurrentRound}", draft.CurrentRound);
+            _logger.LogInformation("Draft Is Active: {IsActive}", draft.IsActive);
+            _logger.LogInformation("Snake draft logic: Round {Round} is {RoundType}",
+                currentRoundIndex + 1, currentRoundIndex % 2 == 0 ? "FORWARD" : "REVERSE");
+
             if (currentUserId != draftPickDto.UserId)
             {
-                return BadRequest(new { Message = "It's not your turn to pick" });
+                var expectedUser = await _context.Users.FindAsync(currentUserId);
+                var actualUser = await _context.Users.FindAsync(draftPickDto.UserId);
+
+                _logger.LogWarning("Draft pick rejected - wrong turn. Expected: {ExpectedUser} ({ExpectedId}), Got: {ActualUser} ({ActualId})",
+                    expectedUser?.Username ?? "Unknown", currentUserId, actualUser?.Username ?? "Unknown", draftPickDto.UserId);
+
+                return BadRequest(new {
+                    Message = "It's not your turn to pick",
+                    ExpectedPicker = expectedUser?.Username ?? "Unknown",
+                    ExpectedPickerId = currentUserId,
+                    ActualPicker = actualUser?.Username ?? "Unknown",
+                    ActualPickerId = draftPickDto.UserId,
+                    CurrentRound = currentRoundIndex + 1,
+                    CurrentPick = currentPickInRound + 1,
+                    TotalPicksMade = totalPicks,
+                    DraftOrder = draftOrder
+                });
             }
 
             // Check if player is already drafted
