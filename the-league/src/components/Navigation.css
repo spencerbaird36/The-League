@@ -20,7 +20,7 @@
 
 .nav-logo {
   font-family: 'Poppins', sans-serif;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
   background: var(--gradient-gold);
   background-clip: text;
@@ -401,6 +401,65 @@
 .settings-link:hover .settings-icon {
   color: var(--accent-gold);
   transform: rotate(45deg);
+}
+
+/* Token Balance Styles */
+.token-balance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 8px 14px;
+  color: var(--accent-platinum);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.token-balance::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.token-balance:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: var(--accent-gold);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.2);
+}
+
+.token-balance:hover::before {
+  transform: translateX(100%);
+}
+
+.token-balance:active {
+  transform: translateY(0) scale(1);
+}
+
+.token-icon {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.token-balance:hover .token-icon {
+  transform: rotate(180deg);
 }
 
 .welcome-text {

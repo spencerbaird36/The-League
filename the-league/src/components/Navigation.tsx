@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useDraft } from '../context/DraftContext';
 import OfflineIndicator from './OfflineIndicator';
 import MyAccount from './MyAccount';
+import TokenPurchase from './TokenPurchase';
+import { useTokens } from '../hooks/useTokens';
 import './Navigation.css';
 
 interface League {
@@ -31,18 +33,20 @@ interface NavigationProps {
   onUserUpdate?: (updatedUser: User) => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ 
-  isAuthenticated, 
-  user, 
-  login, 
+const Navigation: React.FC<NavigationProps> = ({
+  isAuthenticated,
+  user,
+  login,
   logout,
   onUserUpdate
 }) => {
   const location = useLocation();
   const { state: draftState } = useDraft();
+  const { balance, refreshBalance } = useTokens();
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isTokenPurchaseOpen, setIsTokenPurchaseOpen] = useState(false);
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -211,15 +215,23 @@ const Navigation: React.FC<NavigationProps> = ({
           <OfflineIndicator />
           {isAuthenticated ? (
             <div className="auth-section">
-              <Link 
-                to="/league-settings" 
+              <Link
+                to="/league-settings"
                 className={`settings-link ${isActive('/league-settings') ? 'active' : ''}`}
                 onClick={closeMobileMenu}
                 title="League Settings"
               >
                 <span className="settings-icon">⚙️</span>
               </Link>
-              <button 
+              <button
+                className="token-balance clickable"
+                onClick={() => setIsTokenPurchaseOpen(true)}
+                title="Purchase Tokens"
+              >
+                <span className="token-icon">🪙</span>
+                {balance ? balance.availableBalance.toFixed(0) : '0'}
+              </button>
+              <button
                 className="welcome-text clickable"
                 onClick={() => setIsAccountModalOpen(true)}
                 title="My Account"
@@ -282,6 +294,16 @@ const Navigation: React.FC<NavigationProps> = ({
           isOpen={isAccountModalOpen}
           onClose={() => setIsAccountModalOpen(false)}
           onUserUpdate={handleUserUpdate}
+        />
+      )}
+
+      {isAuthenticated && (
+        <TokenPurchase
+          isOpen={isTokenPurchaseOpen}
+          onClose={() => setIsTokenPurchaseOpen(false)}
+          onPurchaseComplete={() => {
+            refreshBalance();
+          }}
         />
       )}
     </nav>

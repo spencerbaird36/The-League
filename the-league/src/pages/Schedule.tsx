@@ -3,6 +3,7 @@ import { SeasonSchedule, ScheduleMatchup, WeekSchedule } from '../types/Schedule
 import './Schedule.css';
 import { apiRequest } from '../config/api';
 import LazyLoadFallback from '../components/LazyLoadFallback';
+import MatchupBetting from '../components/MatchupBetting';
 
 // Lazy load modal since it's only needed when users click on matchups
 const MatchupModal = lazy(() => import('../components/MatchupModal'));
@@ -199,6 +200,14 @@ const Schedule: React.FC<ScheduleProps> = ({ user }) => {
           {matchup.status === 'in_progress' && 'In Progress'}
           {matchup.status === 'completed' && 'Final'}
         </div>
+
+        {/* Add betting interface for upcoming matchups */}
+        <MatchupBetting
+          matchupId={matchup.id}
+          homeTeamName={matchup.homeTeamName}
+          awayTeamName={matchup.awayTeamName}
+          isUpcoming={matchup.status === 'upcoming'}
+        />
       </div>
     );
   };
