@@ -1,6 +1,6 @@
 // API endpoints for token management
 const API_BASE = process.env.NODE_ENV === 'production'
-  ? 'https://the-league-backend-0e1ad5e059da.herokuapp.com/api'
+  ? 'https://the-league-api-1ff2960f0715.herokuapp.com/api'
   : 'http://localhost:5000/api';
 
 export interface TokenBalance {
