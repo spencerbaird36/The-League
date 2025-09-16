@@ -16,13 +16,20 @@ namespace FantasyLeague.Api.Controllers
         private readonly KeeperDraftService _keeperDraftService;
         private readonly PlayerPoolService _playerPoolService;
         private readonly RegularDraftService _regularDraftService;
+        private readonly ILogger<DraftController> _logger;
 
-        public DraftController(FantasyLeagueContext context, KeeperDraftService keeperDraftService, PlayerPoolService playerPoolService, RegularDraftService regularDraftService)
+        public DraftController(
+            FantasyLeagueContext context,
+            KeeperDraftService keeperDraftService,
+            PlayerPoolService playerPoolService,
+            RegularDraftService regularDraftService,
+            ILogger<DraftController> logger)
         {
             _context = context;
             _keeperDraftService = keeperDraftService;
             _playerPoolService = playerPoolService;
             _regularDraftService = regularDraftService;
+            _logger = logger;
         }
 
         // Helper method to clean player names for frontend display
@@ -1058,27 +1065,48 @@ namespace FantasyLeague.Api.Controllers
                 }
 
                 var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
+                _logger.LogInformation($"Draft {draft.Id}: DraftOrder = [{string.Join(", ", draftOrder)}]");
 
                 // Calculate current picker using snake draft logic (same as existing logic)
                 var totalPicks = draft.DraftPicks.Count(dp => !dp.IsKeeperPick);
                 var teamCount = draftOrder.Count;
                 var currentRoundIndex = totalPicks / teamCount;
                 var currentPickInRound = totalPicks % teamCount;
-                
+
+                _logger.LogInformation($"Draft {draft.Id}: TotalPicks={totalPicks}, TeamCount={teamCount}, CurrentRound={currentRoundIndex}, CurrentPickInRound={currentPickInRound}");
+
                 int currentUserIndex;
                 if (currentRoundIndex % 2 == 0)
                 {
                     currentUserIndex = currentPickInRound;
+                    _logger.LogInformation($"Draft {draft.Id}: Even round, currentUserIndex={currentUserIndex}");
                 }
                 else
                 {
                     currentUserIndex = teamCount - 1 - currentPickInRound;
+                    _logger.LogInformation($"Draft {draft.Id}: Odd round, currentUserIndex={currentUserIndex}");
+                }
+
+                if (currentUserIndex >= draftOrder.Count)
+                {
+                    _logger.LogError($"Draft {draft.Id}: Invalid currentUserIndex={currentUserIndex}, draftOrder.Count={draftOrder.Count}");
+                    return BadRequest(new { Message = "Invalid draft state - current user index out of bounds" });
                 }
 
                 var currentUserId = draftOrder[currentUserIndex];
+                _logger.LogInformation($"Draft {draft.Id}: Expected picker UserId={currentUserId}, Actual picker UserId={draftPickDto.UserId}");
+
                 if (currentUserId != draftPickDto.UserId)
                 {
-                    return BadRequest(new { Message = "It's not your turn to pick" });
+                    var expectedUser = await _context.Users.FindAsync(currentUserId);
+                    var actualUser = await _context.Users.FindAsync(draftPickDto.UserId);
+                    return BadRequest(new {
+                        Message = "It's not your turn to pick",
+                        ExpectedPicker = expectedUser?.Username,
+                        ActualPicker = actualUser?.Username,
+                        CurrentRound = currentRoundIndex + 1,
+                        CurrentPick = currentPickInRound + 1
+                    });
                 }
 
                 // Check if player is already drafted (including keepers)
@@ -1131,19 +1159,28 @@ namespace FantasyLeague.Api.Controllers
                 var nextTotalPicks = totalPicks + 1;
                 var nextRoundIndex = nextTotalPicks / teamCount;
                 var nextPickInRound = nextTotalPicks % teamCount;
-                
+
+                _logger.LogInformation($"Draft {draft.Id}: After pick - NextTotalPicks={nextTotalPicks}, NextRoundIndex={nextRoundIndex}, NextPickInRound={nextPickInRound}");
+
                 int nextUserIndex;
                 if (nextRoundIndex % 2 == 0)
                 {
                     nextUserIndex = nextPickInRound;
+                    _logger.LogInformation($"Draft {draft.Id}: Next is even round, nextUserIndex={nextUserIndex}");
                 }
                 else
                 {
                     nextUserIndex = teamCount - 1 - nextPickInRound;
+                    _logger.LogInformation($"Draft {draft.Id}: Next is odd round, nextUserIndex={nextUserIndex}");
                 }
-                
+
+                var oldCurrentTurn = draft.CurrentTurn;
+                var oldCurrentRound = draft.CurrentRound;
+
                 draft.CurrentTurn = nextUserIndex;
                 draft.CurrentRound = nextRoundIndex + 1;
+
+                _logger.LogInformation($"Draft {draft.Id}: Updated state - CurrentTurn: {oldCurrentTurn} -> {draft.CurrentTurn}, CurrentRound: {oldCurrentRound} -> {draft.CurrentRound}");
 
                 // Check if draft should be completed
                 if (nextTotalPicks >= draft.MaxPicks)

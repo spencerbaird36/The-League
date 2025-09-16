@@ -117,15 +117,32 @@ namespace FantasyLeague.Api.Services
             try
             {
                 var templatePath = Path.Combine(_environment.ContentRootPath, "Templates", "Email", templateName);
+                _logger.LogInformation($"Attempting to load email template: {templateName} from path: {templatePath}");
+                _logger.LogInformation($"ContentRootPath: {_environment.ContentRootPath}");
+
+                // Log directory contents for debugging
+                var templateDir = Path.Combine(_environment.ContentRootPath, "Templates", "Email");
+                if (Directory.Exists(templateDir))
+                {
+                    var files = Directory.GetFiles(templateDir);
+                    _logger.LogInformation($"Templates directory contains: {string.Join(", ", files.Select(Path.GetFileName))}");
+                }
+                else
+                {
+                    _logger.LogWarning($"Templates directory does not exist: {templateDir}");
+                }
 
                 if (!File.Exists(templatePath))
                 {
-                    _logger.LogError($"Email template not found: {templatePath}");
+                    _logger.LogError($"Email template file not found: {templatePath}");
                     return GetFallbackTemplate(templateName);
                 }
 
                 var template = await File.ReadAllTextAsync(templatePath);
-                _logger.LogDebug($"Successfully loaded email template: {templateName}");
+                var templateLength = template.Length;
+                var templatePreview = template.Substring(0, Math.Min(200, template.Length));
+
+                _logger.LogInformation($"Successfully loaded email template: {templateName} (Length: {templateLength} chars, Preview: {templatePreview.Replace('\n', ' ').Replace("\r", "")}...)");
                 return template;
             }
             catch (Exception ex)

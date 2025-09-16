@@ -410,5 +410,144 @@ namespace FantasyLeague.Api.DTOs
                 _ => status.ToString()
             };
         }
+
+        public static string GetBettingNotificationTypeDisplayName(this BettingNotificationType type)
+        {
+            return type switch
+            {
+                BettingNotificationType.BetPlaced => "Bet Placed",
+                BettingNotificationType.BetWon => "Bet Won",
+                BettingNotificationType.BetLost => "Bet Lost",
+                BettingNotificationType.BetPush => "Bet Push",
+                BettingNotificationType.BetCancelled => "Bet Cancelled",
+                BettingNotificationType.BetVoided => "Bet Voided",
+                BettingNotificationType.BetExpired => "Bet Expired",
+                BettingNotificationType.BetSettled => "Bet Settled",
+                BettingNotificationType.NewBettingOpportunity => "New Betting Opportunity",
+                BettingNotificationType.BettingLineUpdate => "Line Update",
+                BettingNotificationType.ExpirationWarning => "Expiration Warning",
+                BettingNotificationType.LimitWarning => "Limit Warning",
+                BettingNotificationType.BalanceAlert => "Balance Alert",
+                BettingNotificationType.WinStreak => "Win Streak",
+                BettingNotificationType.LossStreak => "Loss Streak",
+                BettingNotificationType.BigWin => "Big Win",
+                BettingNotificationType.BigLoss => "Big Loss",
+                BettingNotificationType.SystemMessage => "System Message",
+                _ => type.ToString()
+            };
+        }
+
+        public static string GetBettingNotificationPriorityDisplayName(this BettingNotificationPriority priority)
+        {
+            return priority switch
+            {
+                BettingNotificationPriority.Low => "Low",
+                BettingNotificationPriority.Normal => "Normal",
+                BettingNotificationPriority.High => "High",
+                BettingNotificationPriority.Urgent => "Urgent",
+                BettingNotificationPriority.Critical => "Critical",
+                _ => priority.ToString()
+            };
+        }
+    }
+
+    // Betting Notification DTOs
+    public class BettingNotificationDto
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public BettingNotificationType Type { get; set; }
+        public string TypeDisplayName { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public BettingNotificationPriority Priority { get; set; }
+        public string PriorityDisplayName { get; set; } = string.Empty;
+        public bool IsRead { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? ReadAt { get; set; }
+        public DateTime? ExpiresAt { get; set; }
+        public bool IsExpired { get; set; }
+        public TimeSpan? TimeToExpiry { get; set; }
+        public int? BetId { get; set; }
+        public int? MatchupBetId { get; set; }
+        public int? GameBetId { get; set; }
+        public string? ActionUrl { get; set; }
+        public string? ActionText { get; set; }
+        public string? Metadata { get; set; }
+
+        // Related entities (optional)
+        public BetDto? Bet { get; set; }
+        public MatchupBetDto? MatchupBet { get; set; }
+        public GameBetDto? GameBet { get; set; }
+    }
+
+    public class CreateBettingNotificationDto
+    {
+        [Required]
+        public BettingNotificationType Type { get; set; }
+
+        [Required]
+        [MaxLength(200)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(1000)]
+        public string Message { get; set; } = string.Empty;
+
+        public BettingNotificationPriority Priority { get; set; } = BettingNotificationPriority.Normal;
+
+        public int? BetId { get; set; }
+        public int? MatchupBetId { get; set; }
+        public int? GameBetId { get; set; }
+
+        [MaxLength(500)]
+        public string? ActionUrl { get; set; }
+
+        [MaxLength(100)]
+        public string? ActionText { get; set; }
+
+        public DateTime? ExpiresAt { get; set; }
+
+        [MaxLength(2000)]
+        public string? Metadata { get; set; }
+    }
+
+    public class BulkNotificationDto
+    {
+        [Required]
+        public List<int> UserIds { get; set; } = new List<int>();
+
+        [Required]
+        public BettingNotificationType Type { get; set; }
+
+        [Required]
+        [MaxLength(200)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(1000)]
+        public string Message { get; set; } = string.Empty;
+
+        public BettingNotificationPriority Priority { get; set; } = BettingNotificationPriority.Normal;
+
+        [MaxLength(500)]
+        public string? ActionUrl { get; set; }
+
+        [MaxLength(100)]
+        public string? ActionText { get; set; }
+
+        public DateTime? ExpiresAt { get; set; }
+    }
+
+    public class NotificationStatsDto
+    {
+        public int TotalNotifications { get; set; }
+        public int UnreadNotifications { get; set; }
+        public int ReadNotifications { get; set; }
+        public int ExpiredNotifications { get; set; }
+        public Dictionary<string, int> NotificationsByType { get; set; } = new();
+        public Dictionary<string, int> NotificationsByPriority { get; set; } = new();
+        public DateTime? LastNotificationAt { get; set; }
+        public DateTime? LastReadAt { get; set; }
     }
 }

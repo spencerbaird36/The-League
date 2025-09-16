@@ -49,6 +49,7 @@ namespace FantasyLeague.Api.Data
         public DbSet<MatchupBet> MatchupBets { get; set; }
         public DbSet<GameBet> GameBets { get; set; }
         public DbSet<BettingLine> BettingLines { get; set; }
+        public DbSet<BettingNotification> BettingNotifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
