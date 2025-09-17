@@ -517,6 +517,64 @@ namespace FantasyLeague.Api.Controllers
                 .ToListAsync();
             _context.Transactions.RemoveRange(transactions);
 
+            // Remove all pending trade proposals and related data for this league
+            var tradeProposals = await _context.TradeProposals
+                .Where(tp => tp.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.TradeProposals.RemoveRange(tradeProposals);
+
+            // Remove all trade players (will cascade from trade proposals, but explicit for clarity)
+            var tradePlayers = await _context.TradePlayers
+                .Where(tp => tp.TradeProposal.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.TradePlayers.RemoveRange(tradePlayers);
+
+            // Remove all trade notifications for this league
+            var tradeNotifications = await _context.TradeNotifications
+                .Where(tn => tn.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.TradeNotifications.RemoveRange(tradeNotifications);
+
+            // Remove all betting-related data for this league
+            var bets = await _context.Bets
+                .Where(b => b.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.Bets.RemoveRange(bets);
+
+            var matchupBets = await _context.MatchupBets
+                .Where(mb => mb.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.MatchupBets.RemoveRange(matchupBets);
+
+            var gameBets = await _context.GameBets
+                .Where(gb => gb.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.GameBets.RemoveRange(gameBets);
+
+            var bettingLines = await _context.BettingLines
+                .Where(bl => bl.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.BettingLines.RemoveRange(bettingLines);
+
+            var bettingNotifications = await _context.BettingNotifications
+                .Where(bn => bn.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.BettingNotifications.RemoveRange(bettingNotifications);
+
+            // Clear chat messages for this league to start fresh
+            var chatMessages = await _context.ChatMessages
+                .Where(cm => cm.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.ChatMessages.RemoveRange(chatMessages);
+
+            var chatReadStatuses = await _context.ChatReadStatuses
+                .Where(crs => crs.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.ChatReadStatuses.RemoveRange(chatReadStatuses);
+
+            _logger.LogInformation("Draft reset - cleared {TradeCount} trades, {BetCount} bets, {ChatCount} chat messages for league {LeagueId}",
+                tradeProposals.Count, bets.Count, chatMessages.Count, draft.LeagueId);
+
             // Get current league members to update draft order with any new members
             var league = await _context.Leagues
                 .Include(l => l.Users)
@@ -557,7 +615,7 @@ namespace FantasyLeague.Api.Controllers
                 CreatedAt = draft.CreatedAt,
                 StartedAt = draft.StartedAt,
                 CompletedAt = draft.CompletedAt,
-                Message = "Draft has been reset successfully"
+                Message = "Draft has been reset successfully. All draft picks, trades, bets, transactions, and chat messages have been cleared."
             };
 
             return Ok(response);
