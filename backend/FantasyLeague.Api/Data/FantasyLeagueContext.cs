@@ -671,47 +671,53 @@ namespace FantasyLeague.Api.Data
             modelBuilder.Entity<TradeProposal>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                
+
                 entity.Property(e => e.Status)
                     .IsRequired()
                     .HasMaxLength(20)
                     .HasDefaultValue("pending");
-                    
+
                 entity.Property(e => e.Message)
                     .HasMaxLength(500);
-                    
+
                 entity.Property(e => e.CreatedAt)
                     .IsRequired()
                     .HasDefaultValueSql("NOW()");
-                    
+
                 entity.Property(e => e.UpdatedAt)
                     .IsRequired()
                     .HasDefaultValueSql("NOW()");
-                    
+
                 entity.Property(e => e.ExpiresAt)
                     .IsRequired();
-                
+
                 // Configure relationship with League
                 entity.HasOne(e => e.League)
                     .WithMany()
                     .HasForeignKey(e => e.LeagueId)
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
-                    
+
                 // Configure relationship with ProposingUser
                 entity.HasOne(e => e.ProposingUser)
                     .WithMany()
                     .HasForeignKey(e => e.ProposingUserId)
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
-                    
+
                 // Configure relationship with TargetUser
                 entity.HasOne(e => e.TargetUser)
                     .WithMany()
                     .HasForeignKey(e => e.TargetUserId)
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
-                    
+
+                // Configure relationship with TradePlayers
+                entity.HasMany(e => e.TradePlayers)
+                    .WithOne(tp => tp.TradeProposal)
+                    .HasForeignKey(tp => tp.TradeProposalId)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
                 // Create indexes for efficient querying
                 entity.HasIndex(e => new { e.LeagueId, e.Status });
                 entity.HasIndex(e => new { e.ProposingUserId, e.Status });
@@ -748,12 +754,7 @@ namespace FantasyLeague.Api.Data
                     .IsRequired()
                     .HasDefaultValueSql("NOW()");
                 
-                // Configure relationship with TradeProposal
-                entity.HasOne(e => e.TradeProposal)
-                    .WithMany()
-                    .HasForeignKey(e => e.TradeProposalId)
-                    .IsRequired()
-                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+                // TradeProposal relationship configured in TradeProposal entity
                     
                 // Configure relationship with UserRoster
                 entity.HasOne(e => e.UserRoster)

@@ -11,6 +11,7 @@ export interface ActiveNflPlayer {
   fantasyPosition: string;
   age: number;
   fullName: string;
+  name: string;
   createdAt: string;
   updatedAt: string;
   lastSyncedAt: string;

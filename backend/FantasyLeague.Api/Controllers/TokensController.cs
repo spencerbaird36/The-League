@@ -98,6 +98,23 @@ namespace FantasyLeague.Api.Controllers
             }
         }
 
+        [HttpGet("transactions")]
+        public async Task<ActionResult<object>> GetTransactions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var result = await _walletService.GetTransactionHistoryAsync(userId, page, pageSize);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting token transactions for user");
+                return StatusCode(500, new { message = "Error retrieving token transactions" });
+            }
+        }
+
     }
 
     public class DevTokenPurchaseRequest

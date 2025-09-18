@@ -14,6 +14,11 @@ namespace FantasyLeague.Api.Models
         [ForeignKey("UserId")]
         public User User { get; set; } = null!;
 
+        public int? LeagueId { get; set; }
+
+        [ForeignKey("LeagueId")]
+        public League? League { get; set; }
+
         [Required]
         public BettingNotificationType Type { get; set; }
 

@@ -11,6 +11,11 @@ namespace FantasyLeague.Api.Models
         [Required]
         public BettingLineType Type { get; set; }
 
+        public int? LeagueId { get; set; }
+
+        [ForeignKey("LeagueId")]
+        public League? League { get; set; }
+
         // References to what this line is for
         public int? MatchupBetId { get; set; }
 

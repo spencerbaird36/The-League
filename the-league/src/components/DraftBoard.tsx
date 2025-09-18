@@ -14,14 +14,17 @@ interface DraftBoardProps {
   className?: string;
 }
 
-const DraftBoard: React.FC<DraftBoardProps> = ({ 
-  board, 
+const DraftBoard: React.FC<DraftBoardProps> = ({
+  board,
   leagueMembers,
   currentUser,
   onSlotClick,
   className = ''
 }) => {
   const [boardSize, setBoardSize] = useState<DraftBoardSize>('small');
+
+  // Debug logging
+  console.log('🏈 DraftBoard received leagueMembers:', leagueMembers?.length || 0, 'members', leagueMembers);
 
   // Helper function to get manager name for a given userId
   const getManagerName = (userId: number): string => {

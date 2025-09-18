@@ -72,7 +72,7 @@ const ROSTER_CONFIG = {
   PF: { count: 2, starters: 1 }
 };
 
-const TOTAL_ROUNDS = 15;
+const PICKS_PER_TEAM = 15; // Each team drafts 15 players
 
 export const useDraftProgress = (
   draftOrder: number[],
@@ -90,7 +90,8 @@ export const useDraftProgress = (
     const board: DraftSlot[][] = [];
     const totalPlayers = draftOrder.length;
     
-    for (let round = 1; round <= TOTAL_ROUNDS; round++) {
+    const totalRounds = PICKS_PER_TEAM;
+    for (let round = 1; round <= totalRounds; round++) {
       const roundSlots: DraftSlot[] = [];
       const roundIndex = round - 1; // Convert to 0-based
       
@@ -202,17 +203,17 @@ export const useDraftProgress = (
   }, [draftOrder, getTeamRoster]);
   
   const getDraftCompletionPercentage = useCallback((): number => {
-    const totalPossiblePicks = draftOrder.length * TOTAL_ROUNDS;
+    const totalPossiblePicks = draftOrder.length * PICKS_PER_TEAM;
     return totalPossiblePicks > 0 ? (picks.length / totalPossiblePicks) * 100 : 0;
   }, [picks.length, draftOrder.length]);
   
   const getRoundsRemaining = useCallback((): number => {
     const currentRound = Math.floor(currentTurn / draftOrder.length) + 1;
-    return Math.max(0, TOTAL_ROUNDS - currentRound + 1);
+    return Math.max(0, PICKS_PER_TEAM - currentRound + 1);
   }, [currentTurn, draftOrder.length]);
   
   const getPicksRemaining = useCallback((): number => {
-    const totalPicks = draftOrder.length * TOTAL_ROUNDS;
+    const totalPicks = draftOrder.length * PICKS_PER_TEAM;
     return Math.max(0, totalPicks - picks.length);
   }, [picks.length, draftOrder.length]);
   

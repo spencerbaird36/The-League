@@ -186,10 +186,10 @@ export const useDraftState = (): [DraftState, DraftStateActions] => {
   }, []);
 
   const getRemainingPicks = useCallback((): number => {
-    // Assuming each player drafts 15 players (standard fantasy)
-    const totalRounds = 15;
+    // Each team drafts 15 players
+    const picksPerTeam = 15;
     const totalPlayers = stateRef.current.draftOrder.length;
-    const totalDraftPicks = totalRounds * totalPlayers;
+    const totalDraftPicks = picksPerTeam * totalPlayers;
     return totalDraftPicks - stateRef.current.picks.length;
   }, []);
 

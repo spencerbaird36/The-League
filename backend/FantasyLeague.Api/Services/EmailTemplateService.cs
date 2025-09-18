@@ -194,9 +194,7 @@ namespace FantasyLeague.Api.Services
             }
 
             // Get all trade players for this proposal and filter by trade type
-            var allTradePlayers = new List<TradePlayer>();
-            if (tradeProposal.ProposingPlayers != null) allTradePlayers.AddRange(tradeProposal.ProposingPlayers);
-            if (tradeProposal.TargetPlayers != null) allTradePlayers.AddRange(tradeProposal.TargetPlayers);
+            var allTradePlayers = tradeProposal.TradePlayers.ToList();
 
             var proposingPlayers = allTradePlayers.Where(p => p.TradeType == "offering").ToList();
             var targetPlayers = allTradePlayers.Where(p => p.TradeType == "receiving").ToList();

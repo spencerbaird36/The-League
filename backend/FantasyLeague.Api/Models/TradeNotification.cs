@@ -19,7 +19,12 @@ namespace FantasyLeague.Api.Models
         
         [ForeignKey("TradeProposalId")]
         public TradeProposal TradeProposal { get; set; } = null!;
-        
+
+        public int? LeagueId { get; set; }
+
+        [ForeignKey("LeagueId")]
+        public League? League { get; set; }
+
         [Required]
         [StringLength(50)]
         public string Type { get; set; } = string.Empty; // trade_proposal_received, trade_proposal_accepted, trade_proposal_rejected

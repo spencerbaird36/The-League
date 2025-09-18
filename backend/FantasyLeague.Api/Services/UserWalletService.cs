@@ -28,6 +28,14 @@ namespace FantasyLeague.Api.Services
 
             if (wallet == null)
             {
+                // Check if user exists before creating wallet
+                var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+                if (!userExists)
+                {
+                    _logger.LogError("Cannot create wallet for user {UserId} - user does not exist", userId);
+                    throw new InvalidOperationException($"User with ID {userId} does not exist");
+                }
+
                 wallet = new UserWallet
                 {
                     UserId = userId,

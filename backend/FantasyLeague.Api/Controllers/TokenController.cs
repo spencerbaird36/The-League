@@ -31,23 +31,28 @@ namespace FantasyLeague.Api.Controllers
         /// Get user's current token balance
         /// </summary>
         [HttpGet("balance")]
-        public async Task<IActionResult> GetBalance([FromQuery] int userId)
+        public async Task<IActionResult> GetBalance([FromQuery] int? userId)
         {
+            if (!userId.HasValue)
+            {
+                return BadRequest(new { Message = "userId parameter is required" });
+            }
+
             try
             {
-                var balance = await _walletService.GetWalletBalanceAsync(userId);
+                var balance = await _walletService.GetWalletBalanceAsync(userId.Value);
                 if (balance == null)
                 {
                     // Create wallet if it doesn't exist
-                    await _walletService.GetOrCreateWalletAsync(userId);
-                    balance = await _walletService.GetWalletBalanceAsync(userId);
+                    await _walletService.GetOrCreateWalletAsync(userId.Value);
+                    balance = await _walletService.GetWalletBalanceAsync(userId.Value);
                 }
 
                 return Ok(balance);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting balance for user {UserId}", userId);
+                _logger.LogError(ex, "Error getting balance for user {UserId}", userId.Value);
                 return StatusCode(500, new { Message = "Error retrieving balance" });
             }
         }
@@ -505,10 +510,24 @@ namespace FantasyLeague.Api.Controllers
         #region Transaction History
 
         /// <summary>
+        /// Get transaction history with pagination (requires userId parameter)
+        /// </summary>
+        [HttpGet("transactions")]
+        public async Task<IActionResult> GetTransactions([FromQuery] int? userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            if (!userId.HasValue)
+            {
+                return BadRequest(new { Message = "userId parameter is required" });
+            }
+
+            return await GetUserTransactions(userId.Value, page, pageSize);
+        }
+
+        /// <summary>
         /// Get user's transaction history with pagination
         /// </summary>
         [HttpGet("transactions/{userId}")]
-        public async Task<IActionResult> GetTransactions(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        public async Task<IActionResult> GetUserTransactions(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
             try
             {

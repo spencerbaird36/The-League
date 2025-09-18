@@ -11,6 +11,7 @@ export interface ActiveMlbPlayer {
   lastName: string;
   birthDate: string;
   fullName: string;
+  name: string;
   age: number;
   createdAt: string;
   updatedAt: string;

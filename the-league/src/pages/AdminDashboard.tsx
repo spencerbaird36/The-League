@@ -658,14 +658,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               
               {nflPlayers.map(player => (
                 <div key={player.id} className="table-row">
-                  <span><strong>{player.fullName}</strong></span>
-                  <span className={`position-badge ${player.fantasyPosition.toLowerCase()}`}>
-                    {player.fantasyPosition}
+                  <span><strong>{player.name || player.fullName || 'N/A'}</strong></span>
+                  <span className={`position-badge ${player.fantasyPosition?.toLowerCase() || ''}`}>
+                    {player.fantasyPosition || 'N/A'}
                   </span>
-                  <span>{player.team}</span>
-                  <span>{player.age}</span>
-                  <span>{player.playerID}</span>
-                  <span>{new Date(player.lastSyncedAt).toLocaleDateString()}</span>
+                  <span>{player.team || 'N/A'}</span>
+                  <span>{player.age || 'N/A'}</span>
+                  <span>{player.playerID || 'N/A'}</span>
+                  <span>{player.lastSyncedAt ? new Date(player.lastSyncedAt).toLocaleDateString() : 'No date'}</span>
                 </div>
               ))}
             </div>
@@ -802,14 +802,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               
               {mlbPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span><strong>{player.fullName}</strong></span>
-                  <span className={`position-badge ${player.position.toLowerCase()}`}>
-                    {player.position}
+                  <span><strong>{player.name || player.fullName || 'N/A'}</strong></span>
+                  <span className={`position-badge ${player.position?.toLowerCase() || ''}`}>
+                    {player.position || 'N/A'}
                   </span>
-                  <span>{player.team}</span>
-                  <span>{player.age}</span>
-                  <span>{player.playerID}</span>
-                  <span>{new Date(player.lastSyncedAt).toLocaleDateString()}</span>
+                  <span>{player.team || 'N/A'}</span>
+                  <span>{player.age || 'N/A'}</span>
+                  <span>{player.playerID || 'N/A'}</span>
+                  <span>{player.lastSyncedAt ? new Date(player.lastSyncedAt).toLocaleDateString() : 'No date'}</span>
                 </div>
               ))}
             </div>
@@ -946,14 +946,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               
               {nbaPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span><strong>{player.fullName}</strong></span>
-                  <span className={`position-badge ${player.position.toLowerCase()}`}>
-                    {player.position}
+                  <span><strong>{player.name || player.fullName || 'N/A'}</strong></span>
+                  <span className={`position-badge ${player.position?.toLowerCase() || ''}`}>
+                    {player.position || 'N/A'}
                   </span>
-                  <span>{player.team}</span>
-                  <span>{player.age}</span>
-                  <span>{player.playerID}</span>
-                  <span>{new Date(player.lastSyncedAt).toLocaleDateString()}</span>
+                  <span>{player.team || 'N/A'}</span>
+                  <span>{player.age || 'N/A'}</span>
+                  <span>{player.playerID || 'N/A'}</span>
+                  <span>{player.lastSyncedAt ? new Date(player.lastSyncedAt).toLocaleDateString() : 'No date'}</span>
                 </div>
               ))}
             </div>

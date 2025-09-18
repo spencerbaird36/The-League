@@ -65,13 +65,24 @@ export function useDraftOperations(user: User | null) {
     );
   }, [state.draftState?.draftPicks]);
 
-  // Get available players (not yet drafted)
-  const getAvailablePlayers = useCallback((): Player[] => {
-    const draftedPlayers = getAllDraftedPlayers();
-    return players.filter(player => 
-      !draftedPlayers.some(drafted => drafted.id === player.id)
-    );
-  }, [getAllDraftedPlayers]);
+  // Get available players (not yet drafted) with projection data from API
+  const getAvailablePlayers = useCallback(async (): Promise<Player[]> => {
+    if (!user?.league?.id) return [];
+
+    try {
+      // Fetch players with projection data from backend API
+      const playersWithProjections = await draftService.fetchAvailablePlayersForDraft(user.league.id);
+      console.log(`🎯 Fetched ${playersWithProjections.length} players with projections for auto-draft`);
+      return playersWithProjections;
+    } catch (error) {
+      console.error('Error fetching available players for auto-draft:', error);
+      // Fallback to static data if API fails (but this will be empty)
+      const draftedPlayers = getAllDraftedPlayers();
+      return players.filter(player =>
+        !draftedPlayers.some(drafted => drafted.id === player.id)
+      );
+    }
+  }, [getAllDraftedPlayers, user?.league?.id]);
 
   // Get needed positions for a user's roster
   const getNeededPositions = useCallback((userId: number): string[] => {
@@ -179,6 +190,7 @@ export function useDraftOperations(user: User | null) {
 
       if (isDraftStateChanged) {
         console.log('🔄 Draft state changed - updating');
+        console.log('📋 Setting league members:', members?.length || 0, 'members', members);
         dispatch({ type: 'SET_DRAFT_STATE', payload: draftState });
         dispatch({ type: 'SET_LEAGUE_MEMBERS', payload: members });
         dispatch({ type: 'SET_DRAFT_CREATED', payload: !!draftState });
@@ -293,9 +305,9 @@ export function useDraftOperations(user: User | null) {
     const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
     console.log(`🤖 Timer expired - auto-drafting for user ${currentUserId}`);
 
-    const availablePlayers = getAvailablePlayers();
+    const availablePlayers = await getAvailablePlayers();
     const neededPositions = getNeededPositions(currentUserId);
-    
+
     const selectedPlayer = draftService.selectBestAvailablePlayer(
       availablePlayers,
       neededPositions,
@@ -449,6 +461,9 @@ export function useDraftOperations(user: User | null) {
       // Clear local state immediately
       dispatch({ type: 'CLEAR_LOCAL_ROSTERS' });
       dispatch({ type: 'RESET_TIMER', payload: { duration: 15 } });
+
+      // Clear cached members to force refetch after reset
+      cachedMembersRef.current = [];
       
       // Fetch fresh draft state after reset
       setTimeout(() => {
@@ -468,6 +483,9 @@ export function useDraftOperations(user: User | null) {
           // Clear local state
           dispatch({ type: 'CLEAR_LOCAL_ROSTERS' });
           dispatch({ type: 'RESET_TIMER', payload: { duration: 15 } });
+
+          // Clear cached members to force refetch after reset
+          cachedMembersRef.current = [];
           
           // Fetch fresh draft state
           setTimeout(() => {
@@ -608,8 +626,8 @@ export function useDraftOperations(user: User | null) {
     isAutoDrafting: state.isAutoDrafting,
     autoDraftMessage: state.autoDraftMessage,
     
-    // Computed values
-    availablePlayers: getAvailablePlayers(),
+    // Computed values (note: availablePlayers is now async, components should call getAvailablePlayers directly)
+    getAvailablePlayers,
     allDraftedPlayers: getAllDraftedPlayers(),
     
     // Actions

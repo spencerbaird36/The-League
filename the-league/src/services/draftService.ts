@@ -222,14 +222,14 @@ class DraftService {
     } as Player;
   }
 
-  // Auto-draft logic - select best available player for given requirements
+  // Auto-draft logic - select best available player based on projected points
   selectBestAvailablePlayer(
     availablePlayers: Player[],
     neededPositions: string[],
     draftedPlayers: Player[]
   ): Player | null {
     // Get players that haven't been drafted
-    const undraftedPlayers = availablePlayers.filter(player => 
+    const undraftedPlayers = availablePlayers.filter(player =>
       !draftedPlayers.some(drafted => drafted.id === player.id)
     );
 
@@ -237,28 +237,56 @@ class DraftService {
       return null;
     }
 
-    // If we have needed positions, prioritize those
+    // Helper function to get player's projected fantasy points (default to 0 if missing)
+    const getProjectedPoints = (player: Player): number => {
+      return player.projection?.fantasyPoints || 0;
+    };
+
+    // Priority positions to target first: SS, OF, PG, RB, WR
+    const priorityPositions = ['SS', 'OF', 'PG', 'RB', 'WR'];
+
+    // Check if we should prioritize filling needed positions first
     if (neededPositions.length > 0) {
       const neededPlayers = undraftedPlayers.filter(player =>
         neededPositions.includes(player.position)
       );
-      
+
       if (neededPlayers.length > 0) {
-        // Prioritize positions that aren't RB or WR (unless they're the only options)
-        const nonRBWRPlayers = neededPlayers.filter(player => 
-          !['RB', 'WR'].includes(player.position)
+        // Within needed positions, prioritize our target positions first
+        const neededPriorityPlayers = neededPlayers.filter(player =>
+          priorityPositions.includes(player.position)
         );
-        
-        if (nonRBWRPlayers.length > 0) {
-          return nonRBWRPlayers[Math.floor(Math.random() * nonRBWRPlayers.length)];
-        } else {
-          return neededPlayers[Math.floor(Math.random() * neededPlayers.length)];
+
+        if (neededPriorityPlayers.length > 0) {
+          // Sort by projected points (highest first) and take the best
+          neededPriorityPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
+          console.log(`🎯 Auto-drafting priority position ${neededPriorityPlayers[0].position}: ${neededPriorityPlayers[0].name} (${getProjectedPoints(neededPriorityPlayers[0])} pts)`);
+          return neededPriorityPlayers[0];
         }
+
+        // If no priority positions in needed, take best available needed position
+        neededPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
+        console.log(`🎯 Auto-drafting needed position ${neededPlayers[0].position}: ${neededPlayers[0].name} (${getProjectedPoints(neededPlayers[0])} pts)`);
+        return neededPlayers[0];
       }
     }
 
-    // Fallback to random available player
-    return undraftedPlayers[Math.floor(Math.random() * undraftedPlayers.length)];
+    // If no specific position needs, prioritize our target positions
+    const availablePriorityPlayers = undraftedPlayers.filter(player =>
+      priorityPositions.includes(player.position)
+    );
+
+    if (availablePriorityPlayers.length > 0) {
+      // Sort by projected points (highest first) and take the best
+      availablePriorityPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
+      console.log(`🎯 Auto-drafting priority position ${availablePriorityPlayers[0].position}: ${availablePriorityPlayers[0].name} (${getProjectedPoints(availablePriorityPlayers[0])} pts)`);
+      return availablePriorityPlayers[0];
+    }
+
+    // Fallback: draft the highest projected points player across all remaining sports
+    undraftedPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
+    console.log(`🎯 Auto-drafting best remaining player: ${undraftedPlayers[0].name} (${undraftedPlayers[0].position}, ${getProjectedPoints(undraftedPlayers[0])} pts)`);
+    return undraftedPlayers[0];
   }
 
   // Get available players for a draft

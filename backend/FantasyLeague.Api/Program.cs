@@ -123,6 +123,12 @@ builder.Services.AddHealthChecks()
     .AddCheck<FantasyLeague.Api.HealthChecks.SendGridHealthCheck>("sendgrid")
     .AddDbContextCheck<FantasyLeagueContext>("database");
 
+// Add Authentication and Authorization
+builder.Services.AddAuthentication("Bearer")
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, FantasyLeague.Api.Infrastructure.SimpleAuthenticationHandler>("Bearer", options => { });
+
+builder.Services.AddAuthorization();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -154,6 +160,10 @@ if (app.Environment.IsDevelopment())
 
 // Use CORS
 app.UseCors("AllowReactApp");
+
+// Use Authentication and Authorization
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Add Hangfire dashboard (optional, for monitoring)
 // TEMPORARILY COMMENTED OUT

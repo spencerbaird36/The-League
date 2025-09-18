@@ -388,8 +388,28 @@ const Draft: React.FC<DraftProps> = ({
   
   // Phase 2 Redesign: Enhanced analytics and progress tracking
   const draftAnalytics = useDraftAnalytics();
+  // Fix draft order issue - generate from all league members if no valid order exists
+  let draftOrderToUse = legacyDraftState?.draftOrder || draftState.draftOrder;
+
+  // If we don't have a valid draft order or it doesn't match the number of league members, create one
+  if (!draftOrderToUse?.length || draftOrderToUse.length !== state.leagueMembers.length) {
+    draftOrderToUse = state.leagueMembers.map(member => member.id);
+    console.log('🔧 Generated new draft order from league members:', draftOrderToUse);
+  }
+
+  console.log('🎯 Draft order debug:', {
+    legacyDraftOrder: legacyDraftState?.draftOrder,
+    stateDraftOrder: draftState.draftOrder,
+    leagueMembersCount: state.leagueMembers.length,
+    leagueMemberIds: state.leagueMembers.map(m => m.id),
+    draftOrderToUse,
+    legacyDraftOrderLength: legacyDraftState?.draftOrder?.length,
+    stateDraftOrderLength: draftState.draftOrder?.length,
+    draftOrderToUseLength: draftOrderToUse?.length
+  });
+
   const draftProgress = useDraftProgress(
-    legacyDraftState?.draftOrder || draftState.draftOrder,
+    draftOrderToUse,
     legacyDraftState?.draftPicks || draftState.picks,
     draftState.currentTurn,
     user?.id
@@ -459,6 +479,23 @@ const Draft: React.FC<DraftProps> = ({
 
     fetchLeagueConfig();
   }, [user?.league?.id]);
+
+  // Fetch initial draft state when component mounts
+  useEffect(() => {
+    const fetchInitialDraftState = async () => {
+      if (user?.league?.id) {
+        try {
+          console.log('🔄 Fetching initial draft state for league:', user.league.id);
+          await draftOperations.fetchDraftState();
+          console.log('✅ Initial draft state fetched successfully');
+        } catch (error) {
+          console.error('❌ Error fetching initial draft state:', error);
+        }
+      }
+    };
+
+    fetchInitialDraftState();
+  }, [user?.league?.id]); // Removed draftOperations.fetchDraftState from dependencies to prevent repeated calls
 
   // Get enabled sports based on league configuration
   const getEnabledSports = (): ('NFL' | 'MLB' | 'NBA')[] => {
@@ -633,7 +670,7 @@ const Draft: React.FC<DraftProps> = ({
     } catch (error) {
       console.warn('⚠️ Failed to fetch current draft state:', error);
     }
-  }, [user?.league?.id, user?.id, draftOperations.fetchDraftState, draftOperations.draftState]);
+  }, [user?.league?.id, user?.id]); // Removed function dependencies to prevent infinite loops
 
   // Phase 1 Redesign: Enhanced draft pick with new systems
   const makeDraftPick = useCallback(async (player: Player) => {

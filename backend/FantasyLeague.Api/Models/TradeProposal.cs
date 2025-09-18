@@ -39,9 +39,8 @@ namespace FantasyLeague.Api.Models
         
         public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddDays(7); // Expires in 7 days
         
-        // Navigation properties for players involved in trade
-        public ICollection<TradePlayer> ProposingPlayers { get; set; } = new List<TradePlayer>();
-        public ICollection<TradePlayer> TargetPlayers { get; set; } = new List<TradePlayer>();
+        // Navigation property for all players involved in trade (use TradeType to filter)
+        public ICollection<TradePlayer> TradePlayers { get; set; } = new List<TradePlayer>();
         
         // Navigation property for notifications
         public ICollection<TradeNotification> Notifications { get; set; } = new List<TradeNotification>();

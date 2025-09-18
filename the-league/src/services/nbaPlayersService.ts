@@ -14,6 +14,7 @@ export interface ActiveNbaPlayer {
     updatedAt: string;
     lastSyncedAt: string;
     fullName: string;
+    name: string;
     age: number;
 }
 
