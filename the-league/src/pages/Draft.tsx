@@ -408,18 +408,18 @@ const Draft: React.FC<DraftProps> = ({
     draftOrderToUseLength: draftOrderToUse?.length
   });
 
-  const draftProgress = useDraftProgress(
-    draftOrderToUse,
-    legacyDraftState?.draftPicks || draftState.picks,
-    draftState.currentTurn,
-    user?.id
-  );
-  
-  
   // State for available players from backend
   const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
   const [isLoadingAvailablePlayers, setIsLoadingAvailablePlayers] = useState(false);
   const [leagueConfig, setLeagueConfig] = useState<LeagueConfiguration | null>(null);
+
+  const draftProgress = useDraftProgress(
+    draftOrderToUse,
+    legacyDraftState?.draftPicks || draftState.picks,
+    draftState.currentTurn,
+    leagueConfig?.totalKeeperSlots || 15,
+    user?.id
+  );
   
   // Debounce timer for API calls
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1142,9 +1142,9 @@ const Draft: React.FC<DraftProps> = ({
               <DraftProgressBar
                 completionPercentage={draftProgress.getDraftCompletionPercentage()}
                 currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
-                totalRounds={15}
+                totalRounds={leagueConfig?.totalKeeperSlots || 15}
                 currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
-                totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * 15}
+                totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * (leagueConfig?.totalKeeperSlots || 15)}
                 picksRemaining={draftProgress.getPicksRemaining()}
               />
               

@@ -305,13 +305,15 @@ export function useDraftOperations(user: User | null) {
     const currentUserId = currentUserIndex < draftOrder.length ? draftOrder[currentUserIndex] : 0;
     console.log(`🤖 Timer expired - auto-drafting for user ${currentUserId}`);
 
+    // Get available players from the API
     const availablePlayers = await getAvailablePlayers();
     const neededPositions = getNeededPositions(currentUserId);
+    const draftedPlayers = getAllDraftedPlayers();
 
     const selectedPlayer = draftService.selectBestAvailablePlayer(
       availablePlayers,
       neededPositions,
-      getAllDraftedPlayers()
+      draftedPlayers
     );
 
     if (selectedPlayer) {

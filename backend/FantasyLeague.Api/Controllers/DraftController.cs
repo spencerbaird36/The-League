@@ -98,6 +98,13 @@ namespace FantasyLeague.Api.Controllers
                 return BadRequest(new { Message = "Draft requires an even number of players. Current league has " + league.Users.Count + " players." });
             }
 
+            // All drafts now use league configuration for MaxPicks
+            var totalKeeperSlots = league.Configuration?.TotalKeeperSlots ?? 12; // Default to 12 if not set
+            var numberOfUsers = createDraftDto.DraftOrder.Count;
+            int maxPicks = totalKeeperSlots * numberOfUsers;
+            _logger.LogInformation("Creating draft with {MaxPicks} total picks (totalKeeperSlots: {TotalKeeperSlots}, users: {NumberOfUsers})",
+                maxPicks, totalKeeperSlots, numberOfUsers);
+
             var draft = new Draft
             {
                 LeagueId = createDraftDto.LeagueId,
@@ -105,7 +112,9 @@ namespace FantasyLeague.Api.Controllers
                 CurrentTurn = 0,
                 CurrentRound = 1,
                 IsActive = false,
-                IsCompleted = false
+                IsCompleted = false,
+                MaxPicks = maxPicks,
+                DraftType = DraftType.Keeper // All drafts now use keeper-style logic
             };
 
             _context.Drafts.Add(draft);
@@ -147,6 +156,9 @@ namespace FantasyLeague.Api.Controllers
                 Id = draft.Id,
                 LeagueId = draft.LeagueId,
                 LeagueName = draft.League.Name,
+                DraftType = draft.DraftType.ToString(),
+                MaxPicks = draft.MaxPicks,
+                MaxPicksPerSport = draft.MaxPicksPerSport,
                 DraftOrder = draftOrder,
                 CurrentTurn = draft.CurrentTurn,
                 CurrentRound = draft.CurrentRound,
@@ -196,6 +208,9 @@ namespace FantasyLeague.Api.Controllers
                 Id = draft.Id,
                 LeagueId = draft.LeagueId,
                 LeagueName = draft.League.Name,
+                DraftType = draft.DraftType.ToString(),
+                MaxPicks = draft.MaxPicks,
+                MaxPicksPerSport = draft.MaxPicksPerSport,
                 DraftOrder = draftOrder,
                 CurrentTurn = draft.CurrentTurn,
                 CurrentRound = draft.CurrentRound,
@@ -268,6 +283,9 @@ namespace FantasyLeague.Api.Controllers
                 Id = draft.Id,
                 LeagueId = draft.LeagueId,
                 LeagueName = draft.League.Name,
+                DraftType = draft.DraftType.ToString(),
+                MaxPicks = draft.MaxPicks,
+                MaxPicksPerSport = draft.MaxPicksPerSport,
                 DraftOrder = draftOrder,
                 CurrentTurn = draft.CurrentTurn,
                 CurrentRound = draft.CurrentRound,
@@ -453,11 +471,27 @@ namespace FantasyLeague.Api.Controllers
 
             // Check if draft should be completed based on total picks made
             var totalPicksMade = draft.DraftPicks.Count + 1; // +1 for the pick we're about to save
-            if (draft.MaxPicks > 0 && totalPicksMade >= draft.MaxPicks)
+
+            // All drafts now use league configuration for completion logic
+            var league = await _context.Leagues
+                .Include(l => l.Configuration)
+                .FirstOrDefaultAsync(l => l.Id == draft.LeagueId);
+            if (league != null)
             {
-                draft.IsActive = false;
-                draft.IsCompleted = true;
-                draft.CompletedAt = DateTime.UtcNow;
+                var totalKeeperSlots = league.Configuration?.TotalKeeperSlots ?? 12; // Default to 12 if not set
+                var totalUsersInDraft = draftOrder.Count;
+                var totalRequiredPicks = totalKeeperSlots * totalUsersInDraft;
+
+                _logger.LogInformation("Draft completion check: {TotalPicksMade}/{TotalRequiredPicks} picks made (totalKeeperSlots: {TotalKeeperSlots}, users: {TotalUsers}, draftType: {DraftType})",
+                    totalPicksMade, totalRequiredPicks, totalKeeperSlots, totalUsersInDraft, draft.DraftType);
+
+                if (totalPicksMade >= totalRequiredPicks)
+                {
+                    draft.IsActive = false;
+                    draft.IsCompleted = true;
+                    draft.CompletedAt = DateTime.UtcNow;
+                    _logger.LogInformation("Draft completed after {TotalPicksMade} picks", totalPicksMade);
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -505,10 +539,12 @@ namespace FantasyLeague.Api.Controllers
             // Remove all draft picks
             _context.DraftPicks.RemoveRange(draft.DraftPicks);
 
-            // Remove all user roster entries for this draft
+            // Remove all user roster entries for this league (across all drafts)
             var userRosters = await _context.UserRosters
-                .Where(ur => ur.DraftId == draft.Id)
+                .Where(ur => ur.LeagueId == draft.LeagueId)
                 .ToListAsync();
+            _logger.LogInformation("🧹 Draft reset: Found {UserRosterCount} UserRoster entries to remove for LeagueId {LeagueId}",
+                userRosters.Count, draft.LeagueId);
             _context.UserRosters.RemoveRange(userRosters);
 
             // Remove all transactions for this league (free agent pickups and any future transaction types)
@@ -599,7 +635,27 @@ namespace FantasyLeague.Api.Controllers
             draft.StartedAt = null;
             draft.CompletedAt = null;
 
+            // Apply unified keeper logic: update existing draft to use league configuration
+            var leagueConfig = await _context.LeagueConfigurations
+                .FirstOrDefaultAsync(lc => lc.LeagueId == draft.LeagueId);
+
+            if (leagueConfig != null)
+            {
+                var totalKeeperSlots = leagueConfig.TotalKeeperSlots;
+                var numberOfUsers = randomizedOrder.Count;
+                int newMaxPicks = totalKeeperSlots * numberOfUsers;
+
+                // Update draft to use unified keeper-style logic
+                draft.DraftType = DraftType.Keeper;
+                draft.MaxPicks = newMaxPicks;
+                draft.MaxPicksPerSport = totalKeeperSlots; // Set to total keeper slots for consistency
+
+                _logger.LogInformation("🔄 Updated draft to unified keeper logic: DraftType=Keeper, MaxPicks={MaxPicks} (TotalKeeperSlots={TotalKeeperSlots} × Users={Users})",
+                    newMaxPicks, totalKeeperSlots, numberOfUsers);
+            }
+
             await _context.SaveChangesAsync();
+            _logger.LogInformation("✅ Draft reset complete: All data cleared from database for LeagueId {LeagueId}", draft.LeagueId);
 
             var draftOrder = randomizedOrder;
 
@@ -1310,6 +1366,112 @@ namespace FantasyLeague.Api.Controllers
             {
                 return StatusCode(500, new { Message = "Error making draft pick", Error = ex.Message });
             }
+        }
+
+        // Temporary admin endpoint to fix existing draft MaxPicks
+        [HttpPost("admin/fix-max-picks/{draftId}")]
+        public async Task<IActionResult> FixDraftMaxPicks(int draftId)
+        {
+            try
+            {
+                var draft = await _context.Drafts
+                    .Include(d => d.League)
+                    .ThenInclude(l => l.Configuration)
+                    .FirstOrDefaultAsync(d => d.Id == draftId);
+
+                if (draft == null)
+                {
+                    return NotFound(new { Message = "Draft not found" });
+                }
+
+                if (draft.League.Configuration?.IsKeeperLeague == true)
+                {
+                    var totalKeeperSlots = draft.League.Configuration.TotalKeeperSlots;
+                    var draftOrder = JsonSerializer.Deserialize<int[]>(draft.DraftOrder) ?? Array.Empty<int>();
+                    var numberOfUsers = draftOrder.Length;
+                    var correctMaxPicks = totalKeeperSlots * numberOfUsers;
+
+                    var oldMaxPicks = draft.MaxPicks;
+                    draft.MaxPicks = correctMaxPicks;
+
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("Fixed draft {DraftId} MaxPicks from {OldMaxPicks} to {NewMaxPicks} (keeper slots: {TotalKeeperSlots}, users: {NumberOfUsers})",
+                        draftId, oldMaxPicks, correctMaxPicks, totalKeeperSlots, numberOfUsers);
+
+                    return Ok(new
+                    {
+                        Message = "Draft MaxPicks updated successfully",
+                        DraftId = draftId,
+                        OldMaxPicks = oldMaxPicks,
+                        NewMaxPicks = correctMaxPicks,
+                        TotalKeeperSlots = totalKeeperSlots,
+                        NumberOfUsers = numberOfUsers
+                    });
+                }
+                else
+                {
+                    return BadRequest(new { Message = "This endpoint is only for keeper drafts" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fixing draft MaxPicks for draft {DraftId}", draftId);
+                return StatusCode(500, new { Message = "Error fixing draft MaxPicks", Error = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/convert-to-unified")]
+        public async Task<IActionResult> ConvertToUnifiedLogic(int id)
+        {
+            var draft = await _context.Drafts.FirstOrDefaultAsync(d => d.Id == id);
+
+            if (draft == null)
+            {
+                return NotFound(new { Message = "Draft not found" });
+            }
+
+            // Get league configuration
+            var leagueConfig = await _context.LeagueConfigurations
+                .FirstOrDefaultAsync(lc => lc.LeagueId == draft.LeagueId);
+
+            if (leagueConfig == null)
+            {
+                return BadRequest(new { Message = "League configuration not found" });
+            }
+
+            // Parse draft order to get user count
+            var draftOrder = JsonSerializer.Deserialize<int[]>(draft.DraftOrder);
+            var numberOfUsers = draftOrder?.Length ?? 0;
+
+            // Calculate new values using unified keeper logic
+            var totalKeeperSlots = leagueConfig.TotalKeeperSlots;
+            int newMaxPicks = totalKeeperSlots * numberOfUsers;
+
+            // Store old values for logging
+            var oldMaxPicks = draft.MaxPicks;
+            var oldDraftType = draft.DraftType;
+
+            // Update draft to use unified keeper-style logic
+            draft.DraftType = DraftType.Keeper;
+            draft.MaxPicks = newMaxPicks;
+            draft.MaxPicksPerSport = totalKeeperSlots;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("🔄 Converted draft {DraftId} to unified keeper logic: {OldType}→Keeper, MaxPicks={OldMaxPicks}→{NewMaxPicks} ({TotalKeeperSlots}×{Users})",
+                id, oldDraftType, oldMaxPicks, newMaxPicks, totalKeeperSlots, numberOfUsers);
+
+            return Ok(new {
+                Message = "Draft converted to unified keeper logic successfully",
+                DraftId = id,
+                OldDraftType = oldDraftType.ToString(),
+                NewDraftType = "Keeper",
+                OldMaxPicks = oldMaxPicks,
+                NewMaxPicks = newMaxPicks,
+                TotalKeeperSlots = totalKeeperSlots,
+                NumberOfUsers = numberOfUsers
+            });
         }
     }
 }
