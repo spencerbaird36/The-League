@@ -553,6 +553,12 @@ namespace FantasyLeague.Api.Controllers
                 .ToListAsync();
             _context.Transactions.RemoveRange(transactions);
 
+            // Remove all email delivery logs for trade proposals in this league first (foreign key constraint)
+            var emailDeliveryLogs = await _context.EmailDeliveryLogs
+                .Where(edl => edl.TradeProposal.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.EmailDeliveryLogs.RemoveRange(emailDeliveryLogs);
+
             // Remove all pending trade proposals and related data for this league
             var tradeProposals = await _context.TradeProposals
                 .Where(tp => tp.LeagueId == draft.LeagueId)
