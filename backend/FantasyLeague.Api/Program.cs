@@ -109,8 +109,12 @@ builder.Services.AddScoped<OddsCalculationService>();
 builder.Services.Configure<FantasyLeague.Api.Models.StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
 builder.Services.AddScoped<StripePaymentService>();
 
+// Add scoring and finalization services
+builder.Services.AddScoped<WeeklyScoreService>();
+
 // Add background services
 builder.Services.AddHostedService<EmailMonitoringBackgroundService>();
+builder.Services.AddHostedService<WeeklyFinalizationBackgroundService>();
 // Removed due to model conflicts - will be re-added in next phase
 // builder.Services.AddHostedService<BettingDataSyncBackgroundService>();
 

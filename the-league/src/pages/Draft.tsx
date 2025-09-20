@@ -1197,9 +1197,8 @@ const Draft: React.FC<DraftProps> = ({
         </section>
 
         {/* Show content only when draft is not completed */}
-        {!draftState.isCompleted && !legacyDraftState?.isCompleted ? (
-          <>
-            {/* Phase 2 Redesign: Player Recommendations */}
+        <>
+          {/* Phase 2 Redesign: Player Recommendations */}
             {draftStateActions.isMyTurn(user?.id || 0) && playerSuggestions.length > 0 && (
               <PlayerRecommendations
                 suggestions={playerSuggestions}
@@ -1460,12 +1459,6 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             </section>
           </>
-        ) : (
-          <div className="draft-completed-message">
-            <h2>Draft Complete!</h2>
-            <p>The keeper draft has been completed. You can view the draft results below.</p>
-          </div>
-        )}
       </section>
 
       {/* Player Info Modal */}
