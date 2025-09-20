@@ -755,9 +755,15 @@ const Draft: React.FC<DraftProps> = ({
   };
 
   // Reset draft function
-  const handleResetDraft = async () => {
+  const handleResetDraft = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+    // Prevent default button behavior to avoid page refresh
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     if (!legacyDraftState?.id) return;
-    
+
     try {
       await draftOperations.resetDraft(legacyDraftState.id);
       // Also clear local rosters for backward compatibility
@@ -772,6 +778,11 @@ const Draft: React.FC<DraftProps> = ({
       // Refresh available players after reset
       fetchAvailablePlayersFromBackend();
       console.log('✅ Draft reset successfully');
+
+      // Force a complete refresh to ensure all roster data is cleared
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('❌ Failed to reset draft:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -885,51 +896,86 @@ const Draft: React.FC<DraftProps> = ({
   const handleAutoDraft = useCallback(async () => {
     const currentPlayerId = draftState.currentPlayerId || (webSocketDraftState?.CurrentUserId);
     const userIsCurrentPlayer = currentPlayerId === user?.id;
-    
+
     if (!user?.league?.id || !userIsCurrentPlayer) {
       console.log('❌ Cannot auto-draft: league ID:', user?.league?.id, 'isCurrentPlayer:', userIsCurrentPlayer);
       return;
     }
-    
-    console.log('🤖 ===== STARTING AUTO-DRAFT PROCESS (Phase 1) =====');
+
+    console.log('🤖 ===== STARTING SMART AUTO-DRAFT PROCESS =====');
     console.log('🤖 User ID:', user.id, 'League ID:', user.league.id);
-    
+
     try {
-      const neededPositions = ['QB', 'RB', 'WR', 'TE', 'SP', 'CP', '1B', '2B', '3B', 'SS', 'C', 'DH', 'OF', 'PG', 'SG', 'SF', 'PF'];
-      const availablePlayersForAutoDraft = availablePlayers.filter(player =>
-        neededPositions.includes(player.position)
+      // Get available players with projections
+      const availablePlayersWithProjections = await draftOperations.getAvailablePlayers();
+      console.log('🤖 Available players with projections:', availablePlayersWithProjections.length);
+
+      // Get all currently drafted players for context
+      const allDraftedPlayers = draftOperations.allDraftedPlayers;
+      console.log('🤖 Total drafted players:', allDraftedPlayers.length);
+
+      // Get needed positions for current user
+      const neededPositions = draftOperations.getNeededPositions(user.id);
+      console.log('🤖 Needed positions for user:', neededPositions);
+
+      // Use the improved draft service algorithm
+      const selectedPlayer = draftService.selectBestAvailablePlayer(
+        availablePlayersWithProjections,
+        neededPositions,
+        allDraftedPlayers
       );
-      
-      console.log('🤖 Available players for auto-draft:', availablePlayersForAutoDraft.length);
-      
-      if (availablePlayersForAutoDraft.length > 0) {
-        const randomPlayer = availablePlayersForAutoDraft[Math.floor(Math.random() * availablePlayersForAutoDraft.length)];
-        console.log('🤖 Selected random player for auto-draft:', randomPlayer.name);
-        
+
+      if (selectedPlayer) {
+        console.log(`🤖 Smart auto-draft selected: ${selectedPlayer.name} (${selectedPlayer.position}, ${selectedPlayer.league})`);
+
         if (webSocketActions.isConnected() && user?.league?.id) {
           // Use WebSocket for auto-draft
-          await webSocketActions.makePick(user.league.id, randomPlayer, true);
+          await webSocketActions.makePick(user.league.id, selectedPlayer, true);
         } else {
           // Fallback to REST API with auto-draft flag
-          await draftOperations.makeDraftPick(randomPlayer);
-          
+          await draftOperations.makeDraftPick(selectedPlayer);
+
           // Notifications handled by WebSocket onPlayerDrafted event
-          draftPlayer(randomPlayer, true);
-          
+          draftPlayer(selectedPlayer, true);
+
           // Advance turn manually
           draftStateActions.advanceTurn();
           timerActions.resetTimer(15);
         }
-        
-        console.log('🤖 Auto-draft completed (Phase 1)');
+
+        console.log('🤖 Smart auto-draft completed successfully');
       } else {
-        console.log('🤖 No available players for auto-draft!');
+        console.log('🤖 No available players found for auto-draft!');
         notificationActions.notifyError('No available players for auto-draft');
       }
     } catch (error) {
-      console.error('Auto-draft failed:', error);
+      console.error('Smart auto-draft failed:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       notificationActions.notifyError(`Auto-draft failed: ${errorMessage}`);
+
+      // Fallback to simple random selection if smart draft fails
+      console.log('🤖 Falling back to simple random selection...');
+      const simpleAvailable = availablePlayers.filter(player =>
+        ['QB', 'RB', 'WR', 'TE', 'SP', 'CP', '1B', '2B', '3B', 'SS', 'C', 'DH', 'OF', 'PG', 'SG', 'SF', 'PF'].includes(player.position)
+      );
+
+      if (simpleAvailable.length > 0) {
+        const randomPlayer = simpleAvailable[Math.floor(Math.random() * simpleAvailable.length)];
+        console.log('🤖 Fallback selected:', randomPlayer.name);
+
+        try {
+          if (webSocketActions.isConnected() && user?.league?.id) {
+            await webSocketActions.makePick(user.league.id, randomPlayer, true);
+          } else {
+            await draftOperations.makeDraftPick(randomPlayer);
+            draftPlayer(randomPlayer, true);
+            draftStateActions.advanceTurn();
+            timerActions.resetTimer(15);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback auto-draft also failed:', fallbackError);
+        }
+      }
     }
   }, [user?.league?.id, user?.id, draftState.currentPlayerId, webSocketDraftState?.CurrentUserId, availablePlayers, webSocketActions, draftOperations, notificationActions, addDraftToast, draftPlayer, draftStateActions, timerActions]);
 
@@ -1075,55 +1121,35 @@ const Draft: React.FC<DraftProps> = ({
           {!isDraftCreated && (
             <div className="draft-setup">
               <p>No draft created yet for this league.</p>
-              <button onClick={createDraft} className="begin-draft-btn">
+              <button type="button" onClick={createDraft} className="begin-draft-btn">
                 Create Draft
               </button>
             </div>
           )}
           
-          {isDraftCreated && !draftState.isActive && !timerState.isActive && !webSocketDraftState && !legacyDraftState?.isCompleted && (
+          {isDraftCreated && !draftState.isActive && !timerState.isActive && !webSocketDraftState && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <div className="draft-management-buttons">
-                <button onClick={startDraftSession} className="start-draft-btn">
+                <button type="button" onClick={startDraftSession} className="start-draft-btn">
                   Start Draft
                 </button>
-                <button onClick={handleResetDraft} className="draft-control-btn reset">
+                <button type="button" onClick={handleResetDraft} className="draft-control-btn reset">
                   Reset Draft
                 </button>
-                {!legacyDraftState?.isCompleted && (
-                  draftOperations.isAutoDrafting ? (
-                    <button onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
-                      Stop Auto Draft
-                    </button>
-                  ) : (
-                    <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-                      Auto Draft
-                    </button>
-                  )
+                {draftOperations.isAutoDrafting ? (
+                  <button type="button" onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
+                    Stop Auto Draft
+                  </button>
+                ) : (
+                  <button type="button" onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                    Auto Draft
+                  </button>
                 )}
               </div>
             </div>
           )}
           
-          {isDraftCreated && (draftState.isCompleted || legacyDraftState?.isCompleted) && (
-            <div className="draft-completed">
-              <p>✅ Draft has been completed!</p>
-              <p>All teams have finished selecting their players.</p>
-              <p>You can now pick up free agents to improve your team!</p>
-              <div className="draft-management-buttons">
-                <button onClick={handleResetDraft} className="draft-control-btn reset">
-                  Reset Draft
-                </button>
-                <button 
-                  className="free-agents-btn"
-                  onClick={() => navigate('/free-agents')}
-                >
-                  View Free Agents
-                </button>
-              </div>
-            </div>
-          )}
           
           {(draftState.isActive || timerState.isActive || webSocketDraftState) && (
             <div className="draft-active">
@@ -1138,32 +1164,28 @@ const Draft: React.FC<DraftProps> = ({
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
               
-              {/* Phase 2 Redesign: Draft Progress Bar - Only show when draft is not completed */}
-              {!draftState?.isCompleted && !legacyDraftState?.isCompleted && (
-                <DraftProgressBar
-                  completionPercentage={draftProgress.getDraftCompletionPercentage()}
-                  currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
-                  totalRounds={leagueConfig?.totalKeeperSlots || 15}
-                  currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
-                  totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * (leagueConfig?.totalKeeperSlots || 15)}
-                  picksRemaining={draftProgress.getPicksRemaining()}
-                />
-              )}
-              
+              {/* Phase 2 Redesign: Draft Progress Bar */}
+              <DraftProgressBar
+                completionPercentage={draftProgress.getDraftCompletionPercentage()}
+                currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
+                totalRounds={leagueConfig?.totalKeeperSlots || 15}
+                currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
+                totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * (leagueConfig?.totalKeeperSlots || 15)}
+                picksRemaining={draftProgress.getPicksRemaining()}
+              />
+
               <div className="draft-management-buttons">
-                <button onClick={handleResetDraft} className="draft-control-btn reset">
+                <button type="button" onClick={handleResetDraft} className="draft-control-btn reset">
                   Reset Draft
                 </button>
-                {!draftState?.isCompleted && (
-                  draftOperations.isAutoDrafting ? (
-                    <button onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
-                      Stop Auto Draft
-                    </button>
-                  ) : (
-                    <button onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
-                      Auto Draft
-                    </button>
-                  )
+                {draftOperations.isAutoDrafting ? (
+                  <button type="button" onClick={draftOperations.stopAutoDrafting} className="stop-auto-draft-btn">
+                    Stop Auto Draft
+                  </button>
+                ) : (
+                  <button type="button" onClick={draftOperations.startAutoDraftingForAllTeams} className="auto-draft-btn">
+                    Auto Draft
+                  </button>
                 )}
               </div>
             </div>

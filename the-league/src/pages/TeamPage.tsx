@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Player } from '../types/Player';
 import TimerDisplay from '../components/TimerDisplay';
@@ -7,6 +7,7 @@ import LazyLoadFallback from '../components/LazyLoadFallback';
 import './MyTeam.css';
 import { apiRequest } from '../config/api';
 import { cleanPlayerName } from '../utils/playerNameUtils';
+import signalRService from '../services/signalRService';
 
 // Lazy load modal since it's only needed when users click on players
 const PlayerInfoModal = lazy(() => import('../components/PlayerInfoModal'));
@@ -114,6 +115,45 @@ const TeamPage: React.FC<TeamPageProps> = ({
     stats: {} // Empty stats object to match Player interface
   });
 
+  // Refetch roster data (extracted as callback for reuse)
+  const refetchRosterData = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      let leagueId: number | undefined;
+
+      // Determine league ID
+      if (currentUser && currentUser.id.toString() === userId) {
+        leagueId = currentUser.league?.id;
+      } else if (teamUser?.league?.id) {
+        leagueId = teamUser.league.id;
+      }
+
+      if (leagueId) {
+        console.log('🔄 Refetching roster data for user', userId, 'in league', leagueId);
+        const rosterResponse = await apiRequest(`/api/userroster/user/${userId}/league/${leagueId}`);
+        if (rosterResponse.ok) {
+          const rosterData = await rosterResponse.json();
+          const userRosterPlayers = rosterData?.map((player: any) => ({
+            id: player.id,
+            playerName: cleanPlayerName(player.playerName),
+            playerPosition: player.playerPosition,
+            playerTeam: player.playerTeam,
+            playerLeague: player.playerLeague,
+            pickNumber: player.pickNumber,
+            round: player.round,
+            draftedAt: player.draftedAt,
+            lineupPosition: player.lineupPosition
+          })) || [];
+          setUserRoster(userRosterPlayers);
+          console.log('✅ Roster data refetched successfully', userRosterPlayers.length, 'players');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error refetching roster data:', error);
+    }
+  }, [userId, currentUser, teamUser]);
+
   // Use draft context data if available, otherwise use API data
   const playersToUse = draftedPlayersFromContext.length > 0 ? draftedPlayersFromContext : userRoster.map(convertToPlayer);
 
@@ -210,7 +250,31 @@ const TeamPage: React.FC<TeamPageProps> = ({
     };
 
     fetchTeamUser();
-  }, [userId, currentUser]);
+  }, [userId, currentUser, state.draftResetTrigger]); // Added draftResetTrigger to dependencies
+
+  // Listen for draft reset events via SignalR for real-time updates
+  useEffect(() => {
+    if (!currentUser?.league?.id) return;
+
+    const handleDraftReset = (data: any) => {
+      console.log('🔄 TeamPage: Draft reset event received for league', currentUser.league?.id, data);
+      // Refetch roster data when draft is reset
+      setTimeout(() => {
+        console.log('🔄 TeamPage: Triggering roster refetch after draft reset');
+        refetchRosterData();
+      }, 1000); // Small delay to ensure backend reset completes
+    };
+
+    console.log('🔗 TeamPage: Subscribing to draft reset events for league', currentUser.league.id);
+    // Subscribe to draft reset events
+    signalRService.onDraftReset(handleDraftReset);
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🔌 TeamPage: Unsubscribing from draft reset events');
+      signalRService.offDraftReset(handleDraftReset);
+    };
+  }, [currentUser?.league?.id, refetchRosterData]);
 
   // Function to organize players into roster slots using lineup position
   const organizeRoster = (players: Player[], positions: string[]) => {

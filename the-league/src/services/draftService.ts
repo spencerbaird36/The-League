@@ -222,7 +222,7 @@ class DraftService {
     } as Player;
   }
 
-  // Auto-draft logic - select best available player based on projected points
+  // Enhanced auto-draft logic - smart position prioritization with multi-league balancing
   selectBestAvailablePlayer(
     availablePlayers: Player[],
     neededPositions: string[],
@@ -242,51 +242,106 @@ class DraftService {
       return player.projection?.fantasyPoints || 0;
     };
 
-    // Priority positions to target first: SS, OF, PG, RB, WR
-    const priorityPositions = ['SS', 'OF', 'PG', 'RB', 'WR'];
+    // Count current draft distribution by league
+    const leagueCounts = draftedPlayers.reduce((counts, player) => {
+      counts[player.league] = (counts[player.league] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
 
-    // Check if we should prioritize filling needed positions first
+    // Updated priority positions: RB, WR, SF, C, SS, 2B first
+    const highPriorityPositions = ['RB', 'WR', 'SF', 'C', 'SS', '2B'];
+    const mediumPriorityPositions = ['QB', 'TE', 'OF', 'SP', 'CP', 'PG', 'SG', 'PF'];
+
+    // Helper function to determine league balance priority
+    const getLeagueBalancePriority = (player: Player): number => {
+      const currentCount = leagueCounts[player.league] || 0;
+      const totalDrafted = Object.values(leagueCounts).reduce((sum, count) => sum + count, 0);
+
+      if (totalDrafted === 0) return 1; // First few picks, any league is fine
+
+      // Calculate how underrepresented this league is
+      const expectedPercentage = 0.33; // Aim for roughly equal distribution
+      const actualPercentage = currentCount / totalDrafted;
+      const underrepresentation = expectedPercentage - actualPercentage;
+
+      // Return priority score (higher = more needed)
+      return Math.max(0, underrepresentation * 3) + 1;
+    };
+
+    // Helper function to calculate combined score
+    const getPlayerScore = (player: Player): number => {
+      const fantasyPoints = getProjectedPoints(player);
+      const leagueBalance = getLeagueBalancePriority(player);
+
+      // Position priority multiplier
+      let positionMultiplier = 1.0;
+      if (highPriorityPositions.includes(player.position)) {
+        positionMultiplier = 1.5; // 50% bonus for high priority positions
+      } else if (mediumPriorityPositions.includes(player.position)) {
+        positionMultiplier = 1.2; // 20% bonus for medium priority positions
+      }
+
+      // Combine fantasy points, position priority, and league balance
+      return fantasyPoints * positionMultiplier * leagueBalance;
+    };
+
+    console.log('🎯 Auto-draft analysis:');
+    console.log('📊 League distribution:', leagueCounts);
+
+    // Phase 1: Check if we have specific position needs
     if (neededPositions.length > 0) {
       const neededPlayers = undraftedPlayers.filter(player =>
         neededPositions.includes(player.position)
       );
 
       if (neededPlayers.length > 0) {
-        // Within needed positions, prioritize our target positions first
-        const neededPriorityPlayers = neededPlayers.filter(player =>
-          priorityPositions.includes(player.position)
-        );
+        // Sort needed players by combined score (fantasy points + position priority + league balance)
+        neededPlayers.sort((a, b) => getPlayerScore(b) - getPlayerScore(a));
 
-        if (neededPriorityPlayers.length > 0) {
-          // Sort by projected points (highest first) and take the best
-          neededPriorityPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
-          console.log(`🎯 Auto-drafting priority position ${neededPriorityPlayers[0].position}: ${neededPriorityPlayers[0].name} (${getProjectedPoints(neededPriorityPlayers[0])} pts)`);
-          return neededPriorityPlayers[0];
-        }
-
-        // If no priority positions in needed, take best available needed position
-        neededPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
-        console.log(`🎯 Auto-drafting needed position ${neededPlayers[0].position}: ${neededPlayers[0].name} (${getProjectedPoints(neededPlayers[0])} pts)`);
-        return neededPlayers[0];
+        const selectedPlayer = neededPlayers[0];
+        console.log(`🎯 Auto-drafting NEEDED position ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
+        console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+        return selectedPlayer;
       }
     }
 
-    // If no specific position needs, prioritize our target positions
-    const availablePriorityPlayers = undraftedPlayers.filter(player =>
-      priorityPositions.includes(player.position)
+    // Phase 2: No specific needs, prioritize high-value positions with league balance
+    const highPriorityPlayers = undraftedPlayers.filter(player =>
+      highPriorityPositions.includes(player.position)
     );
 
-    if (availablePriorityPlayers.length > 0) {
-      // Sort by projected points (highest first) and take the best
-      availablePriorityPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
-      console.log(`🎯 Auto-drafting priority position ${availablePriorityPlayers[0].position}: ${availablePriorityPlayers[0].name} (${getProjectedPoints(availablePriorityPlayers[0])} pts)`);
-      return availablePriorityPlayers[0];
+    if (highPriorityPlayers.length > 0) {
+      // Sort by combined score
+      highPriorityPlayers.sort((a, b) => getPlayerScore(b) - getPlayerScore(a));
+
+      const selectedPlayer = highPriorityPlayers[0];
+      console.log(`🎯 Auto-drafting HIGH PRIORITY position ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
+      console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+      return selectedPlayer;
     }
 
-    // Fallback: draft the highest projected points player across all remaining sports
-    undraftedPlayers.sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a));
-    console.log(`🎯 Auto-drafting best remaining player: ${undraftedPlayers[0].name} (${undraftedPlayers[0].position}, ${getProjectedPoints(undraftedPlayers[0])} pts)`);
-    return undraftedPlayers[0];
+    // Phase 3: Medium priority positions
+    const mediumPriorityPlayers = undraftedPlayers.filter(player =>
+      mediumPriorityPositions.includes(player.position)
+    );
+
+    if (mediumPriorityPlayers.length > 0) {
+      // Sort by combined score
+      mediumPriorityPlayers.sort((a, b) => getPlayerScore(b) - getPlayerScore(a));
+
+      const selectedPlayer = mediumPriorityPlayers[0];
+      console.log(`🎯 Auto-drafting MEDIUM PRIORITY position ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
+      console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+      return selectedPlayer;
+    }
+
+    // Phase 4: Fallback to best available player overall with league balance
+    undraftedPlayers.sort((a, b) => getPlayerScore(b) - getPlayerScore(a));
+
+    const selectedPlayer = undraftedPlayers[0];
+    console.log(`🎯 Auto-drafting BEST REMAINING ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
+    console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+    return selectedPlayer;
   }
 
   // Get available players for a draft
