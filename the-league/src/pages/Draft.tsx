@@ -1138,15 +1138,17 @@ const Draft: React.FC<DraftProps> = ({
                 <p className="your-turn-notification">🎯 It's your turn to pick!</p>
               )}
               
-              {/* Phase 2 Redesign: Draft Progress Bar */}
-              <DraftProgressBar
-                completionPercentage={draftProgress.getDraftCompletionPercentage()}
-                currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
-                totalRounds={leagueConfig?.totalKeeperSlots || 15}
-                currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
-                totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * (leagueConfig?.totalKeeperSlots || 15)}
-                picksRemaining={draftProgress.getPicksRemaining()}
-              />
+              {/* Phase 2 Redesign: Draft Progress Bar - Only show when draft is not completed */}
+              {!draftState?.isCompleted && !legacyDraftState?.isCompleted && (
+                <DraftProgressBar
+                  completionPercentage={draftProgress.getDraftCompletionPercentage()}
+                  currentRound={webSocketDraftState?.CurrentRound || draftState.currentRound || legacyDraftState?.currentRound || 1}
+                  totalRounds={leagueConfig?.totalKeeperSlots || 15}
+                  currentPick={(webSocketDraftState?.CurrentTurn || draftState.currentTurn || legacyDraftState?.currentTurn || 0) + 1}
+                  totalPicks={(legacyDraftState?.draftOrder?.length || draftState.draftOrder.length || 0) * (leagueConfig?.totalKeeperSlots || 15)}
+                  picksRemaining={draftProgress.getPicksRemaining()}
+                />
+              )}
               
               <div className="draft-management-buttons">
                 <button onClick={handleResetDraft} className="draft-control-btn reset">
@@ -1173,7 +1175,27 @@ const Draft: React.FC<DraftProps> = ({
 
       {/* Draft Main Content Area */}
       <section className="draft-main-content">
-        
+
+        {/* Phase 2 Redesign: Draft Board Visualization - Always visible */}
+        <section className="draft-board-section">
+          <div className="draft-board-container">
+            {isDraftCreated && legacyDraftState && (
+              <DraftBoard
+                board={draftProgress.getDraftBoard()}
+                leagueMembers={state.leagueMembers}
+                currentUser={user ? {
+                  id: user.id,
+                  username: user.username,
+                  firstName: user.firstName,
+                  lastName: user.lastName
+                } : undefined}
+                onSlotClick={handleDraftSlotClick}
+                className="main-draft-board"
+              />
+            )}
+          </div>
+        </section>
+
         {/* Show content only when draft is not completed */}
         {!draftState.isCompleted && !legacyDraftState?.isCompleted ? (
           <>
@@ -1209,26 +1231,6 @@ const Draft: React.FC<DraftProps> = ({
               onDraftAction={handleCommissionerAction}
             />
 
-            {/* Phase 2 Redesign: Draft Board Visualization - moved above filters */}
-            <section className="draft-board-section">
-              <div className="draft-board-container">
-                {isDraftCreated && legacyDraftState && (
-                  <DraftBoard
-                    board={draftProgress.getDraftBoard()}
-                    leagueMembers={state.leagueMembers}
-                    currentUser={user ? {
-                      id: user.id,
-                      username: user.username,
-                      firstName: user.firstName,
-                      lastName: user.lastName
-                    } : undefined}
-                    onSlotClick={handleDraftSlotClick}
-                    className="main-draft-board"
-                  />
-                )}
-              </div>
-            </section>
-            
             {/* Filters Section */}
             <section className="filters-section">
               <div className="filters-header">
@@ -1458,7 +1460,12 @@ const Draft: React.FC<DraftProps> = ({
               </div>
             </section>
           </>
-        ) : null}
+        ) : (
+          <div className="draft-completed-message">
+            <h2>Draft Complete!</h2>
+            <p>The keeper draft has been completed. You can view the draft results below.</p>
+          </div>
+        )}
       </section>
 
       {/* Player Info Modal */}

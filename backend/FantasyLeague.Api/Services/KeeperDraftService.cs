@@ -190,6 +190,12 @@ namespace FantasyLeague.Api.Services
 
         public async Task<bool> ShouldPromptForRegularDraftsAsync(int leagueId)
         {
+            // TEMPORARY: Always return false to disable regular draft prompts in production
+            // All drafts will use keeper-style logic until regular draft functionality is implemented
+            return false;
+
+            // Original logic commented out until regular drafts are ready:
+            /*
             // Check if keeper draft is completed
             var keeperDraft = await _context.Drafts
                 .FirstOrDefaultAsync(d => d.LeagueId == leagueId && d.DraftType == DraftType.Keeper && d.IsCompleted);
@@ -208,25 +214,33 @@ namespace FantasyLeague.Api.Services
                 .ToListAsync();
 
             var selectedSports = config.GetSelectedSports();
-            
+
             // Should prompt if there are fewer regular drafts than selected sports
             return existingRegularDrafts.Count < selectedSports.Count;
+            */
         }
 
         public async Task<List<string>> GetPendingRegularDraftSportsAsync(int leagueId)
         {
+            // TEMPORARY: Always return empty list to disable regular draft sports in production
+            // All drafts will use keeper-style logic until regular draft functionality is implemented
+            return new List<string>();
+
+            // Original logic commented out until regular drafts are ready:
+            /*
             var config = await _configurationService.GetConfigurationAsync(leagueId);
             if (config == null)
                 return new List<string>();
 
             var selectedSports = config.GetSelectedSports();
-            
+
             var existingDraftSports = await _context.Drafts
                 .Where(d => d.LeagueId == leagueId && d.DraftType == DraftType.Regular)
                 .Select(d => d.SportType)
                 .ToListAsync();
 
             return selectedSports.Where(sport => !existingDraftSports.Contains(sport)).ToList();
+            */
         }
 
         public async Task<List<DraftPick>> GetKeeperPicksForUserAsync(int leagueId, int userId)
