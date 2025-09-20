@@ -55,7 +55,10 @@
       "Bash(dotnet test)",
       "Bash(dotnet test:*)",
       "Bash(heroku:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(npm run:*)",
+      "Bash(timeout 30s npm run build)",
+      "Bash(ASPNETCORE_URLS=http://localhost:5001 dotnet run)"
     ],
     "deny": [],
     "ask": []
