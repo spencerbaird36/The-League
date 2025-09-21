@@ -751,10 +751,9 @@ namespace FantasyLeague.Api.Hubs
                     {
                         var currentUserId = snakeSequence[pickIndex];
                         
-                        // Select random available player
-                        var selectedPlayerIndex = random.Next(availablePlayersList.Count);
-                        var selectedPlayer = availablePlayersList[selectedPlayerIndex];
-                        availablePlayersList.RemoveAt(selectedPlayerIndex);
+                        // Select best available player using smart algorithm
+                        var selectedPlayer = SelectBestAvailablePlayer(availablePlayersList, currentUserId, allDraftPicks);
+                        availablePlayersList.Remove(selectedPlayer);
                         
                         var currentRoundIndex = pickIndex / teamCount;
                         var currentPickInRound = pickIndex % teamCount;
@@ -1167,6 +1166,110 @@ namespace FantasyLeague.Api.Hubs
             }
             
             await base.OnDisconnectedAsync(exception);
+        }
+
+        // Smart auto-draft algorithm - prioritizes fantasy points with position bonuses
+        private AutoDraftPlayer SelectBestAvailablePlayer(List<AutoDraftPlayer> availablePlayers, int currentUserId, List<FantasyLeague.Api.Models.DraftPick> draftedPicks)
+        {
+            Console.WriteLine($"🎯 SelectBestAvailablePlayer called for user {currentUserId}, {availablePlayers.Count} available players");
+
+            if (availablePlayers.Count == 0)
+            {
+                throw new InvalidOperationException("No available players for auto-draft");
+            }
+
+            // High priority positions: RB, WR, SF, C, SS, 2B
+            var highPriorityPositions = new[] { "RB", "WR", "SF", "C", "SS", "2B" };
+            var mediumPriorityPositions = new[] { "QB", "TE", "OF", "SP", "CP", "PG", "SG", "PF" };
+
+            // Count league distribution for balance
+            var leagueCounts = draftedPicks
+                .GroupBy(p => p.PlayerLeague)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var totalDrafted = draftedPicks.Count;
+
+            // Calculate score for each player
+            var playerScores = availablePlayers.Select(player => new
+            {
+                Player = player,
+                Score = CalculatePlayerScore(player, leagueCounts, totalDrafted, highPriorityPositions, mediumPriorityPositions)
+            }).ToList();
+
+            // Sort by score (highest first) and log top candidates
+            var sortedPlayers = playerScores.OrderByDescending(ps => ps.Score).ToList();
+
+            Console.WriteLine($"🏆 Top 5 candidates for user {currentUserId}:");
+            for (int i = 0; i < Math.Min(5, sortedPlayers.Count); i++)
+            {
+                var candidate = sortedPlayers[i];
+                Console.WriteLine($"   {i + 1}. {candidate.Player.Name} ({candidate.Player.Position}, {candidate.Player.League}): Score {candidate.Score:F1}");
+            }
+
+            var selectedPlayer = sortedPlayers.First().Player;
+            Console.WriteLine($"🎯 Selected: {selectedPlayer.Name} ({selectedPlayer.Position}, {selectedPlayer.League}) with score {sortedPlayers.First().Score:F1}");
+
+            return selectedPlayer;
+        }
+
+        private double CalculatePlayerScore(AutoDraftPlayer player, Dictionary<string, int> leagueCounts, int totalDrafted, string[] highPriorityPositions, string[] mediumPriorityPositions)
+        {
+            // Get fantasy points (this should be populated from projections)
+            // For now, use a simple fallback based on player data
+            double fantasyPoints = GetFantasyPointsEstimate(player);
+
+            // Fantasy points as primary factor (multiply by 100 to make dominant)
+            double baseScore = fantasyPoints * 100;
+
+            // Position priority bonus (additive)
+            double positionBonus = 0;
+            if (highPriorityPositions.Contains(player.Position))
+            {
+                positionBonus = 50; // 50 point bonus for high priority
+            }
+            else if (mediumPriorityPositions.Contains(player.Position))
+            {
+                positionBonus = 20; // 20 point bonus for medium priority
+            }
+
+            // League balance bonus (smaller impact, max 30 points)
+            double leagueBonus = 0;
+            if (totalDrafted > 0)
+            {
+                var currentCount = leagueCounts.GetValueOrDefault(player.League, 0);
+                var expectedPercentage = 0.33; // Aim for equal distribution
+                var actualPercentage = (double)currentCount / totalDrafted;
+                var underrepresentation = expectedPercentage - actualPercentage;
+                leagueBonus = Math.Min(Math.Max(0, underrepresentation * 30), 30);
+            }
+
+            return baseScore + positionBonus + leagueBonus;
+        }
+
+        private double GetFantasyPointsEstimate(AutoDraftPlayer player)
+        {
+            // This is a simplified estimate. In a full implementation, this would come from projection data
+            // For now, assign rough estimates based on position and league to prioritize better players
+
+            var positionTierMap = new Dictionary<string, double>
+            {
+                // NFL high-value positions
+                { "RB", 180 }, { "WR", 170 }, { "QB", 250 }, { "TE", 120 },
+                // NBA positions
+                { "PG", 180 }, { "SG", 170 }, { "SF", 160 }, { "PF", 150 }, { "C", 140 },
+                // MLB positions
+                { "OF", 160 }, { "SS", 150 }, { "2B", 140 }, { "3B", 135 }, { "1B", 130 },
+                { "C", 125 }, { "SP", 140 }, { "CP", 100 }
+            };
+
+            // Get base value for position, default to 100 if not found
+            double baseValue = positionTierMap.GetValueOrDefault(player.Position, 100);
+
+            // Add some randomness to simulate player quality differences (±30%)
+            var random = new Random(player.Name.GetHashCode()); // Consistent seed based on name
+            double variance = (random.NextDouble() - 0.5) * 0.6; // -30% to +30%
+
+            return baseValue * (1 + variance);
         }
     }
 }
