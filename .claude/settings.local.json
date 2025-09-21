@@ -58,7 +58,10 @@
       "Bash(git branch:*)",
       "Bash(npm run:*)",
       "Bash(timeout 30s npm run build)",
-      "Bash(ASPNETCORE_URLS=http://localhost:5001 dotnet run)"
+      "Bash(ASPNETCORE_URLS=http://localhost:5001 dotnet run)",
+      "Bash(git pull:*)",
+      "Read(//Users/spencerbaird/the-league/**)",
+      "Read(//Users/spencerbaird/**)"
     ],
     "deny": [],
     "ask": []

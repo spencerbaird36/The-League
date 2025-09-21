@@ -228,6 +228,8 @@ class DraftService {
     neededPositions: string[],
     draftedPlayers: Player[]
   ): Player | null {
+    console.log('🤖 ===== DRAFT SERVICE: selectBestAvailablePlayer CALLED =====');
+    console.log(`🤖 Available players: ${availablePlayers.length}, Needed positions: ${neededPositions.length}, Drafted players: ${draftedPlayers.length}`);
     // Get players that haven't been drafted
     const undraftedPlayers = availablePlayers.filter(player =>
       !draftedPlayers.some(drafted => drafted.id === player.id)
@@ -239,7 +241,8 @@ class DraftService {
 
     // Helper function to get player's projected fantasy points (default to 0 if missing)
     const getProjectedPoints = (player: Player): number => {
-      return player.projection?.fantasyPoints || 0;
+      const points = player.projection?.fantasyPoints || 0;
+      return points;
     };
 
     // Count current draft distribution by league
@@ -273,20 +276,76 @@ class DraftService {
       const fantasyPoints = getProjectedPoints(player);
       const leagueBalance = getLeagueBalancePriority(player);
 
-      // Position priority multiplier
-      let positionMultiplier = 1.0;
+      // Fantasy points should be the PRIMARY factor
+      // Base score heavily weighted on fantasy points (multiply by 100 to make it dominant)
+      const baseScore = fantasyPoints * 100;
+
+      // Position priority bonus (additive, not multiplicative)
+      let positionBonus = 0;
       if (highPriorityPositions.includes(player.position)) {
-        positionMultiplier = 1.5; // 50% bonus for high priority positions
+        positionBonus = 50; // 50 point bonus for high priority positions
       } else if (mediumPriorityPositions.includes(player.position)) {
-        positionMultiplier = 1.2; // 20% bonus for medium priority positions
+        positionBonus = 20; // 20 point bonus for medium priority positions
       }
 
-      // Combine fantasy points, position priority, and league balance
-      return fantasyPoints * positionMultiplier * leagueBalance;
+      // League balance bonus (smaller additive bonus, max 30 points)
+      const leagueBonus = Math.min((leagueBalance - 1) * 10, 30);
+
+      // Combine: fantasy points (primary) + position bonus + league balance bonus
+      return baseScore + positionBonus + leagueBonus;
     };
 
     console.log('🎯 Auto-draft analysis:');
     console.log('📊 League distribution:', leagueCounts);
+
+    // Debug: Log fantasy points distribution
+    const playersWithPoints = undraftedPlayers.filter(p => getProjectedPoints(p) > 0);
+    const playersWithoutPoints = undraftedPlayers.filter(p => getProjectedPoints(p) === 0);
+
+    console.log(`📊 Fantasy points distribution: ${playersWithPoints.length} players with points, ${playersWithoutPoints.length} without`);
+
+    // Debug: Log top 10 players by fantasy points
+    const topPlayersByFantasyPoints = undraftedPlayers
+      .sort((a, b) => getProjectedPoints(b) - getProjectedPoints(a))
+      .slice(0, 10);
+    console.log('🏆 Top 10 players by fantasy points:');
+    topPlayersByFantasyPoints.forEach((player, index) => {
+      console.log(`   ${index + 1}. ${player.name} (${player.position}, ${player.league}): ${getProjectedPoints(player)} fantasy points`);
+    });
+
+    // Check specifically for Caleb Martin to debug why he might be selected
+    const calebMartin = undraftedPlayers.find(p => p.name.toLowerCase().includes('caleb martin'));
+    if (calebMartin) {
+      console.log('🏀 Caleb Martin analysis:');
+      console.log(`   Name: ${calebMartin.name}`);
+      console.log(`   Position: ${calebMartin.position}`);
+      console.log(`   League: ${calebMartin.league}`);
+      console.log(`   Fantasy Points: ${getProjectedPoints(calebMartin)}`);
+      console.log(`   Total Score: ${getPlayerScore(calebMartin)}`);
+      console.log(`   Full projection:`, calebMartin.projection);
+      console.log(`   Is high priority position? ${highPriorityPositions.includes(calebMartin.position)}`);
+    }
+
+    // If most players have 0 fantasy points, there might be an issue with projection data
+    if (playersWithoutPoints.length > playersWithPoints.length) {
+      console.warn('⚠️  WARNING: Most players have 0 fantasy points! Check projection data.');
+
+      // If ALL players have 0 fantasy points, we need to fall back to a simpler algorithm
+      if (playersWithPoints.length === 0) {
+        console.error('🚨 CRITICAL: NO PLAYERS HAVE FANTASY POINTS! Using fallback selection...');
+
+        // Fallback: Just pick the first high-priority position player alphabetically
+        // This is better than random selection based on tiny bonuses
+        const fallbackPlayer = undraftedPlayers
+          .filter(p => highPriorityPositions.includes(p.position))
+          .sort((a, b) => a.name.localeCompare(b.name))[0];
+
+        if (fallbackPlayer) {
+          console.log(`🔄 Fallback selection: ${fallbackPlayer.name} (${fallbackPlayer.position})`);
+          return fallbackPlayer;
+        }
+      }
+    }
 
     // Phase 1: Check if we have specific position needs
     if (neededPositions.length > 0) {
@@ -301,6 +360,14 @@ class DraftService {
         const selectedPlayer = neededPlayers[0];
         console.log(`🎯 Auto-drafting NEEDED position ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
         console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+        console.log(`   🔧 Full projection data:`, selectedPlayer.projection);
+
+        // Show top 5 needed players for comparison
+        console.log(`   🏆 Top 5 needed players of this position:`);
+        neededPlayers.slice(0, 5).forEach((player, index) => {
+          console.log(`      ${index + 1}. ${player.name}: ${getProjectedPoints(player)} fantasy points (Score: ${getPlayerScore(player).toFixed(1)})`);
+        });
+
         return selectedPlayer;
       }
     }
@@ -317,6 +384,14 @@ class DraftService {
       const selectedPlayer = highPriorityPlayers[0];
       console.log(`🎯 Auto-drafting HIGH PRIORITY position ${selectedPlayer.position} (${selectedPlayer.league}): ${selectedPlayer.name}`);
       console.log(`   📈 Fantasy Points: ${getProjectedPoints(selectedPlayer)} | Score: ${getPlayerScore(selectedPlayer).toFixed(1)}`);
+      console.log(`   🔧 Full projection data:`, selectedPlayer.projection);
+
+      // Show top 5 high priority players for comparison
+      console.log(`   🏆 Top 5 high priority players:`);
+      highPriorityPlayers.slice(0, 5).forEach((player, index) => {
+        console.log(`      ${index + 1}. ${player.name}: ${getProjectedPoints(player)} fantasy points (Score: ${getPlayerScore(player).toFixed(1)})`);
+      });
+
       return selectedPlayer;
     }
 

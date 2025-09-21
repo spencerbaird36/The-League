@@ -88,6 +88,7 @@ namespace FantasyLeague.Api.Hubs
             public string Position { get; set; } = string.Empty;
             public string Team { get; set; } = string.Empty;
             public string League { get; set; } = string.Empty;
+            public double FantasyPoints { get; set; } = 0.0;
         }
 
         private async Task<List<AutoDraftPlayer>> GetAvailablePlayersFromAPI(string leagueId, FantasyLeagueContext context)
@@ -105,13 +106,29 @@ namespace FantasyLeague.Api.Hubs
                 // Convert the PlayerPoolService response to AutoDraftPlayer format
                 var availablePlayers = availablePlayersResponse.Select(p => {
                     var playerObj = p as dynamic;
+
+                    // Extract fantasy points from projections
+                    double fantasyPoints = 0.0;
+                    try {
+                        if (playerObj.fantasyPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.fantasyPoints);
+                        } else if (playerObj.projectedPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.projectedPoints);
+                        } else if (playerObj.projection?.fantasyPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.projection.fantasyPoints);
+                        }
+                    } catch {
+                        fantasyPoints = 0.0; // Fallback to 0 if parsing fails
+                    }
+
                     return new AutoDraftPlayer
                     {
                         Id = playerObj.id?.ToString() ?? "",
                         Name = playerObj.name?.ToString() ?? "",
                         Position = playerObj.position?.ToString() ?? "",
                         Team = playerObj.team?.ToString() ?? "",
-                        League = playerObj.league?.ToString() ?? ""
+                        League = playerObj.league?.ToString() ?? "",
+                        FantasyPoints = fantasyPoints
                     };
                 }).ToList();
                 
@@ -143,13 +160,29 @@ namespace FantasyLeague.Api.Hubs
                 // Convert the PlayerPoolService response to AutoDraftPlayer format
                 var availablePlayers = availablePlayersResponse.Select(p => {
                     var playerObj = p as dynamic;
+
+                    // Extract fantasy points from projections
+                    double fantasyPoints = 0.0;
+                    try {
+                        if (playerObj.fantasyPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.fantasyPoints);
+                        } else if (playerObj.projectedPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.projectedPoints);
+                        } else if (playerObj.projection?.fantasyPoints != null) {
+                            fantasyPoints = Convert.ToDouble(playerObj.projection.fantasyPoints);
+                        }
+                    } catch {
+                        fantasyPoints = 0.0; // Fallback to 0 if parsing fails
+                    }
+
                     return new AutoDraftPlayer
                     {
                         Id = playerObj.id?.ToString() ?? "",
                         Name = playerObj.name?.ToString() ?? "",
                         Position = playerObj.position?.ToString() ?? "",
                         Team = playerObj.team?.ToString() ?? "",
-                        League = playerObj.league?.ToString() ?? ""
+                        League = playerObj.league?.ToString() ?? "",
+                        FantasyPoints = fantasyPoints
                     };
                 }).ToList();
                 
@@ -1203,20 +1236,19 @@ namespace FantasyLeague.Api.Hubs
             for (int i = 0; i < Math.Min(5, sortedPlayers.Count); i++)
             {
                 var candidate = sortedPlayers[i];
-                Console.WriteLine($"   {i + 1}. {candidate.Player.Name} ({candidate.Player.Position}, {candidate.Player.League}): Score {candidate.Score:F1}");
+                Console.WriteLine($"   {i + 1}. {candidate.Player.Name} ({candidate.Player.Position}, {candidate.Player.League}): Fantasy Points {candidate.Player.FantasyPoints:F1}, Score {candidate.Score:F1}");
             }
 
             var selectedPlayer = sortedPlayers.First().Player;
-            Console.WriteLine($"🎯 Selected: {selectedPlayer.Name} ({selectedPlayer.Position}, {selectedPlayer.League}) with score {sortedPlayers.First().Score:F1}");
+            Console.WriteLine($"🎯 Selected: {selectedPlayer.Name} ({selectedPlayer.Position}, {selectedPlayer.League}) - Fantasy Points: {selectedPlayer.FantasyPoints:F1}, Score: {sortedPlayers.First().Score:F1}");
 
             return selectedPlayer;
         }
 
         private double CalculatePlayerScore(AutoDraftPlayer player, Dictionary<string, int> leagueCounts, int totalDrafted, string[] highPriorityPositions, string[] mediumPriorityPositions)
         {
-            // Get fantasy points (this should be populated from projections)
-            // For now, use a simple fallback based on player data
-            double fantasyPoints = GetFantasyPointsEstimate(player);
+            // Get real fantasy points from player data, with fallback to estimate if needed
+            double fantasyPoints = player.FantasyPoints > 0 ? player.FantasyPoints : GetFantasyPointsEstimate(player);
 
             // Fantasy points as primary factor (multiply by 100 to make dominant)
             double baseScore = fantasyPoints * 100;
