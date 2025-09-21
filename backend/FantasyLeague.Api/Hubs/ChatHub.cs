@@ -725,6 +725,10 @@ namespace FantasyLeague.Api.Hubs
 
         public async Task CompleteAutoDraft(string leagueId)
         {
+            Console.WriteLine($"🚀 ENTRY: CompleteAutoDraft called for league {leagueId}");
+            Console.WriteLine($"🔗 Connection ID: {Context.ConnectionId}");
+            Console.WriteLine($"🔗 Connection exists in dictionary: {_connections.ContainsKey(Context.ConnectionId)}");
+
             try
             {
                 Console.WriteLine($"🏁 CompleteAutoDraft called for league {leagueId}");
