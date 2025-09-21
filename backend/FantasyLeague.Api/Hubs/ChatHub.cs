@@ -725,12 +725,14 @@ namespace FantasyLeague.Api.Hubs
 
         public async Task CompleteAutoDraft(string leagueId)
         {
-            Console.WriteLine($"🏁 CompleteAutoDraft called for league {leagueId}");
-            
-            // Verify user is in the league
-            if (_connections.TryGetValue(Context.ConnectionId, out var connection) && 
-                connection.LeagueId == int.Parse(leagueId))
+            try
             {
+                Console.WriteLine($"🏁 CompleteAutoDraft called for league {leagueId}");
+
+                // Verify user is in the league
+                if (_connections.TryGetValue(Context.ConnectionId, out var connection) &&
+                    connection.LeagueId == int.Parse(leagueId))
+                {
                 Console.WriteLine($"✅ Connection found: User {connection.UserId} ({connection.Username}) in league {connection.LeagueId}");
                 
                 var draft = await _context.Drafts
@@ -747,7 +749,9 @@ namespace FantasyLeague.Api.Hubs
                     Console.WriteLine($"🏁 Starting complete auto-draft: {totalPicks} picks completed, {totalPicksNeeded - totalPicks} picks remaining");
                     
                     // Get PlayerPoolService from scoped services (since CompleteAutoDraft runs in scoped context)
+                    Console.WriteLine($"🔍 Getting available players from API...");
                     var availablePlayersList = await GetAvailablePlayersFromAPI(leagueId, _context);
+                    Console.WriteLine($"✅ Got {availablePlayersList.Count} available players");
                     
                     var picksToMake = totalPicksNeeded - totalPicks;
                     Console.WriteLine($"🏁 Will make {picksToMake} picks to complete the draft");
@@ -785,7 +789,9 @@ namespace FantasyLeague.Api.Hubs
                         var currentUserId = snakeSequence[pickIndex];
                         
                         // Select best available player using smart algorithm
+                        Console.WriteLine($"🔍 Selecting best player for user {currentUserId} from {availablePlayersList.Count} available players...");
                         var selectedPlayer = SelectBestAvailablePlayer(availablePlayersList, currentUserId, allDraftPicks);
+                        Console.WriteLine($"✅ Selected: {selectedPlayer.Name} ({selectedPlayer.Position}, {selectedPlayer.League})");
                         availablePlayersList.Remove(selectedPlayer);
                         
                         var currentRoundIndex = pickIndex / teamCount;
@@ -868,6 +874,18 @@ namespace FantasyLeague.Api.Hubs
                 {
                     Error = "UNAUTHORIZED",
                     Message = "You are not authorized to complete auto-draft for this league."
+                });
+            }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ CompleteAutoDraft ERROR: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+
+                await Clients.Caller.SendAsync("DraftPickError", new
+                {
+                    Error = "EXCEPTION",
+                    Message = $"An error occurred during auto-draft: {ex.Message}"
                 });
             }
         }
