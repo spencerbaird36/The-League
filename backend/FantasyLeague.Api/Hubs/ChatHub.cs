@@ -1313,7 +1313,7 @@ namespace FantasyLeague.Api.Hubs
                 { "PG", 180 }, { "SG", 170 }, { "SF", 160 }, { "PF", 150 }, { "C", 140 },
                 // MLB positions
                 { "OF", 160 }, { "SS", 150 }, { "2B", 140 }, { "3B", 135 }, { "1B", 130 },
-                { "C", 125 }, { "SP", 140 }, { "CP", 100 }
+                { "Catcher", 125 }, { "SP", 140 }, { "CP", 100 }
             };
 
             // Get base value for position, default to 100 if not found
