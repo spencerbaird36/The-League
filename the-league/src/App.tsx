@@ -20,6 +20,8 @@ import TeamPage from './pages/TeamPage';
 import Chat from './pages/Chat';
 import LeagueSettings from './pages/LeagueSettings';
 import AdminDashboard from './pages/AdminDashboard';
+import GamesAccordion from './components/Games/GamesAccordion';
+import BetSlip from './components/BetSlip/BetSlip';
 
 interface League {
   id: number;
@@ -605,13 +607,22 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="App">
-      <Navigation 
-        isAuthenticated={isAuthenticated} 
-        user={user} 
-        login={login} 
-        logout={logout} 
+      <Navigation
+        isAuthenticated={isAuthenticated}
+        user={user}
+        login={login}
+        logout={logout}
         onUserUpdate={registerAndLogin}
       />
+      {isAuthenticated && (
+        <>
+          <GamesAccordion onBetPlaced={() => {
+            // Force refresh of BetSlip when a bet is placed
+            window.dispatchEvent(new CustomEvent('betPlaced'));
+          }} />
+          <BetSlip />
+        </>
+      )}
         <Routes>
           <Route path="/" element={
             <Home 

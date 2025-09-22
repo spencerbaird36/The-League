@@ -212,38 +212,15 @@ namespace FantasyLeague.Api.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var wallet = await GetOrCreateWalletAsync(userId);
-
-                if (wallet.TokenBalance < amount)
-                    return false;
-
-                var balanceBefore = wallet.TokenBalance;
-
-                // Move tokens from available to pending
-                wallet.TokenBalance -= amount;
-                wallet.PendingBalance += amount;
-                wallet.UpdatedAt = DateTime.UtcNow;
-
-                // Create transaction record
-                var tokenTransaction = new TokenTransaction
+                var (success, _) = await MoveToPendingInternalAsync(userId, amount, description, betId);
+                if (!success)
                 {
-                    UserId = userId,
-                    Type = TokenTransactionType.BetPlaced,
-                    Amount = amount,
-                    BalanceBefore = balanceBefore,
-                    BalanceAfter = wallet.TokenBalance,
-                    Description = description,
-                    Status = TokenTransactionStatus.Completed,
-                    CreatedAt = DateTime.UtcNow,
-                    ProcessedAt = DateTime.UtcNow,
-                    RelatedBetId = betId
-                };
-
-                _context.TokenTransactions.Add(tokenTransaction);
+                    await transaction.RollbackAsync();
+                    return false;
+                }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
                 return true;
             }
             catch (Exception ex)
@@ -252,6 +229,45 @@ namespace FantasyLeague.Api.Services
                 _logger.LogError(ex, "Failed to move tokens to pending for user {UserId}", userId);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Internal method to move tokens to pending without creating a transaction (for use within existing transactions)
+        /// </summary>
+        public async Task<(bool success, TokenTransaction? transaction)> MoveToPendingInternalAsync(int userId, decimal amount, string description, int? betId = null)
+        {
+            if (amount <= 0)
+                return (false, null);
+
+            var wallet = await GetOrCreateWalletAsync(userId);
+
+            if (wallet.TokenBalance < amount)
+                return (false, null);
+
+            var balanceBefore = wallet.TokenBalance;
+
+            // Move tokens from available to pending
+            wallet.TokenBalance -= amount;
+            wallet.PendingBalance += amount;
+            wallet.UpdatedAt = DateTime.UtcNow;
+
+            // Create transaction record
+            var tokenTransaction = new TokenTransaction
+            {
+                UserId = userId,
+                Type = TokenTransactionType.BetPlaced,
+                Amount = amount,
+                BalanceBefore = balanceBefore,
+                BalanceAfter = wallet.TokenBalance,
+                Description = description,
+                Status = TokenTransactionStatus.Completed,
+                CreatedAt = DateTime.UtcNow,
+                ProcessedAt = DateTime.UtcNow,
+                RelatedBetId = betId
+            };
+
+            _context.TokenTransactions.Add(tokenTransaction);
+            return (true, tokenTransaction);
         }
 
         /// <summary>

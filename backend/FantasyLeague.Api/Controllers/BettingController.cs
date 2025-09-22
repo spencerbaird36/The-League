@@ -300,6 +300,81 @@ namespace FantasyLeague.Api.Controllers
             }
         }
 
+        [HttpGet("pending-settlements")]
+        public async Task<ActionResult<List<BetDto>>> GetPendingSettlements()
+        {
+            try
+            {
+                // Get bets that are active but have completed games/matchups that could be settled
+                var pendingBets = await _bettingService.GetPendingSettlementsAsync();
+                return Ok(pendingBets);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pending settlements");
+                return StatusCode(500, "An error occurred while retrieving pending settlements");
+            }
+        }
+
+        [HttpGet("settlement-reports")]
+        public async Task<ActionResult<List<object>>> GetSettlementReports(
+            [FromQuery] string? startDate = null,
+            [FromQuery] string? endDate = null,
+            [FromQuery] string? sport = null)
+        {
+            try
+            {
+                var start = startDate != null ? DateTime.Parse(startDate) : DateTime.UtcNow.AddDays(-30);
+                var end = endDate != null ? DateTime.Parse(endDate) : DateTime.UtcNow;
+
+                var reports = await _bettingService.GetSettlementReportsAsync(start, end, sport);
+                return Ok(reports);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving settlement reports");
+                return StatusCode(500, "An error occurred while retrieving settlement reports");
+            }
+        }
+
+        [HttpPost("force-settlement/{betId}")]
+        public async Task<ActionResult<PlaceBetResponseDto>> ForceSettlement(int betId, [FromBody] SettleBetDto request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var success = await _bettingService.SettleBetAsync(betId, request.Status, userId, request.SettlementNotes);
+
+                if (success)
+                {
+                    return Ok(new PlaceBetResponseDto
+                    {
+                        Success = true,
+                        Message = $"Bet {betId} settled as {request.Status}"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new PlaceBetResponseDto
+                    {
+                        Success = false,
+                        Message = "Failed to settle bet",
+                        ErrorMessage = "Bet could not be settled"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error force settling bet {BetId}", betId);
+                return StatusCode(500, new PlaceBetResponseDto
+                {
+                    Success = false,
+                    Message = "An error occurred while settling the bet",
+                    ErrorMessage = "Internal server error"
+                });
+            }
+        }
+
         private int GetCurrentUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);

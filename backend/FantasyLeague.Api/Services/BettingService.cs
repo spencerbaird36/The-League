@@ -33,6 +33,41 @@ namespace FantasyLeague.Api.Services
         {
             try
             {
+                // Validate user exists
+                var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
+                if (!userExists)
+                {
+                    return new PlaceBetResponseDto
+                    {
+                        Success = false,
+                        ErrorMessage = "User not found"
+                    };
+                }
+
+                // Validate required bet parameters early
+                if (dto.BetType >= BetType.MatchupSpread && dto.BetType <= BetType.MatchupOverUnder)
+                {
+                    if (!dto.MatchupBetId.HasValue || !dto.MatchupSelection.HasValue)
+                    {
+                        return new PlaceBetResponseDto
+                        {
+                            Success = false,
+                            ErrorMessage = "MatchupBetId and MatchupSelection are required for matchup bets"
+                        };
+                    }
+                }
+                else if (dto.BetType >= BetType.GameSpread && dto.BetType <= BetType.GameProps)
+                {
+                    if (!dto.GameBetId.HasValue || !dto.GameSelection.HasValue)
+                    {
+                        return new PlaceBetResponseDto
+                        {
+                            Success = false,
+                            ErrorMessage = "GameBetId and GameSelection are required for game bets"
+                        };
+                    }
+                }
+
                 // Validate user has sufficient balance
                 var wallet = await _walletService.GetOrCreateWalletAsync(userId);
                 if (wallet.TokenBalance < dto.Amount)
@@ -61,14 +96,14 @@ namespace FantasyLeague.Api.Services
                     // Calculate potential payout
                     var potentialPayout = _oddsService.CalculatePayout(dto.Amount, odds);
 
-                    // Move tokens to pending balance
-                    var success = await _walletService.MoveToPendingAsync(
+                    // Move tokens to pending balance (within existing transaction)
+                    var (success, tokenTransaction) = await _walletService.MoveToPendingInternalAsync(
                         userId,
                         dto.Amount,
                         $"Bet placed: {dto.BetType} - ${dto.Amount}"
                     );
 
-                    if (!success)
+                    if (!success || tokenTransaction == null)
                     {
                         await transaction.RollbackAsync();
                         return new PlaceBetResponseDto
@@ -78,10 +113,8 @@ namespace FantasyLeague.Api.Services
                         };
                     }
 
-                    // Get the token transaction that was just created
-                    var tokenTransaction = await _context.TokenTransactions
-                        .OrderByDescending(t => t.CreatedAt)
-                        .FirstAsync(t => t.UserId == userId && t.Type == TokenTransactionType.BetPlaced);
+                    // Save the token transaction first so it gets an ID
+                    await _context.SaveChangesAsync();
 
                     // Create the bet record
                     var bet = new Bet
@@ -529,20 +562,68 @@ namespace FantasyLeague.Api.Services
         {
             if (dto.MatchupBetId.HasValue)
             {
-                // For matchup bets, we need to determine the league from the users involved
-                // This is a simplified approach - you might want to store league ID directly
-                return 1; // TODO: Implement proper league resolution
+                // Get the league ID from the MatchupBet
+                var matchupBet = await _context.MatchupBets
+                    .Where(mb => mb.Id == dto.MatchupBetId.Value)
+                    .Select(mb => mb.LeagueId)
+                    .FirstOrDefaultAsync();
+
+                if (matchupBet == 0)
+                {
+                    throw new ArgumentException($"MatchupBet with ID {dto.MatchupBetId.Value} not found");
+                }
+
+                return matchupBet;
             }
 
-            // For game bets, you might have league-specific games or a default league
-            return 1; // TODO: Implement proper league resolution
+            if (dto.GameBetId.HasValue)
+            {
+                // Get the league ID from the GameBet
+                var gameBet = await _context.GameBets
+                    .Where(gb => gb.Id == dto.GameBetId.Value)
+                    .Select(gb => gb.LeagueId)
+                    .FirstOrDefaultAsync();
+
+                if (gameBet == 0)
+                {
+                    throw new ArgumentException($"GameBet with ID {dto.GameBetId.Value} not found");
+                }
+
+                return gameBet;
+            }
+
+            throw new ArgumentException("Either MatchupBetId or GameBetId must be provided");
         }
 
         private async Task UpdateBetSelectionAsync(int betId, PlaceBetDto dto)
         {
-            // This method would update the specific MatchupBet or GameBet record
-            // with the user's selection details
-            // Implementation depends on your specific data model needs
+            var bet = await _context.Bets.FindAsync(betId);
+            if (bet == null) return;
+
+            // Update the bet with the user's selection
+            switch (dto.BetType)
+            {
+                case BetType.MatchupSpread:
+                case BetType.MatchupMoneyline:
+                case BetType.MatchupOverUnder:
+                    if (dto.MatchupSelection.HasValue)
+                    {
+                        bet.MatchupSelection = dto.MatchupSelection.Value;
+                    }
+                    break;
+
+                case BetType.GameSpread:
+                case BetType.GameMoneyline:
+                case BetType.GameOverUnder:
+                case BetType.GameProps:
+                    if (dto.GameSelection.HasValue)
+                    {
+                        bet.GameSelection = dto.GameSelection.Value;
+                    }
+                    break;
+            }
+
+            await _context.SaveChangesAsync();
         }
 
         private async Task<bool> ProcessWinningBetAsync(Bet bet)
@@ -1576,6 +1657,157 @@ namespace FantasyLeague.Api.Services
                 IsLive = game.GameStatus == GameStatus.InProgress,
                 IsGameTime = game.IsGameTime
             };
+        }
+
+        #endregion
+
+        #region Settlement Methods
+
+        /// <summary>
+        /// Gets bets that are pending settlement (completed games/matchups but unsettled bets)
+        /// </summary>
+        public async Task<List<BetDto>> GetPendingSettlementsAsync()
+        {
+            try
+            {
+                // Get active bets where the associated game/matchup has completed but the bet is still active
+                var pendingGameBets = await _context.Bets
+                    .Where(b => b.Status == BetStatus.Active &&
+                               b.GameBetId != null &&
+                               b.GameBet!.GameStatus == GameStatus.Final &&
+                               !b.GameBet.IsSettled)
+                    .Include(b => b.User)
+                    .Include(b => b.League)
+                    .Include(b => b.GameBet)
+                    .ToListAsync();
+
+                var pendingMatchupBets = await _context.Bets
+                    .Where(b => b.Status == BetStatus.Active &&
+                               b.MatchupBetId != null &&
+                               b.MatchupBet!.IsSettled == false &&
+                               b.MatchupBet.Team1Score != null &&
+                               b.MatchupBet.Team2Score != null)
+                    .Include(b => b.User)
+                    .Include(b => b.League)
+                    .Include(b => b.MatchupBet)
+                        .ThenInclude(mb => mb!.Team1User)
+                    .Include(b => b.MatchupBet)
+                        .ThenInclude(mb => mb!.Team2User)
+                    .ToListAsync();
+
+                var allPendingBets = pendingGameBets.Concat(pendingMatchupBets).ToList();
+
+                return allPendingBets.Select(ConvertToBetDto).OrderBy(b => b.CreatedAt).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pending settlements");
+                return new List<BetDto>();
+            }
+        }
+
+        /// <summary>
+        /// Gets settlement reports for a given date range and sport
+        /// </summary>
+        public async Task<List<object>> GetSettlementReportsAsync(DateTime startDate, DateTime endDate, string? sport = null)
+        {
+            try
+            {
+                var query = _context.Bets
+                    .Where(b => b.SettledAt != null &&
+                               b.SettledAt >= startDate &&
+                               b.SettledAt <= endDate &&
+                               (b.Status == BetStatus.Won || b.Status == BetStatus.Lost || b.Status == BetStatus.Push))
+                    .AsQueryable();
+
+                if (!string.IsNullOrEmpty(sport))
+                {
+                    query = query.Where(b =>
+                        (b.GameBet != null && b.GameBet.Sport == sport) ||
+                        (b.MatchupBet != null && b.MatchupBet.Sport == sport));
+                }
+
+                var settledBets = await query
+                    .Include(b => b.GameBet)
+                    .Include(b => b.MatchupBet)
+                        .ThenInclude(mb => mb!.Team1User)
+                    .Include(b => b.MatchupBet)
+                        .ThenInclude(mb => mb!.Team2User)
+                    .OrderByDescending(b => b.SettledAt)
+                    .ToListAsync();
+
+                // Group by game/matchup to create settlement reports
+                var gameReports = settledBets
+                    .Where(b => b.GameBet != null)
+                    .GroupBy(b => b.GameBetId)
+                    .Select(group => new
+                    {
+                        GameId = group.Key,
+                        GameInfo = $"{group.First().GameBet!.AwayTeam} @ {group.First().GameBet!.HomeTeam}",
+                        Sport = group.First().GameBet!.Sport,
+                        SettledAt = group.Max(b => b.SettledAt),
+                        TotalBetsSettled = group.Count(),
+                        WinnersCount = group.Count(b => b.Status == BetStatus.Won),
+                        LosersCount = group.Count(b => b.Status == BetStatus.Lost),
+                        PushesCount = group.Count(b => b.Status == BetStatus.Push),
+                        TotalWagered = group.Sum(b => b.Amount),
+                        TotalPayouts = group.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout),
+                        HouseProfit = group.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount) -
+                                     group.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout)
+                    });
+
+                var matchupReports = settledBets
+                    .Where(b => b.MatchupBet != null)
+                    .GroupBy(b => b.MatchupBetId)
+                    .Select(group => new
+                    {
+                        MatchupId = group.Key,
+                        GameInfo = $"{group.First().MatchupBet!.Team1User.Username} vs {group.First().MatchupBet!.Team2User.Username}",
+                        Sport = group.First().MatchupBet!.Sport,
+                        SettledAt = group.Max(b => b.SettledAt),
+                        TotalBetsSettled = group.Count(),
+                        WinnersCount = group.Count(b => b.Status == BetStatus.Won),
+                        LosersCount = group.Count(b => b.Status == BetStatus.Lost),
+                        PushesCount = group.Count(b => b.Status == BetStatus.Push),
+                        TotalWagered = group.Sum(b => b.Amount),
+                        TotalPayouts = group.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout),
+                        HouseProfit = group.Where(b => b.Status == BetStatus.Lost).Sum(b => b.Amount) -
+                                     group.Where(b => b.Status == BetStatus.Won).Sum(b => b.PotentialPayout)
+                    });
+
+                var allReports = gameReports.Cast<object>().Concat(matchupReports.Cast<object>()).ToList();
+
+                return allReports;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving settlement reports");
+                return new List<object>();
+            }
+        }
+
+        /// <summary>
+        /// Gets user wallet information
+        /// </summary>
+        public async Task<object?> GetUserWalletAsync(int userId)
+        {
+            try
+            {
+                var wallet = await _walletService.GetOrCreateWalletAsync(userId);
+
+                return new
+                {
+                    TokenBalance = wallet.TokenBalance,
+                    PendingBalance = wallet.PendingBalance,
+                    TotalBalance = wallet.TokenBalance + wallet.PendingBalance,
+                    LastUpdated = wallet.UpdatedAt
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving wallet for user {UserId}", userId);
+                return null;
+            }
         }
 
         #endregion

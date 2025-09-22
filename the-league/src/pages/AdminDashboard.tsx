@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService, AdminDashboard as AdminDashboardData, AdminLeague, AdminUser } from '../services/adminService';
+import { bettingService, BettingStats, UserBet, BetStatus } from '../services/bettingService';
 import { nflPlayersService, ActiveNflPlayer, NflPlayerStats, SyncResult } from '../services/nflPlayersService';
 import { mlbPlayersService, ActiveMlbPlayer, MlbPlayerStats, SyncResult as MlbSyncResult } from '../services/mlbPlayersService';
 import { nbaPlayersService, ActiveNbaPlayer, NbaPlayerStats, SyncResult as NbaSyncResult } from '../services/nbaPlayersService';
+import { SettlementManager } from '../components/Settlement/SettlementManager';
 import './AdminDashboard.css';
 
 interface AdminDashboardProps {
@@ -12,7 +14,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leagues' | 'users' | 'nfl-players' | 'mlb-players' | 'nba-players'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leagues' | 'users' | 'betting' | 'nfl-players' | 'mlb-players' | 'nba-players'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
   const [leagues, setLeagues] = useState<AdminLeague[]>([]);
@@ -56,6 +58,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [nbaSyncing, setNbaSyncing] = useState(false);
   const [nbaSyncResult, setNbaSyncResult] = useState<NbaSyncResult | null>(null);
 
+  // Betting Analytics state
+  const [bettingStats, setBettingStats] = useState<BettingStats | null>(null);
+  const [recentBets, setRecentBets] = useState<UserBet[]>([]);
+  const [pendingSettlements, setPendingSettlements] = useState<any[]>([]);
+  const [bettingLoading, setBettingLoading] = useState(false);
+  const [selectedDateRange, setSelectedDateRange] = useState<'today' | 'week' | 'month' | 'all'>('week');
+
   useEffect(() => {
     // Check if user is admin
     if (!adminService.isAdmin(user.email)) {
@@ -86,6 +95,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
       loadNbaPlayers();
     }
   }, [nbaPlayersPage, nbaSelectedPosition, nbaSelectedTeam]);
+
+  // Effect to load betting data when betting tab is active
+  useEffect(() => {
+    if (activeTab === 'betting') {
+      loadBettingAnalytics();
+    }
+  }, [activeTab, selectedDateRange]);
+
+  const loadBettingAnalytics = async () => {
+    setBettingLoading(true);
+    try {
+      // Load betting statistics
+      const stats = await bettingService.getBettingStats();
+      setBettingStats(stats);
+
+      // Load recent bets (all statuses)
+      const recent = await bettingService.getUserBets(undefined, undefined, undefined, 1, 20);
+      setRecentBets(recent);
+
+      // Load pending settlements
+      const pending = await bettingService.getPendingSettlements();
+      setPendingSettlements(pending);
+    } catch (err) {
+      console.error('Error loading betting analytics:', err);
+      setError('Failed to load betting analytics');
+    } finally {
+      setBettingLoading(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -256,7 +294,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     }
   };
 
-  const handleTabChange = (tab: 'dashboard' | 'leagues' | 'users' | 'nfl-players' | 'mlb-players' | 'nba-players') => {
+  const handleTabChange = (tab: 'dashboard' | 'leagues' | 'users' | 'betting' | 'nfl-players' | 'mlb-players' | 'nba-players') => {
     setActiveTab(tab);
     setError('');
     setSyncResult(null);
@@ -270,6 +308,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         break;
       case 'users':
         loadUsers();
+        break;
+      case 'betting':
+        loadBettingAnalytics();
         break;
       case 'nfl-players':
         loadNflPlayers();
@@ -363,13 +404,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         >
           🏆 Leagues ({leagues.length})
         </button>
-        <button 
+        <button
           className={activeTab === 'users' ? 'active' : ''}
           onClick={() => handleTabChange('users')}
         >
           👥 Users ({users.length})
         </button>
-        <button 
+        <button
+          className={activeTab === 'betting' ? 'active' : ''}
+          onClick={() => handleTabChange('betting')}
+        >
+          🎯 Betting Analytics
+        </button>
+        <button
           className={activeTab === 'nfl-players' ? 'active' : ''}
           onClick={() => handleTabChange('nfl-players')}
         >
@@ -547,6 +594,111 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           </div>
         )}
 
+        {/* BETTING ANALYTICS TAB */}
+        {activeTab === 'betting' && (
+          <div className="betting-analytics">
+            <div className="section-header">
+              <h2>Betting Analytics</h2>
+              <p>Monitor betting activity, statistics, and settlements</p>
+            </div>
+
+            {bettingLoading && <div className="loading">Loading betting data...</div>}
+
+            {!bettingLoading && (
+              <>
+                {/* Betting Statistics Overview */}
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <h3>Total Bets</h3>
+                    <div className="stat-number">{bettingStats?.totalBets || 0}</div>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Total Wagered</h3>
+                    <div className="stat-number">{bettingStats?.totalWagered?.toFixed(0) || 0} tokens</div>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Total Won</h3>
+                    <div className="stat-number">{bettingStats?.totalWon?.toFixed(0) || 0} tokens</div>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Win Rate</h3>
+                    <div className="stat-number">{((bettingStats?.winRate || 0) * 100).toFixed(1)}%</div>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Active Bets</h3>
+                    <div className="stat-number">{bettingStats?.activeBets || 0}</div>
+                    <div className="stat-detail">{bettingStats?.activeBetsAmount?.toFixed(0) || 0} tokens</div>
+                  </div>
+                  <div className="stat-card">
+                    <h3>Profit/Loss</h3>
+                    <div className={`stat-number ${(bettingStats?.profitLoss || 0) >= 0 ? 'positive' : 'negative'}`}>
+                      {(bettingStats?.profitLoss || 0) >= 0 ? '+' : ''}{bettingStats?.profitLoss?.toFixed(0) || 0} tokens
+                    </div>
+                  </div>
+                </div>
+
+                <div className="betting-sections">
+                  {/* Recent Bets */}
+                  <div className="betting-section">
+                    <h3>Recent Bets ({recentBets.length})</h3>
+                    {recentBets.length > 0 ? (
+                      <div className="bets-table">
+                        <div className="table-header">
+                          <span>Description</span>
+                          <span>Amount</span>
+                          <span>Status</span>
+                          <span>Date</span>
+                        </div>
+                        {recentBets.slice(0, 10).map((bet) => (
+                          <div key={bet.id} className="table-row">
+                            <span className="bet-description">{bet.description}</span>
+                            <span className="bet-amount">{bet.amount.toFixed(0)} tokens</span>
+                            <span className={`bet-status status-${bet.status}`}>
+                              {bet.statusDisplayName || bet.status}
+                            </span>
+                            <span className="bet-date">
+                              {new Date(bet.placedAt || bet.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No recent bets found.</p>
+                    )}
+                  </div>
+
+                  {/* Pending Settlements */}
+                  <div className="betting-section">
+                    <h3>Pending Settlements ({pendingSettlements.length})</h3>
+                    {pendingSettlements.length > 0 ? (
+                      <div className="settlements-table">
+                        <div className="table-header">
+                          <span>Game/Event</span>
+                          <span>Bets Count</span>
+                          <span>Total Amount</span>
+                          <span>Date</span>
+                        </div>
+                        {pendingSettlements.map((settlement, index) => (
+                          <div key={index} className="table-row">
+                            <span>{settlement.description || 'Settlement Required'}</span>
+                            <span>{settlement.betCount || 'N/A'}</span>
+                            <span>{settlement.totalAmount?.toFixed(0) || 'N/A'} tokens</span>
+                            <span>{settlement.date ? new Date(settlement.date).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No pending settlements.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settlement Management */}
+                <SettlementManager className="settlement-section" />
+              </>
+            )}
+          </div>
+        )}
 
         {/* NFL PLAYERS TAB */}
         {activeTab === 'nfl-players' && (
@@ -657,10 +809,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               </div>
               
               {nflPlayers.map(player => (
-                <div key={player.id} className="table-row">
-                  <span><strong>{player.fullName || 'N/A'}</strong></span>
-                  <span className={`position-badge ${player.fantasyPosition?.toLowerCase() || ''}`}>
-                    {player.fantasyPosition || 'N/A'}
+                <div key={player.playerID} className="table-row">
+                  <span><strong>{player.name || `${player.firstName} ${player.lastName}` || 'N/A'}</strong></span>
+                  <span className={`position-badge ${(player.fantasyPosition || (player as any).position)?.toLowerCase() || ''}`}>
+                    {player.fantasyPosition || (player as any).position || 'N/A'}
                   </span>
                   <span>{player.team || 'N/A'}</span>
                   <span>{player.age || 'N/A'}</span>
@@ -802,7 +954,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               
               {mlbPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span><strong>{player.fullName || 'N/A'}</strong></span>
+                  <span><strong>{player.name || `${player.firstName} ${player.lastName}` || 'N/A'}</strong></span>
                   <span className={`position-badge ${player.position?.toLowerCase() || ''}`}>
                     {player.position || 'N/A'}
                   </span>
@@ -946,7 +1098,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               
               {nbaPlayers.map(player => (
                 <div key={player.playerID} className="table-row">
-                  <span><strong>{player.fullName || 'N/A'}</strong></span>
+                  <span><strong>{player.name || `${player.firstName} ${player.lastName}` || 'N/A'}</strong></span>
                   <span className={`position-badge ${player.position?.toLowerCase() || ''}`}>
                     {player.position || 'N/A'}
                   </span>

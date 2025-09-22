@@ -55,7 +55,7 @@ const MatchupBetting: React.FC<MatchupBettingProps> = ({
       try {
         const payout = await bettingService.calculatePayout(
           betAmount,
-          BetType.Matchup,
+          BetType.MatchupMoneyline,
           matchupBet.id,
           selectedBet
         );
@@ -86,7 +86,7 @@ const MatchupBetting: React.FC<MatchupBettingProps> = ({
 
     try {
       const request: PlaceBetRequest = {
-        betType: BetType.Matchup,
+        betType: BetType.MatchupMoneyline,
         amount: betAmount,
         matchupBetId: matchupBet.id,
         matchupSelection: selectedBet

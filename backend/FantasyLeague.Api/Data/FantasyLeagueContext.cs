@@ -1512,6 +1512,12 @@ namespace FantasyLeague.Api.Data
                 entity.Property(e => e.OverUnderLine)
                     .HasPrecision(6, 1);
 
+                entity.Property(e => e.Team1MoneylineOdds)
+                    .HasPrecision(10, 2);
+
+                entity.Property(e => e.Team2MoneylineOdds)
+                    .HasPrecision(10, 2);
+
                 entity.Property(e => e.Team1Score)
                     .HasPrecision(6, 1);
 
@@ -1521,7 +1527,20 @@ namespace FantasyLeague.Api.Data
                 entity.Property(e => e.TotalScore)
                     .HasPrecision(6, 1);
 
+                entity.Property(e => e.Notes)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
                 // Configure relationships
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.Team1User)
                     .WithMany()
                     .HasForeignKey(e => e.Team1UserId)
@@ -1534,6 +1553,12 @@ namespace FantasyLeague.Api.Data
                     .IsRequired()
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
 
+                entity.HasOne(e => e.CreatedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByAdminId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
                 entity.HasOne(e => e.WinnerUser)
                     .WithMany()
                     .HasForeignKey(e => e.WinnerUserId)
@@ -1541,9 +1566,10 @@ namespace FantasyLeague.Api.Data
                     .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
 
                 // Create indexes
-                entity.HasIndex(e => new { e.Week, e.Season, e.Sport });
+                entity.HasIndex(e => new { e.LeagueId, e.Week, e.Season, e.Sport });
                 entity.HasIndex(e => new { e.Team1UserId, e.Team2UserId });
                 entity.HasIndex(e => e.IsSettled);
+                entity.HasIndex(e => e.ExpiresAt);
             });
 
             // Configure GameBet entity
@@ -1607,12 +1633,26 @@ namespace FantasyLeague.Api.Data
                     .IsRequired()
                     .HasDefaultValueSql("NOW()");
 
+                // Configure relationships
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CreatedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatedByAdminId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+
                 // Create indexes
                 entity.HasIndex(e => e.ExternalGameId)
                     .IsUnique();
-                entity.HasIndex(e => new { e.Sport, e.GameDateTime });
+                entity.HasIndex(e => new { e.LeagueId, e.Sport, e.GameDateTime });
                 entity.HasIndex(e => e.GameStatus);
                 entity.HasIndex(e => e.IsSettled);
+                entity.HasIndex(e => e.ExpiresAt);
             });
 
             // Configure BettingLine entity
@@ -1685,6 +1725,87 @@ namespace FantasyLeague.Api.Data
                 entity.HasIndex(e => e.Type);
                 entity.HasIndex(e => e.IsActive);
                 entity.HasIndex(e => new { e.IsActive, e.ExpiresAt });
+                entity.HasIndex(e => e.MatchupBetId);
+                entity.HasIndex(e => e.GameBetId);
+            });
+
+            // Configure BettingNotification entity
+            modelBuilder.Entity<BettingNotification>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Type)
+                    .IsRequired()
+                    .HasConversion<string>();
+
+                entity.Property(e => e.Priority)
+                    .IsRequired()
+                    .HasConversion<string>()
+                    .HasDefaultValue(BettingNotificationPriority.Normal);
+
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(1000);
+
+                entity.Property(e => e.ActionUrl)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.ActionText)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Metadata)
+                    .HasMaxLength(2000);
+
+                entity.Property(e => e.IsRead)
+                    .IsRequired()
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.CreatedAt)
+                    .IsRequired()
+                    .HasDefaultValueSql("NOW()");
+
+                // Configure relationships
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .IsRequired()
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.League)
+                    .WithMany()
+                    .HasForeignKey(e => e.LeagueId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.Bet)
+                    .WithMany()
+                    .HasForeignKey(e => e.BetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.MatchupBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.MatchupBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.GameBet)
+                    .WithMany()
+                    .HasForeignKey(e => e.GameBetId)
+                    .IsRequired(false)
+                    .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Cascade);
+
+                // Create indexes
+                entity.HasIndex(e => new { e.UserId, e.IsRead });
+                entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+                entity.HasIndex(e => e.Type);
+                entity.HasIndex(e => e.Priority);
+                entity.HasIndex(e => new { e.IsRead, e.ExpiresAt });
+                entity.HasIndex(e => e.BetId);
                 entity.HasIndex(e => e.MatchupBetId);
                 entity.HasIndex(e => e.GameBetId);
             });
