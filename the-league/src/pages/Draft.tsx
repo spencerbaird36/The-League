@@ -1221,7 +1221,7 @@ const Draft: React.FC<DraftProps> = ({
         {/* Show content only when draft is not completed */}
         <>
           {/* Phase 2 Redesign: Player Recommendations */}
-            {draftStateActions.isMyTurn(user?.id || 0) && playerSuggestions.length > 0 && (
+            {!draftStateActions.isMyTurn(user?.id || 0) && playerSuggestions.length > 0 && (
               <PlayerRecommendations
                 suggestions={playerSuggestions}
                 teamNeeds={teamNeeds}

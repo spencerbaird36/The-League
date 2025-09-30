@@ -32,16 +32,17 @@ namespace FantasyLeague.Api.Hubs
         }
 
         // Helper method to calculate current user using snake draft logic
-        private static (int currentUserIndex, int currentUserId) GetCurrentDraftUser(List<int> draftOrder, int totalPicks)
+        private static (int currentUserIndex, int currentUserId) GetCurrentDraftUser(List<int> draftOrder, int totalPicks, int maxPicksInDraft = 0)
         {
             var teamCount = draftOrder.Count;
-            
-            Console.WriteLine($"🐍 SNAKE DRAFT DEBUG - TotalPicks: {totalPicks}, TeamCount: {teamCount}");
+
+            Console.WriteLine($"🐍 SNAKE DRAFT DEBUG - TotalPicks: {totalPicks}, TeamCount: {teamCount}, MaxPicksInDraft: {maxPicksInDraft}");
             Console.WriteLine($"🐍 DraftOrder: [{string.Join(", ", draftOrder)}]");
-            
+
             // Create the full snake draft sequence
             var snakeSequence = new List<int>();
-            var maxRounds = 34; // Total rounds in the draft
+            // Calculate max rounds from total picks needed, or use default of 34 for backwards compatibility
+            var maxRounds = maxPicksInDraft > 0 ? (int)Math.Ceiling((double)maxPicksInDraft / teamCount) : 34;
             
             for (int round = 0; round < maxRounds; round++)
             {
@@ -417,7 +418,7 @@ namespace FantasyLeague.Api.Hubs
 
                 var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                 var totalPicks = draft.DraftPicks?.Count ?? 0;
-                var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+                var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
 
                 // Get PlayerPoolService from the scoped service provider
@@ -605,7 +606,7 @@ namespace FantasyLeague.Api.Hubs
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
-                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
                     Console.WriteLine($"📡 Sending current draft state - TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}, User: {currentUserId}");
 
@@ -674,7 +675,7 @@ namespace FantasyLeague.Api.Hubs
                     // Get current turn user using snake draft logic
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
-                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
                     Console.WriteLine($"📡 Sending DraftStarted event to League_{leagueId}");
                     Console.WriteLine($"Current user ID: {currentUserId}, TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}");
@@ -913,7 +914,7 @@ namespace FantasyLeague.Api.Hubs
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
-                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
                     Console.WriteLine($"🔍 Turn verification - TotalPicks: {totalPicks}, CurrentUserIndex: {currentUserIndex}, CurrentUserId: {currentUserId}");
                     Console.WriteLine($"🔍 Draft order: [{string.Join(", ", draftOrder)}]");
@@ -1117,7 +1118,7 @@ namespace FantasyLeague.Api.Hubs
                 {
                     var draftOrder = JsonSerializer.Deserialize<List<int>>(draft.DraftOrder) ?? new List<int>();
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
-                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks);
+                    var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
                     await Clients.Group($"League_{leagueId}").SendAsync("DraftResumed", new
                     {

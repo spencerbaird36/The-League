@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FreeAgentsComponent from './pages/FreeAgentsNew';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import { DraftProvider } from './context/DraftContext';
 import { Player } from './types/Player';
@@ -43,6 +43,7 @@ interface User {
 // AppContent component that uses useNavigate
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addDraftToast } = useToast();
   
   // Authentication state
@@ -614,7 +615,7 @@ const AppContent: React.FC = () => {
         logout={logout}
         onUserUpdate={registerAndLogin}
       />
-      {isAuthenticated && (
+      {isAuthenticated && location.pathname !== '/draft' && (
         <>
           <GamesAccordion onBetPlaced={() => {
             // Force refresh of BetSlip when a bet is placed
