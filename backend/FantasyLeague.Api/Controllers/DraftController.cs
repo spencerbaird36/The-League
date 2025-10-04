@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using FantasyLeague.Api.Models;
 using FantasyLeague.Api.DTOs;
 using FantasyLeague.Api.Data;
 using FantasyLeague.Api.Services;
+using FantasyLeague.Api.Hubs;
 using System.Text.Json;
 
 namespace FantasyLeague.Api.Controllers
@@ -17,19 +19,22 @@ namespace FantasyLeague.Api.Controllers
         private readonly PlayerPoolService _playerPoolService;
         private readonly RegularDraftService _regularDraftService;
         private readonly ILogger<DraftController> _logger;
+        private readonly IHubContext<ChatHub> _hubContext;
 
         public DraftController(
             FantasyLeagueContext context,
             KeeperDraftService keeperDraftService,
             PlayerPoolService playerPoolService,
             RegularDraftService regularDraftService,
-            ILogger<DraftController> logger)
+            ILogger<DraftController> logger,
+            IHubContext<ChatHub> hubContext)
         {
             _context = context;
             _keeperDraftService = keeperDraftService;
             _playerPoolService = playerPoolService;
             _regularDraftService = regularDraftService;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         // Helper method to clean player names for frontend display
@@ -70,6 +75,7 @@ namespace FantasyLeague.Api.Controllers
             // Verify league exists
             var league = await _context.Leagues
                 .Include(l => l.Users)
+                .Include(l => l.Configuration)
                 .FirstOrDefaultAsync(l => l.Id == createDraftDto.LeagueId && l.IsActive);
 
             if (league == null)
@@ -527,55 +533,79 @@ namespace FantasyLeague.Api.Controllers
         [HttpPost("{id}/reset")]
         public async Task<IActionResult> ResetDraft(int id)
         {
+            _logger.LogInformation("🔄 Starting draft reset for draft ID: {DraftId}", id);
+
             var draft = await _context.Drafts
                 .Include(d => d.DraftPicks)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (draft == null)
             {
+                _logger.LogWarning("Draft {DraftId} not found for reset", id);
                 return NotFound();
             }
 
-            // Remove all draft picks
-            _context.DraftPicks.RemoveRange(draft.DraftPicks);
+            _logger.LogInformation("Draft {DraftId} belongs to League {LeagueId}", id, draft.LeagueId);
 
-            // Remove all user roster entries for this league (across all drafts)
-            var userRosters = await _context.UserRosters
+            // Log existing roster count BEFORE deletion
+            var preDeleteRosterCount = await _context.UserRosters
                 .Where(ur => ur.LeagueId == draft.LeagueId)
-                .ToListAsync();
-            _logger.LogInformation("🧹 Draft reset: Found {UserRosterCount} UserRoster entries to remove for LeagueId {LeagueId}",
-                userRosters.Count, draft.LeagueId);
-            _context.UserRosters.RemoveRange(userRosters);
+                .CountAsync();
+            _logger.LogInformation("📊 Pre-delete: Found {Count} roster entries in database for league {LeagueId}",
+                preDeleteRosterCount, draft.LeagueId);
 
-            // Remove all transactions for this league (free agent pickups and any future transaction types)
-            var transactions = await _context.Transactions
-                .Where(t => t.LeagueId == draft.LeagueId)
-                .ToListAsync();
-            _context.Transactions.RemoveRange(transactions);
+            // Remove all draft picks
+            var draftPickCount = draft.DraftPicks.Count;
+            _context.DraftPicks.RemoveRange(draft.DraftPicks);
+            _logger.LogInformation("✅ Removed {Count} draft picks", draftPickCount);
+
+            // IMPORTANT: Delete trade-related entities BEFORE user rosters due to foreign key constraints
+            // TradePlayers has FK to UserRoster with RESTRICT, so must be deleted first
 
             // Remove all email delivery logs for trade proposals in this league first (foreign key constraint)
             var emailDeliveryLogs = await _context.EmailDeliveryLogs
                 .Where(edl => edl.TradeProposal.LeagueId == draft.LeagueId)
                 .ToListAsync();
             _context.EmailDeliveryLogs.RemoveRange(emailDeliveryLogs);
+            _logger.LogInformation("✅ Removed {Count} email delivery logs", emailDeliveryLogs.Count);
+
+            // Remove all trade players FIRST (has FK to UserRoster with RESTRICT)
+            var tradePlayers = await _context.TradePlayers
+                .Where(tp => tp.TradeProposal.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.TradePlayers.RemoveRange(tradePlayers);
+            _logger.LogInformation("✅ Removed {Count} trade players", tradePlayers.Count);
 
             // Remove all pending trade proposals and related data for this league
             var tradeProposals = await _context.TradeProposals
                 .Where(tp => tp.LeagueId == draft.LeagueId)
                 .ToListAsync();
             _context.TradeProposals.RemoveRange(tradeProposals);
-
-            // Remove all trade players (will cascade from trade proposals, but explicit for clarity)
-            var tradePlayers = await _context.TradePlayers
-                .Where(tp => tp.TradeProposal.LeagueId == draft.LeagueId)
-                .ToListAsync();
-            _context.TradePlayers.RemoveRange(tradePlayers);
+            _logger.LogInformation("✅ Removed {Count} trade proposals", tradeProposals.Count);
 
             // Remove all trade notifications for this league
             var tradeNotifications = await _context.TradeNotifications
                 .Where(tn => tn.LeagueId == draft.LeagueId)
                 .ToListAsync();
             _context.TradeNotifications.RemoveRange(tradeNotifications);
+            _logger.LogInformation("✅ Removed {Count} trade notifications", tradeNotifications.Count);
+
+            // NOW we can safely remove user roster entries (after TradePlayers are gone)
+            // IMPORTANT: Filter by DraftId, not LeagueId, since multiple drafts can exist for the same league
+            var userRosters = await _context.UserRosters
+                .Where(ur => ur.DraftId == draft.Id)
+                .ToListAsync();
+            _logger.LogInformation("🧹 Draft reset: Found {UserRosterCount} UserRoster entries to remove for DraftId {DraftId}",
+                userRosters.Count, draft.Id);
+            _context.UserRosters.RemoveRange(userRosters);
+            _logger.LogInformation("✅ Removed {Count} user roster entries", userRosters.Count);
+
+            // Remove all transactions for this league (free agent pickups and any future transaction types)
+            var transactions = await _context.Transactions
+                .Where(t => t.LeagueId == draft.LeagueId)
+                .ToListAsync();
+            _context.Transactions.RemoveRange(transactions);
+            _logger.LogInformation("✅ Removed {Count} transactions", transactions.Count);
 
             // Remove all betting-related data for this league
             var bets = await _context.Bets
@@ -614,7 +644,9 @@ namespace FantasyLeague.Api.Controllers
                 .ToListAsync();
             _context.ChatReadStatuses.RemoveRange(chatReadStatuses);
 
-            _logger.LogInformation("Draft reset - cleared {TradeCount} trades, {BetCount} bets, {ChatCount} chat messages for league {LeagueId}",
+            _logger.LogInformation("✅ Removed {Count} bets", bets.Count);
+            _logger.LogInformation("✅ Removed {Count} chat messages", chatMessages.Count);
+            _logger.LogInformation("📊 Draft reset summary - cleared {TradeCount} trades, {BetCount} bets, {ChatCount} chat messages for league {LeagueId}",
                 tradeProposals.Count, bets.Count, chatMessages.Count, draft.LeagueId);
 
             // Get current league members to update draft order with any new members
@@ -660,8 +692,17 @@ namespace FantasyLeague.Api.Controllers
                     newMaxPicks, totalKeeperSlots, numberOfUsers);
             }
 
-            await _context.SaveChangesAsync();
+            var changesSaved = await _context.SaveChangesAsync();
+            _logger.LogInformation("💾 Database changes saved: {ChangeCount} changes committed", changesSaved);
             _logger.LogInformation("✅ Draft reset complete: All data cleared from database for LeagueId {LeagueId}", draft.LeagueId);
+            _logger.LogInformation("📋 Final reset summary:");
+            _logger.LogInformation("   - Draft picks: {DraftPickCount}", draftPickCount);
+            _logger.LogInformation("   - User rosters: {RosterCount}", userRosters.Count);
+            _logger.LogInformation("   - Transactions: {TransactionCount}", transactions.Count);
+            _logger.LogInformation("   - Trade proposals: {TradeCount}", tradeProposals.Count);
+            _logger.LogInformation("   - Bets: {BetCount}", bets.Count);
+            _logger.LogInformation("   - Chat messages: {ChatCount}", chatMessages.Count);
+            _logger.LogInformation("   - New draft order: [{DraftOrder}]", string.Join(", ", randomizedOrder));
 
             var draftOrder = randomizedOrder;
 
@@ -677,8 +718,37 @@ namespace FantasyLeague.Api.Controllers
                 CreatedAt = draft.CreatedAt,
                 StartedAt = draft.StartedAt,
                 CompletedAt = draft.CompletedAt,
-                Message = "Draft has been reset successfully. All draft picks, trades, bets, transactions, and chat messages have been cleared."
+                Message = "Draft has been reset successfully. All draft picks, trades, bets, transactions, and chat messages have been cleared.",
+                ItemsCleared = new
+                {
+                    DraftPicks = draftPickCount,
+                    UserRosters = userRosters.Count,
+                    Transactions = transactions.Count,
+                    TradeProposals = tradeProposals.Count,
+                    Bets = bets.Count,
+                    ChatMessages = chatMessages.Count
+                }
             };
+
+            // Broadcast draft reset to all SignalR clients in the league
+            try
+            {
+                await _hubContext.Clients.Group($"League_{draft.LeagueId}")
+                    .SendAsync("DraftReset", new
+                    {
+                        ResetBy = "Admin",
+                        DraftId = draft.Id,
+                        LeagueId = draft.LeagueId,
+                        NewDraftOrder = draftOrder,
+                        CurrentTurn = draft.CurrentTurn,
+                        CurrentRound = draft.CurrentRound
+                    });
+                _logger.LogInformation("📡 Broadcast draft reset to SignalR clients for league {LeagueId}", draft.LeagueId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to broadcast draft reset via SignalR");
+            }
 
             return Ok(response);
         }

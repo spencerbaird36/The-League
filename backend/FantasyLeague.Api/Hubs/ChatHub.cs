@@ -16,6 +16,7 @@ namespace FantasyLeague.Api.Hubs
         private static readonly ConcurrentDictionary<string, UserConnection> _connections = new();
         private static readonly ConcurrentDictionary<int, Timer> _draftTimers = new();
         private static readonly ConcurrentDictionary<int, DateTime> _timerStartTimes = new();
+        private static readonly ConcurrentDictionary<int, SemaphoreSlim> _autoDraftLocks = new();
         private static IServiceProvider? _staticServiceProvider;
 
         public ChatHub(FantasyLeagueContext context, IHubContext<ChatHub> hubContext, PlayerPoolService playerPoolService)
@@ -677,9 +678,19 @@ namespace FantasyLeague.Api.Hubs
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
                     var (currentUserIndex, currentUserId) = GetCurrentDraftUser(draftOrder, totalPicks, draft.MaxPicks);
 
+                    // Calculate current round from total picks
+                    var teamCount = draftOrder.Count;
+                    var currentRoundIndex = totalPicks / teamCount;
+                    var currentRound = currentRoundIndex + 1;
+
+                    // Update draft state with correct values
+                    draft.CurrentTurn = currentUserIndex;
+                    draft.CurrentRound = currentRound;
+                    await _context.SaveChangesAsync();
+
                     Console.WriteLine($"📡 Sending DraftStarted event to League_{leagueId}");
-                    Console.WriteLine($"Current user ID: {currentUserId}, TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}");
-                    
+                    Console.WriteLine($"Current user ID: {currentUserId}, TotalPicks: {totalPicks}, UserIndex: {currentUserIndex}, Round: {currentRound}");
+
                     await Clients.Group($"League_{leagueId}").SendAsync("DraftStarted", new
                     {
                         DraftId = draft.Id,
@@ -730,13 +741,27 @@ namespace FantasyLeague.Api.Hubs
             Console.WriteLine($"🔗 Connection ID: {Context.ConnectionId}");
             Console.WriteLine($"🔗 Connection exists in dictionary: {_connections.ContainsKey(Context.ConnectionId)}");
 
+            var leagueIdInt = int.Parse(leagueId);
+            var autoDraftLock = _autoDraftLocks.GetOrAdd(leagueIdInt, _ => new SemaphoreSlim(1, 1));
+
+            // Try to acquire lock - if we can't get it immediately, another auto-draft is running
+            if (!await autoDraftLock.WaitAsync(0))
+            {
+                Console.WriteLine($"⚠️ CompleteAutoDraft already in progress for league {leagueId}, ignoring duplicate call");
+                await Clients.Caller.SendAsync("AutoDraftInProgress", new
+                {
+                    Message = "Auto-draft is already in progress for this league"
+                });
+                return;
+            }
+
             try
             {
                 Console.WriteLine($"🏁 CompleteAutoDraft called for league {leagueId}");
 
                 // Verify user is in the league
                 if (_connections.TryGetValue(Context.ConnectionId, out var connection) &&
-                    connection.LeagueId == int.Parse(leagueId))
+                    connection.LeagueId == leagueIdInt)
                 {
                 Console.WriteLine($"✅ Connection found: User {connection.UserId} ({connection.Username}) in league {connection.LeagueId}");
                 
@@ -750,8 +775,21 @@ namespace FantasyLeague.Api.Hubs
                     var totalPicks = draft.DraftPicks?.Count ?? 0;
                     var teamCount = draftOrder.Count;
                     var totalPicksNeeded = draft.MaxPicks;
-                    
+
                     Console.WriteLine($"🏁 Starting complete auto-draft: {totalPicks} picks completed, {totalPicksNeeded - totalPicks} picks remaining");
+
+                    // Guard: Prevent duplicate calls if draft is already completed or all picks are made
+                    if (draft.IsCompleted || totalPicks >= totalPicksNeeded)
+                    {
+                        Console.WriteLine($"⚠️ CompleteAutoDraft called but draft is already completed (IsCompleted: {draft.IsCompleted}, Picks: {totalPicks}/{totalPicksNeeded})");
+                        await Clients.Caller.SendAsync("DraftAlreadyCompleted", new
+                        {
+                            Message = "Draft is already completed",
+                            TotalPicks = totalPicks,
+                            IsCompleted = draft.IsCompleted
+                        });
+                        return;
+                    }
                     
                     // Get PlayerPoolService from scoped services (since CompleteAutoDraft runs in scoped context)
                     Console.WriteLine($"🔍 Getting available players from API...");
@@ -892,6 +930,11 @@ namespace FantasyLeague.Api.Hubs
                     Error = "EXCEPTION",
                     Message = $"An error occurred during auto-draft: {ex.Message}"
                 });
+            }
+            finally
+            {
+                autoDraftLock.Release();
+                Console.WriteLine($"🔓 Released auto-draft lock for league {leagueId}");
             }
         }
 

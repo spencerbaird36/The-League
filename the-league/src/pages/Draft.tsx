@@ -271,22 +271,28 @@ const Draft: React.FC<DraftProps> = ({
       },
       onDraftReset: (data) => {
         console.log('🔄 Draft reset event received (Draft.tsx):', data);
+        console.log('📋 New draft order from backend:', data.NewDraftOrder);
+
         draftStateActions.resetDraftState();
         timerActions.stopTimer();
         // Clear WebSocket draft state to ensure start button shows
         setWebSocketDraftState(null);
+
         notificationActions.addNotification({
           type: 'turn',
           title: 'Draft Reset',
           message: `Draft was reset by ${data.ResetBy || 'Administrator'}`,
           duration: 5000
         });
+
         // Dispatch to context to trigger refresh across app
         dispatch({ type: 'DRAFT_RESET' });
-        // Throttle API call after reset to prevent excessive polling
+
+        // Refresh draft state and available players
         setTimeout(() => {
+          draftOperations.fetchDraftState();
           fetchAvailablePlayersFromBackend();
-        }, 1000);
+        }, 500);
       },
       onDraftPickError: (data) => {
         console.log('❌ Draft pick error event received:', data);
@@ -1127,7 +1133,7 @@ const Draft: React.FC<DraftProps> = ({
             </div>
           )}
           
-          {isDraftCreated && !draftState.isActive && !timerState.isActive && !webSocketDraftState && (
+          {isDraftCreated && !draftState.isActive && !timerState.isActive && !webSocketDraftState && !draftState.isCompleted && !draftOperations.draftState?.isCompleted && (
             <div className="draft-ready">
               <p>Draft is ready to begin!</p>
               <div className="draft-management-buttons">
@@ -1146,6 +1152,17 @@ const Draft: React.FC<DraftProps> = ({
                     Auto Draft
                   </button>
                 )}
+              </div>
+            </div>
+          )}
+
+          {isDraftCreated && (draftState.isCompleted || draftOperations.draftState?.isCompleted) && (
+            <div className="draft-completed">
+              <p>🎉 Draft Complete!</p>
+              <div className="draft-management-buttons">
+                <button type="button" onClick={handleResetDraft} className="draft-control-btn reset">
+                  Reset Draft
+                </button>
               </div>
             </div>
           )}
